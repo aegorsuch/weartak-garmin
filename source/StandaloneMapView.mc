@@ -101,6 +101,7 @@ class StandaloneMapView extends WatchUi.MapTrackView {
     }
 
     function onUpdate(dc) {
+        MapTrackView.onUpdate(dc);
         var left = controlMargin;
         var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
         drawLayersControl(dc, (screenWidth - layersControlSize) / 2, controlMargin);
