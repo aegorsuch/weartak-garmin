@@ -82,3 +82,8 @@ Build the project with the Garmin Connect IQ SDK for the configured product.
 Use the simulator for UI and payload checks, then validate relay behavior on a
 physical watch with Garmin Connect and the ATAK plugin. Do not commit generated
 build output or the private `developer_key.der`; both are ignored by Git.
+
+## Git workflow
+
+Make changes on `develop` and push them to the `tpc` remote. Merge tested
+changes into `main` when they are ready for release.
