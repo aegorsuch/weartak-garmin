@@ -13,7 +13,7 @@ class StandaloneMapMarker extends WatchUi.MapMarker {
     }
 }
 
-class StandaloneMapView extends WatchUi.MapTrackView {
+class StandaloneMapView extends WatchUi.MapView {
     var screenWidth;
     var screenHeight;
     var mapTopLeft;
@@ -34,7 +34,7 @@ class StandaloneMapView extends WatchUi.MapTrackView {
     var entityPruneTimer;
 
     function initialize() {
-        WatchUi.MapTrackView.initialize();
+        WatchUi.MapView.initialize();
         screenWidth = System.getDeviceSettings().screenWidth;
         screenHeight = System.getDeviceSettings().screenHeight;
         setScreenVisibleArea(0, 0, screenWidth, screenHeight);
@@ -101,7 +101,7 @@ class StandaloneMapView extends WatchUi.MapTrackView {
     }
 
     function onUpdate(dc) {
-        MapTrackView.onUpdate(dc);
+        MapView.onUpdate(dc);
         var left = controlMargin;
         var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
         drawLayersControl(dc, (screenWidth - layersControlSize) / 2, controlMargin);
@@ -111,32 +111,6 @@ class StandaloneMapView extends WatchUi.MapTrackView {
             drawControl(dc, left, top + (controlSize + controlGap) * 2, "-");
         }
         drawBackControl(dc, screenWidth - controlSize - controlMargin, (screenHeight - controlSize) / 2);
-        drawDroppedPointOverlay(dc);
-    }
-
-    function drawDroppedPointOverlay(dc) {
-        if (mapTopLeft == null || mapBottomRight == null) {
-            return;
-        }
-        var topLeft = mapTopLeft.toDegrees();
-        var bottomRight = mapBottomRight.toDegrees();
-        var latitudeSpan = topLeft[0] - bottomRight[0];
-        var longitudeSpan = bottomRight[1] - topLeft[1];
-        if (latitudeSpan == 0 || longitudeSpan == 0) {
-            return;
-        }
-        var ids = pointLocations.keys();
-        dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
-        for (var i = 0; i < ids.size(); i++) {
-            var degrees = pointLocations.get(ids[i]).toDegrees();
-            var x = (degrees[1] - topLeft[1]) / longitudeSpan * screenWidth;
-            var y = (topLeft[0] - degrees[0]) / latitudeSpan * screenHeight;
-            if (x >= 0 && x < screenWidth && y >= 0 && y < screenHeight) {
-                dc.drawCircle(x, y, 7);
-                dc.drawLine(x - 11, y, x + 11, y);
-                dc.drawLine(x, y - 11, x, y + 11);
-            }
-        }
     }
 
     function drawLayersControl(dc, x, y) {
