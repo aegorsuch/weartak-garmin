@@ -332,15 +332,26 @@ class StandaloneMapView extends WatchUi.MapView {
             return "Unknown 2525D point";
         }
         var details = pointDetails.get(id) as Dictionary;
-        var type = details.get("type") as Symbol;
-        return defaultPointTitle(type);
+        var type = details.get("type");
+        if (type == null) {
+            return "Unknown 2525D point";
+        }
+        return defaultPointTitle(type as Symbol);
+    }
+
+    function safeDetailString(details as Dictionary, key as String, fallback as String) as String {
+        var value = details.get(key);
+        if (value == null) {
+            return fallback;
+        }
+        return value.toString();
     }
 
     function updatePoint(id, details as Dictionary) {
         var location = pointLocations.get(id);
         var type = details.get("type") as Symbol;
-        var title = details.get("title").toString();
-        var remark = details.get("remark").toString();
+        var title = safeDetailString(details, "title", defaultPointTitle(type));
+        var remark = safeDetailString(details, "remark", "");
         var marker = new StandaloneMapMarker(location);
         var icon = iconForType(type);
         marker.setIcon(icon, icon.getWidth() / 2, icon.getHeight() / 2);
@@ -733,6 +744,8 @@ class PointTextPickerDelegate extends WatchUi.TextPickerDelegate {
         if (changed) {
             view.updatePointText(pointId, field, text);
         }
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+        view.showPointTypeMenu(pointId);
         return true;
     }
 
