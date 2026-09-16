@@ -21,8 +21,8 @@ secondary display and input surface.
 	without creating Garmin saved-location flags.
 - Lets the user set a dropped point's title and remark after selecting it on
 	the map, and relays those fields to ATAK.
-- Uses an explicit drop mode: select the drop control, tap the map, then select
-	a point to change its type, title, remark, or delete it.
+- Supports long-press point placement, then lets you select a point to change
+	its type, title, remark, or delete it.
 - Supports swipe, flick, and drag map panning, plus recenter and zoom controls.
 - Provides a confirmed cleanup action for legacy Garmin waypoints named
 	`Unknown 2525D point`.

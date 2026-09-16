@@ -49,6 +49,4 @@
     <string id="StatusRetrying">Retrying</string>
     <string id="StatusConnected">Relay active</string>
     <string id="StatusFailed">Failed</string>
-    <string id="StatusDropArmed">Tap map to place point</string>
-    <string id="StatusDropCancelled">Drop cancelled</string>
 </resources>
