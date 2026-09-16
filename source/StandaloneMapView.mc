@@ -32,6 +32,8 @@ class StandaloneMapView extends WatchUi.MapView {
     var mapButtonsVisible = true;
     var hasInitialPosition = false;
     var entityPruneTimer;
+    var mapAreaDirty = true;
+    var markersDirty = true;
 
     function initialize() {
         WatchUi.MapView.initialize();
@@ -58,7 +60,7 @@ class StandaloneMapView extends WatchUi.MapView {
         selfMarker.setIcon(selfIcon, selfIcon.getWidth() / 2, selfIcon.getHeight() / 2);
         selfMarker.setLabel("SELF");
         markers.put("self", selfMarker);
-        setMapMarker(markerArray());
+        markersDirty = true;
         WatchUi.requestUpdate();
     }
 
@@ -84,7 +86,7 @@ class StandaloneMapView extends WatchUi.MapView {
         incomingLastSeen.put(markerId, Time.now().value());
         markers.put(markerId, marker);
         pruneIncomingEntities();
-        setMapMarker(markerArray());
+        markersDirty = true;
         WatchUi.requestUpdate();
     }
 
@@ -97,10 +99,18 @@ class StandaloneMapView extends WatchUi.MapView {
         var span = 0.005;
         mapTopLeft = new Position.Location({:latitude => center[0] + span, :longitude => center[1] - span, :format => :degrees});
         mapBottomRight = new Position.Location({:latitude => center[0] - span, :longitude => center[1] + span, :format => :degrees});
-        setMapVisibleArea(mapTopLeft, mapBottomRight);
+        mapAreaDirty = true;
     }
 
     function onUpdate(dc) {
+        if (mapAreaDirty) {
+            setMapVisibleArea(mapTopLeft, mapBottomRight);
+            mapAreaDirty = false;
+        }
+        if (markersDirty) {
+            setMapMarker(markerArray());
+            markersDirty = false;
+        }
         MapView.onUpdate(dc);
         var left = controlMargin;
         var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
@@ -185,7 +195,6 @@ class StandaloneMapView extends WatchUi.MapView {
         var latitude = topLeft[0] + (bottomRight[0] - topLeft[0]) * yRatio;
         var longitude = topLeft[1] + (bottomRight[1] - topLeft[1]) * xRatio;
         addPoint(new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees}), :unknown, "Unknown 2525D point");
-        setMapMarker(markerArray());
         WatchUi.showToast("Point dropped", null);
         WatchUi.requestUpdate();
     }
@@ -222,7 +231,7 @@ class StandaloneMapView extends WatchUi.MapView {
         markers.put(id, marker);
         pointLocations.put(id, location);
         pointDetails.put(id, {"type" => type, "title" => label, "remark" => ""});
-        setMapMarker(markerArray());
+        markersDirty = true;
         if (takClient != null) {
             takClient.sendMarker(id, location, type, label, "");
         }
@@ -245,6 +254,10 @@ class StandaloneMapView extends WatchUi.MapView {
         var ids = markers.keys();
         for (var i = 0; i < ids.size(); i++) {
             result.add(markers.get(ids[i]));
+        }
+        if (result.size() == 0) {
+            var placeholderLocation = new Position.Location({:latitude => 89.0, :longitude => 179.0, :format => :degrees});
+            result.add(new StandaloneMapMarker(placeholderLocation));
         }
         return result;
     }
@@ -303,7 +316,7 @@ class StandaloneMapView extends WatchUi.MapView {
         marker.setIcon(icon, icon.getWidth() / 2, icon.getHeight() / 2);
         marker.setLabel(title);
         markers.put(id, marker);
-        setMapMarker(markerArray());
+        markersDirty = true;
         if (takClient != null) {
             takClient.sendMarker(id, location, type, title, remark);
         }
@@ -320,7 +333,7 @@ class StandaloneMapView extends WatchUi.MapView {
         if (takClient != null) {
             takClient.deleteMarker(id);
         }
-        setMapMarker(markerArray());
+        markersDirty = true;
         WatchUi.requestUpdate();
     }
 
@@ -334,7 +347,7 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         pointLocations = {};
         pointDetails = {};
-        setMapMarker(markerArray());
+        markersDirty = true;
 
         var waypoints = PersistedContent.getAppWaypoints();
         var waypoint = waypoints.next();
@@ -362,7 +375,7 @@ class StandaloneMapView extends WatchUi.MapView {
             incomingIds.remove(staleIds[j]);
         }
         if (staleIds.size() > 0) {
-            setMapMarker(markerArray());
+            markersDirty = true;
         }
         return staleIds.size() > 0;
     }
@@ -382,7 +395,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var halfLon = (bottomRight[1] - topLeft[1]) * scale / 2;
         mapTopLeft = new Position.Location({:latitude => centerLat + halfLat, :longitude => centerLon - halfLon, :format => :degrees});
         mapBottomRight = new Position.Location({:latitude => centerLat - halfLat, :longitude => centerLon + halfLon, :format => :degrees});
-        setMapVisibleArea(mapTopLeft, mapBottomRight);
+        mapAreaDirty = true;
         WatchUi.requestUpdate();
     }
 
@@ -404,7 +417,7 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         mapTopLeft = new Position.Location({:latitude => topLeft[0] + latOffset, :longitude => topLeft[1] + lonOffset, :format => :degrees});
         mapBottomRight = new Position.Location({:latitude => bottomRight[0] + latOffset, :longitude => bottomRight[1] + lonOffset, :format => :degrees});
-        setMapVisibleArea(mapTopLeft, mapBottomRight);
+        mapAreaDirty = true;
         WatchUi.requestUpdate();
     }
 
@@ -427,7 +440,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var lonOffset = -(bottomRight[1] - topLeft[1]) * deltaX / screenWidth;
         mapTopLeft = new Position.Location({:latitude => topLeft[0] + latOffset, :longitude => topLeft[1] + lonOffset, :format => :degrees});
         mapBottomRight = new Position.Location({:latitude => bottomRight[0] + latOffset, :longitude => bottomRight[1] + lonOffset, :format => :degrees});
-        setMapVisibleArea(mapTopLeft, mapBottomRight);
+        mapAreaDirty = true;
         WatchUi.requestUpdate();
     }
 }
