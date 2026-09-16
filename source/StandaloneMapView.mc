@@ -424,13 +424,25 @@ class StandaloneMapView extends WatchUi.MapTrackView {
 
 class StandaloneMapDelegate extends WatchUi.InputDelegate {
     var view;
+    var app as StandaloneApp;
+    var openMainMenuOnBack = false;
     var lastDragX;
     var lastDragY;
     var isDragging = false;
 
-    function initialize(mapView) {
+    function initialize(mapView, showMainMenuOnBack as Boolean, application as StandaloneApp) {
         WatchUi.InputDelegate.initialize();
         view = mapView;
+        openMainMenuOnBack = showMainMenuOnBack;
+        app = application;
+    }
+
+    function leaveMap() as Void {
+        if (openMainMenuOnBack) {
+            WatchUi.pushView(buildMainMenu(), new MainMenuDelegate(app), WatchUi.SLIDE_RIGHT);
+        } else {
+            WatchUi.popView(WatchUi.SLIDE_RIGHT);
+        }
     }
 
     function onTap(evt) {
@@ -450,7 +462,7 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
             return true;
         }
         if (coordinates[0] >= right && coordinates[0] <= right + view.controlSize && coordinates[1] >= backTop && coordinates[1] <= backTop + view.controlSize) {
-            WatchUi.popView(WatchUi.SLIDE_RIGHT);
+            leaveMap();
             return true;
         }
         if (coordinates[0] < left || coordinates[0] > left + view.controlSize) {
@@ -525,7 +537,7 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
 
     function onKey(evt) {
         if (evt.getKey() == WatchUi.KEY_ESC) {
-            WatchUi.popView(WatchUi.SLIDE_RIGHT);
+            leaveMap();
             return true;
         }
         return false;

@@ -60,6 +60,6 @@ class StandaloneApp extends Application.AppBase {
     function getInitialView() {
         var mapView = getMapView();
         mapView.setTakClient(takClient);
-        return [mapView, new StandaloneMapDelegate(mapView)];
+        return [mapView, new StandaloneMapDelegate(mapView, true, self)];
     }
 }
