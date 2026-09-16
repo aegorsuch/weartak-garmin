@@ -114,7 +114,7 @@ class StandaloneMapView extends WatchUi.MapView {
             setMapMarker(markerArray());
             markersDirty = false;
         }
-        MapView.onUpdate(dc);
+        WatchUi.MapView.onUpdate(dc);
         var left = controlMargin;
         var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
         drawLayersControl(dc, (screenWidth - layersControlSize) / 2, controlMargin);
@@ -327,6 +327,15 @@ class StandaloneMapView extends WatchUi.MapView {
         return value == null ? "" : value.toString();
     }
 
+    function getPointTypeLabel(id) as String {
+        if (pointDetails.hasKey(id) == false) {
+            return "Unknown 2525D point";
+        }
+        var details = pointDetails.get(id) as Dictionary;
+        var type = details.get("type") as Symbol;
+        return defaultPointTitle(type);
+    }
+
     function updatePoint(id, details as Dictionary) {
         var location = pointLocations.get(id);
         var type = details.get("type") as Symbol;
@@ -537,9 +546,9 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
 
     function showPointTypeMenu(pointId) {
         var menu = new WatchUi.Menu2({:title => "2525D Point"});
-        menu.addItem(new WatchUi.MenuItem("Set title", view.getPointText(pointId, "title"), :title, null));
-        menu.addItem(new WatchUi.MenuItem("Change Remark", view.getPointText(pointId, "remark"), :remark, null));
-        menu.addItem(new WatchUi.MenuItem("Change Type", null, :type, null));
+        menu.addItem(new WatchUi.MenuItem("Set Title", view.getPointText(pointId, "title"), :title, null));
+        menu.addItem(new WatchUi.MenuItem("Set Remark", view.getPointText(pointId, "remark"), :remark, null));
+        menu.addItem(new WatchUi.MenuItem("Set Type", view.getPointTypeLabel(pointId), :type, null));
         menu.addItem(new WatchUi.MenuItem("Delete", null, :delete, null));
         WatchUi.pushView(menu, new PointMenuDelegate(view, pointId), WatchUi.SLIDE_UP);
     }
@@ -661,7 +670,7 @@ class PointMenuDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.pushView(new WatchUi.TextPicker(view.getPointText(pointId, "remark")), new PointTextPickerDelegate(view, pointId, "remark"), WatchUi.SLIDE_UP);
             return;
         } else if (id == :type) {
-            var typeMenu = new WatchUi.Menu2({:title => "Change Type"});
+            var typeMenu = new WatchUi.Menu2({:title => "Set Type"});
             typeMenu.addItem(new WatchUi.MenuItem("Friendly", null, :friendly, null));
             typeMenu.addItem(new WatchUi.MenuItem("Unknown", null, :unknown, null));
             typeMenu.addItem(new WatchUi.MenuItem("Hostile", null, :hostile, null));
