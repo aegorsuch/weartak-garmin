@@ -1,5 +1,8 @@
 # Garmin build outputs
 /bin/
+/WearTAK-fenix7x.prg
+/WearTAK-fenix7x.prg.debug.xml
+/external-mir/
 /gen/
 /mir/
 /internal-mir/
