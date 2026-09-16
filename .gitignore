@@ -1,7 +1,7 @@
 # Garmin build outputs
 /bin/
-/WearTAK-fenix7x.prg
-/WearTAK-fenix7x.prg.debug.xml
+/WearTAK-Garmin.prg
+/WearTAK-Garmin.prg.debug.xml
 /external-mir/
 /gen/
 /mir/
@@ -10,6 +10,3 @@
 # Private Garmin signing key
 /developer_key.der
 
-# Local reference archives
-/WearTAK-ATAK-Plugin-develop.zip
-/wearos-tak-civ-develop.zip
