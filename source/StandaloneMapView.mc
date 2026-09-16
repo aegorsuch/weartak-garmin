@@ -41,7 +41,8 @@ class StandaloneMapView extends WatchUi.MapView {
         screenHeight = System.getDeviceSettings().screenHeight;
         setScreenVisibleArea(0, 0, screenWidth, screenHeight);
         setMapMode(WatchUi.MAP_MODE_BROWSE);
-        centerOn(null);
+        var currentInfo = Position.getInfo();
+        centerOn(currentInfo != null && currentInfo.position != null ? currentInfo.position : null);
         setMapVisibleArea(mapTopLeft, mapBottomRight);
         mapAreaDirty = false;
         entityPruneTimer = new Timer.Timer();
@@ -372,9 +373,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var waypoints = PersistedContent.getAppWaypoints();
         var waypoint = waypoints.next();
         while (waypoint != null) {
-            if (waypoint.getName() == "Unknown 2525D point") {
-                waypoint.remove();
-            }
+            waypoint.remove();
             waypoint = waypoints.next();
         }
         WatchUi.requestUpdate();

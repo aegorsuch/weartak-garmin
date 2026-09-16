@@ -7,9 +7,9 @@
     <string id="MenuItemChat">Chat</string>
     <string id="MenuItemSos">SOS</string>
     <string id="MenuItemTakServer">ATAK Connect</string>
-    <string id="MenuItemClearPoints">Clear old 2525D points</string>
-    <string id="ConfirmClearPointsTitle">Clear old points?</string>
-    <string id="LabelClearPoints">Clear points</string>
+    <string id="MenuItemClearPoints">Clear app 2525D points</string>
+    <string id="ConfirmClearPointsTitle">Clear app points?</string>
+    <string id="LabelClearPoints">Clear app points</string>
 
     <string id="MenuTitleChat">Chat</string>
     <string id="MenuTitleQuickReply">Quick Reply</string>
