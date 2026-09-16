@@ -58,7 +58,7 @@ class StandaloneMapView extends WatchUi.MapView {
         selfMarker.setIcon(selfIcon, selfIcon.getWidth() / 2, selfIcon.getHeight() / 2);
         selfMarker.setLabel("SELF");
         markers.put("self", selfMarker);
-        setMapMarker(markers.values());
+        setMapMarker(markerArray());
         WatchUi.requestUpdate();
     }
 
@@ -84,7 +84,7 @@ class StandaloneMapView extends WatchUi.MapView {
         incomingLastSeen.put(markerId, Time.now().value());
         markers.put(markerId, marker);
         pruneIncomingEntities();
-        setMapMarker(markers.values());
+        setMapMarker(markerArray());
         WatchUi.requestUpdate();
     }
 
@@ -185,7 +185,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var latitude = topLeft[0] + (bottomRight[0] - topLeft[0]) * yRatio;
         var longitude = topLeft[1] + (bottomRight[1] - topLeft[1]) * xRatio;
         addPoint(new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees}), :unknown, "Unknown 2525D point");
-        setMapMarker(markers.values());
+        setMapMarker(markerArray());
         WatchUi.showToast("Point dropped", null);
         WatchUi.requestUpdate();
     }
@@ -222,7 +222,7 @@ class StandaloneMapView extends WatchUi.MapView {
         markers.put(id, marker);
         pointLocations.put(id, location);
         pointDetails.put(id, {"type" => type, "title" => label, "remark" => ""});
-        setMapMarker(markers.values());
+        setMapMarker(markerArray());
         if (takClient != null) {
             takClient.sendMarker(id, location, type, label, "");
         }
@@ -238,6 +238,15 @@ class StandaloneMapView extends WatchUi.MapView {
             return WatchUi.loadResource(Rez.Drawables.ObstacleIcon);
         }
         return WatchUi.loadResource(Rez.Drawables.UnknownIcon);
+    }
+
+    function markerArray() as Array {
+        var result = [];
+        var ids = markers.keys();
+        for (var i = 0; i < ids.size(); i++) {
+            result.add(markers.get(ids[i]));
+        }
+        return result;
     }
 
     function pointAtScreen(x, y) {
@@ -294,7 +303,7 @@ class StandaloneMapView extends WatchUi.MapView {
         marker.setIcon(icon, icon.getWidth() / 2, icon.getHeight() / 2);
         marker.setLabel(title);
         markers.put(id, marker);
-        setMapMarker(markers.values());
+        setMapMarker(markerArray());
         if (takClient != null) {
             takClient.sendMarker(id, location, type, title, remark);
         }
@@ -311,7 +320,7 @@ class StandaloneMapView extends WatchUi.MapView {
         if (takClient != null) {
             takClient.deleteMarker(id);
         }
-        setMapMarker(markers.values());
+        setMapMarker(markerArray());
         WatchUi.requestUpdate();
     }
 
@@ -325,7 +334,7 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         pointLocations = {};
         pointDetails = {};
-        setMapMarker(markers.values());
+        setMapMarker(markerArray());
 
         var waypoints = PersistedContent.getAppWaypoints();
         var waypoint = waypoints.next();
@@ -353,7 +362,7 @@ class StandaloneMapView extends WatchUi.MapView {
             incomingIds.remove(staleIds[j]);
         }
         if (staleIds.size() > 0) {
-            setMapMarker(markers.values());
+            setMapMarker(markerArray());
         }
         return staleIds.size() > 0;
     }
