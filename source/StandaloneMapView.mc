@@ -42,6 +42,8 @@ class StandaloneMapView extends WatchUi.MapView {
         setScreenVisibleArea(0, 0, screenWidth, screenHeight);
         setMapMode(WatchUi.MAP_MODE_BROWSE);
         centerOn(null);
+        setMapVisibleArea(mapTopLeft, mapBottomRight);
+        mapAreaDirty = false;
         entityPruneTimer = new Timer.Timer();
         entityPruneTimer.start(method(:pruneIncomingEntitiesOnTimer), 60000, true);
     }
@@ -640,8 +642,10 @@ class PointMenuDelegate extends WatchUi.Menu2InputDelegate {
         var id = item.getId();
         if (id == :title) {
             WatchUi.pushView(new WatchUi.TextPicker(view.getPointText(pointId, "title")), new PointTextPickerDelegate(view, pointId, "title"), WatchUi.SLIDE_UP);
+            return;
         } else if (id == :remark) {
             WatchUi.pushView(new WatchUi.TextPicker(view.getPointText(pointId, "remark")), new PointTextPickerDelegate(view, pointId, "remark"), WatchUi.SLIDE_UP);
+            return;
         } else if (id == :friendly) {
             view.changePointType(pointId, :friendly, "Friendly 2525D point");
         } else if (id == :hostile) {
