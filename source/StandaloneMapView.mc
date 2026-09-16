@@ -286,9 +286,24 @@ class StandaloneMapView extends WatchUi.MapView {
             return;
         }
         var details = pointDetails.get(id) as Dictionary;
+        var currentType = details.get("type") as Symbol;
+        var currentTitle = details.get("title").toString();
         details.put("type", type);
-        details.put("title", label);
+        if (currentTitle.equals("") || currentTitle.equals(defaultPointTitle(currentType))) {
+            details.put("title", defaultPointTitle(type));
+        }
         updatePoint(id, details);
+    }
+
+    function defaultPointTitle(type as Symbol) as String {
+        if (type == :friendly) {
+            return "Friendly 2525D point";
+        } else if (type == :hostile) {
+            return "Hostile 2525D point";
+        } else if (type == :obstacle) {
+            return "Obstacle 2525D point";
+        }
+        return "Unknown 2525D point";
     }
 
     function updatePointText(id, field, value) {
@@ -296,6 +311,9 @@ class StandaloneMapView extends WatchUi.MapView {
             return;
         }
         var details = pointDetails.get(id) as Dictionary;
+        if (field.equals("title") && value.equals("")) {
+            value = defaultPointTitle(details.get("type") as Symbol);
+        }
         details.put(field, value);
         updatePoint(id, details);
     }
@@ -521,11 +539,8 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
     function showPointTypeMenu(pointId) {
         var menu = new WatchUi.Menu2({:title => "2525D Point"});
         menu.addItem(new WatchUi.MenuItem("Set title", view.getPointText(pointId, "title"), :title, null));
-        menu.addItem(new WatchUi.MenuItem("Set remark", view.getPointText(pointId, "remark"), :remark, null));
-        menu.addItem(new WatchUi.MenuItem("Friendly", null, :friendly, null));
-        menu.addItem(new WatchUi.MenuItem("Unknown", null, :unknown, null));
-        menu.addItem(new WatchUi.MenuItem("Hostile", null, :hostile, null));
-        menu.addItem(new WatchUi.MenuItem("Obstacle", null, :obstacle, null));
+        menu.addItem(new WatchUi.MenuItem("Change Remark", view.getPointText(pointId, "remark"), :remark, null));
+        menu.addItem(new WatchUi.MenuItem("Change Type", null, :type, null));
         menu.addItem(new WatchUi.MenuItem("Delete", null, :delete, null));
         WatchUi.pushView(menu, new PointMenuDelegate(view, pointId), WatchUi.SLIDE_UP);
     }
@@ -646,14 +661,43 @@ class PointMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :remark) {
             WatchUi.pushView(new WatchUi.TextPicker(view.getPointText(pointId, "remark")), new PointTextPickerDelegate(view, pointId, "remark"), WatchUi.SLIDE_UP);
             return;
-        } else if (id == :friendly) {
+        } else if (id == :type) {
+            var typeMenu = new WatchUi.Menu2({:title => "Change Type"});
+            typeMenu.addItem(new WatchUi.MenuItem("Friendly", null, :friendly, null));
+            typeMenu.addItem(new WatchUi.MenuItem("Unknown", null, :unknown, null));
+            typeMenu.addItem(new WatchUi.MenuItem("Hostile", null, :hostile, null));
+            typeMenu.addItem(new WatchUi.MenuItem("Obstacle", null, :obstacle, null));
+            WatchUi.pushView(typeMenu, new PointTypeMenuDelegate(view, pointId), WatchUi.SLIDE_LEFT);
+            return;
+        } else if (id == :delete) {
+            view.deletePoint(pointId);
+        }
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+    }
+
+    function onBack() as Void {
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+    }
+}
+
+class PointTypeMenuDelegate extends WatchUi.Menu2InputDelegate {
+    var view;
+    var pointId;
+
+    function initialize(mapView, id) {
+        Menu2InputDelegate.initialize();
+        view = mapView;
+        pointId = id;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :friendly) {
             view.changePointType(pointId, :friendly, "Friendly 2525D point");
         } else if (id == :hostile) {
             view.changePointType(pointId, :hostile, "Hostile 2525D point");
         } else if (id == :obstacle) {
             view.changePointType(pointId, :obstacle, "Obstacle 2525D point");
-        } else if (id == :delete) {
-            view.deletePoint(pointId);
         } else {
             view.changePointType(pointId, :unknown, "Unknown 2525D point");
         }
