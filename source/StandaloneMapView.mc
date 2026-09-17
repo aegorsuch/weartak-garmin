@@ -516,6 +516,7 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
             return false;
         }
         view.dropAtScreen(coordinates[0], coordinates[1]);
+        view.setMapMode(WatchUi.MAP_MODE_PREVIEW);
         return true;
     }
 
