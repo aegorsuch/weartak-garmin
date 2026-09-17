@@ -721,6 +721,7 @@ class PointTypeMenuDelegate extends WatchUi.Menu2InputDelegate {
             view.changePointType(pointId, :unknown, "Unknown 2525D point");
         }
         WatchUi.popView(WatchUi.SLIDE_DOWN);
+        view.showPointTypeMenu(pointId);
     }
 
     function onBack() as Void {
