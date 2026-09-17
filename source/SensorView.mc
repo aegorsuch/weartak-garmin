@@ -15,16 +15,19 @@ class EnvironmentalSensorsView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.fillRectangle(0, 0, System.getDeviceSettings().screenWidth, System.getDeviceSettings().screenHeight);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        var centerX = System.getDeviceSettings().screenWidth / 2;
-        dc.drawText(centerX, 8, Graphics.FONT_MEDIUM, "Environment", Graphics.TEXT_JUSTIFY_CENTER);
+        var screenWidth = System.getDeviceSettings().screenWidth;
+        var centerX = screenWidth / 2;
+        dc.drawText(centerX, 16, Graphics.FONT_MEDIUM, "Environment", Graphics.TEXT_JUSTIFY_CENTER);
         var info = app.getSensorInfo();
-        drawReading(dc, centerX, 50, "Altitude", info != null ? formatValue(info.altitude, " m") : "Unavailable");
-        drawReading(dc, centerX, 82, "Pressure", info != null ? formatValue(info.pressure, " Pa") : "Unavailable");
-        drawReading(dc, centerX, 114, "Temperature", info != null ? formatValue(info.temperature, " C") : "Unavailable");
+        drawReading(dc, screenWidth, 58, "Altitude", info != null ? formatValue(info.altitude, " m") : "Unavailable");
+        drawReading(dc, screenWidth, 90, "Pressure", info != null ? formatValue(info.pressure, " Pa") : "Unavailable");
+        drawReading(dc, screenWidth, 122, "Temperature", info != null ? formatValue(info.temperature, " C") : "Unavailable");
     }
 
-    function drawReading(dc, x, y, label, value) {
-        dc.drawText(x, y, Graphics.FONT_SMALL, label + ": " + value, Graphics.TEXT_JUSTIFY_CENTER);
+    function drawReading(dc, screenWidth, y, label, value) {
+        var margin = 18;
+        dc.drawText(margin, y, Graphics.FONT_XTINY, label, Graphics.TEXT_JUSTIFY_LEFT);
+        dc.drawText(screenWidth - margin, y, Graphics.FONT_XTINY, value, Graphics.TEXT_JUSTIFY_RIGHT);
     }
 
     function formatValue(value, suffix) {
