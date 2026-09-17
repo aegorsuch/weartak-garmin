@@ -71,6 +71,15 @@ class StandaloneMapView extends WatchUi.MapView {
         takClient = client;
     }
 
+    function showPointTypeMenu(pointId) as Void {
+        var menu = new WatchUi.Menu2({:title => "2525D Point"});
+        menu.addItem(new WatchUi.MenuItem("Set Title", getPointText(pointId, "title"), :title, null));
+        menu.addItem(new WatchUi.MenuItem("Set Remark", getPointText(pointId, "remark"), :remark, null));
+        menu.addItem(new WatchUi.MenuItem("Set Type", getPointTypeLabel(pointId), :type, null));
+        menu.addItem(new WatchUi.MenuItem("Delete", null, :delete, null));
+        WatchUi.pushView(menu, new PointMenuDelegate(self, pointId), WatchUi.SLIDE_UP);
+    }
+
     function updateIncomingCot(uid as String, latitude, longitude, cotType as String) as Void {
         var markerId = "cot-" + uid;
         var location = new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees});
@@ -288,7 +297,7 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         var details = pointDetails.get(id) as Dictionary;
         var currentType = details.get("type") as Symbol;
-        var currentTitle = details.get("title").toString();
+        var currentTitle = safeDetailString(details, "title", "");
         details.put("type", type);
         if (currentTitle.equals("") || currentTitle.equals(defaultPointTitle(currentType))) {
             details.put("title", defaultPointTitle(type));
@@ -530,7 +539,7 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
         if (coordinates[0] < left || coordinates[0] > left + view.controlSize) {
             var pointId = view.pointAtScreen(coordinates[0], coordinates[1]);
             if (pointId != null) {
-                showPointTypeMenu(pointId);
+                view.showPointTypeMenu(pointId);
             }
             return true;
         }
@@ -553,15 +562,6 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
         }
         view.dropAtScreen(coordinates[0], coordinates[1]);
         return true;
-    }
-
-    function showPointTypeMenu(pointId) {
-        var menu = new WatchUi.Menu2({:title => "2525D Point"});
-        menu.addItem(new WatchUi.MenuItem("Set Title", view.getPointText(pointId, "title"), :title, null));
-        menu.addItem(new WatchUi.MenuItem("Set Remark", view.getPointText(pointId, "remark"), :remark, null));
-        menu.addItem(new WatchUi.MenuItem("Set Type", view.getPointTypeLabel(pointId), :type, null));
-        menu.addItem(new WatchUi.MenuItem("Delete", null, :delete, null));
-        WatchUi.pushView(menu, new PointMenuDelegate(view, pointId), WatchUi.SLIDE_UP);
     }
 
     function onSwipe(evt) {
