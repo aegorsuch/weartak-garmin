@@ -6,9 +6,9 @@ function buildMainMenu() as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleMain)});
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemClearPoints), null, :clearPoints, null));
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemChat), null, :chat, null));
-    menu.addItem(new WatchUi.MenuItem("Environmental Sensors", null, :environmentalSensors, null));
+    menu.addItem(new WatchUi.MenuItem("Environment", null, :environmentalSensors, null));
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemMap), null, :map, null));
-    menu.addItem(new WatchUi.MenuItem("Physiological Sensors", null, :physiologicalSensors, null));
+    menu.addItem(new WatchUi.MenuItem("Physiology", null, :physiologicalSensors, null));
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemSos), null, :sos, null));
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemTakServer), null, :takServer, null));
     return menu;

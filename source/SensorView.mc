@@ -15,15 +15,16 @@ class EnvironmentalSensorsView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.fillRectangle(0, 0, System.getDeviceSettings().screenWidth, System.getDeviceSettings().screenHeight);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(8, 8, Graphics.FONT_MEDIUM, "Environmental Sensors", Graphics.TEXT_JUSTIFY_LEFT);
+        var centerX = System.getDeviceSettings().screenWidth / 2;
+        dc.drawText(centerX, 8, Graphics.FONT_MEDIUM, "Environment", Graphics.TEXT_JUSTIFY_CENTER);
         var info = app.getSensorInfo();
-        drawReading(dc, 8, 50, "Altitude", info != null ? formatValue(info.altitude, " m") : "Unavailable");
-        drawReading(dc, 8, 82, "Pressure", info != null ? formatValue(info.pressure, " Pa") : "Unavailable");
-        drawReading(dc, 8, 114, "Temperature", info != null ? formatValue(info.temperature, " C") : "Unavailable");
+        drawReading(dc, centerX, 50, "Altitude", info != null ? formatValue(info.altitude, " m") : "Unavailable");
+        drawReading(dc, centerX, 82, "Pressure", info != null ? formatValue(info.pressure, " Pa") : "Unavailable");
+        drawReading(dc, centerX, 114, "Temperature", info != null ? formatValue(info.temperature, " C") : "Unavailable");
     }
 
     function drawReading(dc, x, y, label, value) {
-        dc.drawText(x, y, Graphics.FONT_SMALL, label + ": " + value, Graphics.TEXT_JUSTIFY_LEFT);
+        dc.drawText(x, y, Graphics.FONT_SMALL, label + ": " + value, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     function formatValue(value, suffix) {
@@ -43,13 +44,14 @@ class PhysiologicalSensorsView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.fillRectangle(0, 0, System.getDeviceSettings().screenWidth, System.getDeviceSettings().screenHeight);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(8, 8, Graphics.FONT_MEDIUM, "Physiological Sensors", Graphics.TEXT_JUSTIFY_LEFT);
+        var centerX = System.getDeviceSettings().screenWidth / 2;
+        dc.drawText(centerX, 8, Graphics.FONT_MEDIUM, "Physiology", Graphics.TEXT_JUSTIFY_CENTER);
         var sensorInfo = app.getSensorInfo();
-        drawReading(dc, 8, 50, "Heart Rate", sensorInfo != null ? formatValue(sensorInfo.heartRate, " BPM") : "Unavailable");
+        drawReading(dc, centerX, 50, "Heart Rate", sensorInfo != null ? formatValue(sensorInfo.heartRate, " BPM") : "Unavailable");
     }
 
     function drawReading(dc, x, y, label, value) {
-        dc.drawText(x, y, Graphics.FONT_SMALL, label + ": " + value, Graphics.TEXT_JUSTIFY_LEFT);
+        dc.drawText(x, y, Graphics.FONT_SMALL, label + ": " + value, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     function formatValue(value, suffix) {
