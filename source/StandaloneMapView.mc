@@ -38,7 +38,7 @@ class StandaloneMapView extends WatchUi.MapView {
         screenWidth = System.getDeviceSettings().screenWidth;
         screenHeight = System.getDeviceSettings().screenHeight;
         setScreenVisibleArea(0, 0, screenWidth, screenHeight);
-        setMapMode(WatchUi.MAP_MODE_BROWSE);
+        setMapMode(WatchUi.MAP_MODE_PREVIEW);
         var currentInfo = Position.getInfo();
         centerOn(currentInfo != null && currentInfo.position != null ? currentInfo.position : null);
         setMapVisibleArea(mapTopLeft, mapBottomRight);
@@ -126,6 +126,29 @@ class StandaloneMapView extends WatchUi.MapView {
             markersDirty = false;
         }
         WatchUi.MapView.onUpdate(dc);
+        var top = (screenHeight - (controlSize * 2 + controlGap)) / 2;
+        drawControl(dc, controlMargin, top, "+");
+        drawControl(dc, controlMargin, top + controlSize + controlGap, "-");
+        drawBackControl(dc, screenWidth - controlSize - controlMargin, (screenHeight - controlSize) / 2);
+    }
+
+    function drawControl(dc, x, y, label) {
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(x, y, controlSize, controlSize);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawRectangle(x, y, controlSize, controlSize);
+        dc.drawText(x + controlSize / 2, y + 4, Graphics.FONT_LARGE, label, Graphics.TEXT_JUSTIFY_CENTER);
+    }
+
+    function drawBackControl(dc, x, y) {
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(x, y, controlSize, controlSize);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawRectangle(x, y, controlSize, controlSize);
+        var centerX = x + controlSize / 2;
+        var centerY = y + controlSize / 2;
+        dc.drawLine(centerX + 10, centerY - 12, centerX - 8, centerY);
+        dc.drawLine(centerX - 8, centerY, centerX + 10, centerY + 12);
     }
 
     function dropAtCurrentLocation() {
@@ -469,7 +492,14 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
         }
         var coordinates = evt.getCoordinates();
         if (view.isControlAt(coordinates[0], coordinates[1])) {
-            return false;
+            if (view.isZoomInControlAt(coordinates[0], coordinates[1])) {
+                view.zoom(0.5);
+            } else if (view.isZoomOutControlAt(coordinates[0], coordinates[1])) {
+                view.zoom(2.0);
+            } else if (view.isBackControlAt(coordinates[0], coordinates[1])) {
+                leaveMap();
+            }
+            return true;
         }
         var pointId = view.pointAtScreen(coordinates[0], coordinates[1]);
         if (pointId != null) {
@@ -482,10 +512,10 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
     function onHold(evt) {
         var coordinates = evt.getCoordinates();
         if (view.isControlAt(coordinates[0], coordinates[1])) {
-            return false;
+            return true;
         }
         view.dropAtScreen(coordinates[0], coordinates[1]);
-        view.setMapMode(WatchUi.MAP_MODE_BROWSE);
+        view.setMapMode(WatchUi.MAP_MODE_PREVIEW);
         return true;
     }
 
