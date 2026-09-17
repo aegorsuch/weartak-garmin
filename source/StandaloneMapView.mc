@@ -120,7 +120,10 @@ class StandaloneMapView extends WatchUi.MapView {
             mapAreaDirty = false;
         }
         if (markersDirty) {
-            setMapMarker(markerArray());
+            var currentMarkers = markerArray();
+            if (currentMarkers.size() > 0) {
+                setMapMarker(currentMarkers);
+            }
             markersDirty = false;
         }
         WatchUi.MapView.onUpdate(dc);
