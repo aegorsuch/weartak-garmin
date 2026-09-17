@@ -507,13 +507,13 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
             view.showPointTypeMenu(pointId);
             return true;
         }
-        return false;
+        return true;
     }
 
     function onHold(evt) {
         var coordinates = evt.getCoordinates();
         if (view.isControlAt(coordinates[0], coordinates[1])) {
-            return false;
+            return true;
         }
         view.dropAtScreen(coordinates[0], coordinates[1]);
         view.setMapMode(WatchUi.MAP_MODE_PREVIEW);
