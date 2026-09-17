@@ -126,9 +126,10 @@ class StandaloneMapView extends WatchUi.MapView {
             markersDirty = false;
         }
         WatchUi.MapView.onUpdate(dc);
-        var top = (screenHeight - (controlSize * 2 + controlGap)) / 2;
+        var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
         drawControl(dc, controlMargin, top, "+");
-        drawControl(dc, controlMargin, top + controlSize + controlGap, "-");
+        drawCenterControl(dc, controlMargin, top + controlSize + controlGap);
+        drawControl(dc, controlMargin, top + (controlSize + controlGap) * 2, "-");
         drawBackControl(dc, screenWidth - controlSize - controlMargin, (screenHeight - controlSize) / 2);
     }
 
@@ -138,6 +139,18 @@ class StandaloneMapView extends WatchUi.MapView {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawRectangle(x, y, controlSize, controlSize);
         dc.drawText(x + controlSize / 2, y + 4, Graphics.FONT_LARGE, label, Graphics.TEXT_JUSTIFY_CENTER);
+    }
+
+    function drawCenterControl(dc, x, y) {
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(x, y, controlSize, controlSize);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawRectangle(x, y, controlSize, controlSize);
+        var centerX = x + controlSize / 2;
+        var centerY = y + controlSize / 2;
+        dc.drawLine(centerX, centerY - 12, centerX, centerY + 12);
+        dc.drawLine(centerX - 12, centerY, centerX + 12, centerY);
+        dc.drawCircle(centerX, centerY, 5);
     }
 
     function drawBackControl(dc, x, y) {
@@ -185,16 +198,21 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function isControlAt(x, y) {
-        return isZoomInControlAt(x, y) || isZoomOutControlAt(x, y) || isBackControlAt(x, y);
+        return isZoomInControlAt(x, y) || isZoomOutControlAt(x, y) || isCenterControlAt(x, y) || isBackControlAt(x, y);
     }
 
     function isZoomInControlAt(x, y) {
-        var top = (screenHeight - (controlSize * 2 + controlGap)) / 2;
+        var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
         return x >= controlMargin && x < controlMargin + controlSize && y >= top && y < top + controlSize;
     }
 
     function isZoomOutControlAt(x, y) {
-        var top = (screenHeight - (controlSize * 2 + controlGap)) / 2 + controlSize + controlGap;
+        var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2 + (controlSize + controlGap) * 2;
+        return x >= controlMargin && x < controlMargin + controlSize && y >= top && y < top + controlSize;
+    }
+
+    function isCenterControlAt(x, y) {
+        var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2 + controlSize + controlGap;
         return x >= controlMargin && x < controlMargin + controlSize && y >= top && y < top + controlSize;
     }
 
@@ -496,6 +514,8 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
                 view.zoom(0.5);
             } else if (view.isZoomOutControlAt(coordinates[0], coordinates[1])) {
                 view.zoom(2.0);
+            } else if (view.isCenterControlAt(coordinates[0], coordinates[1])) {
+                view.snapToSelf();
             } else if (view.isBackControlAt(coordinates[0], coordinates[1])) {
                 leaveMap();
             }

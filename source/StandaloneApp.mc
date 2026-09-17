@@ -9,21 +9,45 @@ class StandaloneApp extends Application.AppBase {
     private var takClient;
     private var chatMessages = [];
     private var sensorInfo;
+    private var locationServices as Boolean = true;
 
     function initialize() {
         Application.AppBase.initialize();
         takClient = new TakClient();
         takClient.incomingCotCallback = method(:onIncomingCot);
         takClient.incomingChatCallback = method(:onIncomingChat);
-        Position.enableLocationEvents(Position.LOCATION_CONTINUOUS, method(:onPosition));
+        var storedLocationServices = Application.Storage.getValue("locationServices");
+        if (storedLocationServices != null) {
+            locationServices = storedLocationServices as Boolean;
+        }
+        applyLocationServices();
         Sensor.setEnabledSensors([Sensor.SENSOR_HEARTRATE]);
         Sensor.enableSensorEvents(method(:onSensor));
+    }
+
+    function setLocationServices(enabled as Boolean) as Void {
+        locationServices = enabled;
+        Application.Storage.setValue("locationServices", enabled);
+        applyLocationServices();
+    }
+
+    function isLocationServicesEnabled() as Boolean {
+        return locationServices;
+    }
+
+    function applyLocationServices() as Void {
+        if (locationServices) {
+            Position.enableLocationEvents(Position.LOCATION_CONTINUOUS, method(:onPosition));
+        }
     }
 
     function onStart(params) {
     }
 
     function onPosition(info as Toybox.Position.Info) as Void {
+        if (!locationServices) {
+            return;
+        }
         takClient.updatePosition(info);
         if (view != null) {
             view.updatePosition(info);

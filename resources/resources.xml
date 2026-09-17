@@ -4,6 +4,15 @@
 
     <string id="MenuTitleMain">WearTAK</string>
     <string id="MenuItemMap">Map</string>
+    <string id="MenuItemSettings">Settings</string>
+    <string id="MenuTitleSettings">Settings</string>
+    <string id="MenuTitleDevicePreferences">Device Preferences</string>
+    <string id="MenuTitleNetworkPreferences">Network Preferences</string>
+    <string id="MenuTitleAlertingPreferences">Alerting Preferences</string>
+    <string id="MenuTitleToolPreferences">Tool Preferences</string>
+    <string id="MenuItemLocationServices">Location Services</string>
+    <string id="LocationServicesEnabled">On</string>
+    <string id="LocationServicesDisabled">Off</string>
     <string id="MenuItemChat">Chat</string>
     <string id="MenuItemSos">Manual Alert</string>
     <string id="MenuItemTakServer">ATAK Connect</string>
