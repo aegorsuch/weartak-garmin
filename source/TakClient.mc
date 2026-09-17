@@ -29,6 +29,7 @@ class TakClient {
     var lastResponseCode as Number?  = null;
     var lastPosition as Position.Info?  = null;
     var alerting as Boolean = false;
+    var alertType as String = "Manual Alert";
     var statusCallback as Method?  = null;
     var incomingCotCallback as Method? = null;
     var incomingChatCallback as Method? = null;
@@ -48,12 +49,23 @@ class TakClient {
         }
         alerting = value;
         if (!alerting) {
+            alertType = "Manual Alert";
             sendEmergency(:CANCEL);
         }
     }
 
     function isAlerting() as Boolean {
         return alerting;
+    }
+
+    function getAlertType() as String {
+        return alertType;
+    }
+
+    function activateManualAlert(type as String) as Void {
+        alertType = type;
+        alerting = true;
+        sendEmergency(:ALERT);
     }
 
     function isConnected() as Boolean {
@@ -145,11 +157,7 @@ class TakClient {
     }
 
     function sendSosEvent() as Void {
-        if (!isConnected() || lastPosition == null || lastPosition.position == null) {
-            return;
-        }
-        setAlerting(true);
-        sendEmergency(:ALERT);
+        activateManualAlert("Manual Alert");
     }
 
     function sendEmergency(state as Symbol) as Void {
@@ -159,6 +167,7 @@ class TakClient {
         var degrees = lastPosition.position.toDegrees();
         transmit("emergency", {
             "uid" => "garmin-sos", "state" => state == :ALERT ? "ALERT" : "CANCEL",
+            "alertType" => alertType,
             "lat" => degrees[0], "lon" => degrees[1], "hae" => lastPosition.altitude,
             "tStart" => cotTimestamp(Time.now()),
             "tStale" => cotTimestamp(Time.now().add(new Time.Duration(3600)))

@@ -477,7 +477,7 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
 
     function leaveMap() as Void {
         if (openMainMenuOnBack) {
-            WatchUi.pushView(buildMainMenu(), new MainMenuDelegate(app), WatchUi.SLIDE_RIGHT);
+            WatchUi.pushView(buildMainMenu(app), new MainMenuDelegate(app), WatchUi.SLIDE_RIGHT);
         } else {
             WatchUi.popView(WatchUi.SLIDE_RIGHT);
         }

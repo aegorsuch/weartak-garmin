@@ -1,19 +1,19 @@
 <resources>
-    <string id="AppName">WearTAK-Garmin</string>
+    <string id="AppName">WearTAK</string>
     <string id="version">1.0</string>
 
     <string id="MenuTitleMain">WearTAK</string>
     <string id="MenuItemMap">Map</string>
     <string id="MenuItemChat">Chat</string>
-    <string id="MenuItemSos">SOS</string>
+    <string id="MenuItemSos">Manual Alert</string>
     <string id="MenuItemTakServer">ATAK Connect</string>
-    <string id="MenuItemClearPoints">Clear app 2525D points</string>
+    <string id="MenuItemClearPoints">Clear 2525D</string>
     <string id="ConfirmClearPointsTitle">Clear app points?</string>
     <string id="LabelClearPoints">Clear app points</string>
 
     <string id="MenuTitleChat">Chat</string>
     <string id="MenuTitleQuickReply">Quick Reply</string>
-    <string id="MenuTitleSos">SOS</string>
+    <string id="MenuTitleSos">Manual Alert</string>
     <string id="ChatEmpty">No messages</string>
     <string id="ChatUnknownSender">Unknown</string>
 
@@ -36,7 +36,7 @@
     <string id="LabelHealthTelemetry">Health telemetry</string>
     <string id="LabelEnabled">Enabled</string>
     <string id="LabelDisabled">Disabled</string>
-    <string id="LabelSosControl">SOS / Clear</string>
+    <string id="LabelSosControl">Manual Alert</string>
     <string id="LabelSendSos">Send SOS</string>
     <string id="LabelClearSos">Clear SOS</string>
     <string id="LabelCancel">Cancel</string>
