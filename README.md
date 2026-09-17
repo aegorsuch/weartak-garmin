@@ -4,6 +4,11 @@ WearTAK-Garmin is a standalone Garmin Connect IQ watch application for basic
 Team Awareness Kit (TAK) operational awareness. It is designed for Garmin
 watches with maps and GPS, currently targeting the fenix 7X.
 
+## Project links
+
+- Personal GitHub: https://github.com/aegorsuch/weartak-garmin
+- Government repo: https://git.tak.gov/core/weartak-core/weartak-garmin
+
 The app uses Garmin Connect IQ phone messages to relay watch input to the
 WearTAK ATAK companion. ATAK owns TAK server connectivity, mTLS credentials,
 identity, and the authoritative phone location for PLI; the watch provides a
