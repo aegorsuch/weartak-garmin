@@ -4,14 +4,49 @@ import Toybox.WatchUi;
 // Builds the app's main menu: choose the map view or manage the ATAK relay.
 function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleMain)});
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemMap), null, :map, null));
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemSettings), null, :settings, null));
+    return menu;
+}
+
+function buildSettingsMenu() as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleSettings)});
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuTitleDevicePreferences), null, :devicePreferences, null));
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuTitleNetworkPreferences), null, :networkPreferences, null));
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuTitleAlertingPreferences), null, :alertingPreferences, null));
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuTitleToolPreferences), null, :toolPreferences, null));
+    return menu;
+}
+
+function buildDevicePreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleDevicePreferences)});
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemLocationServices), locationServicesLabel(app), :locationServices, null));
+    return menu;
+}
+
+function buildNetworkPreferencesMenu() as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleNetworkPreferences)});
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemTakServer), null, :takServer, null));
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemChat), null, :chat, null));
-    menu.addItem(new WatchUi.MenuItem("Clear 2525D", null, :clearPoints, null));
+    return menu;
+}
+
+function buildAlertingPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleAlertingPreferences)});
     menu.addItem(new WatchUi.MenuItem("Environment", null, :environmentalSensors, null));
     menu.addItem(new WatchUi.MenuItem(manualAlertMenuLabel(app), null, :sos, null));
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemMap), null, :map, null));
     menu.addItem(new WatchUi.MenuItem("Physiology", null, :physiologicalSensors, null));
     return menu;
+}
+
+function buildToolPreferencesMenu() as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleToolPreferences)});
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemChat), null, :chat, null));
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemClearPoints), null, :clearPoints, null));
+    return menu;
+}
+
+function locationServicesLabel(app as StandaloneApp) as String {
+    return app.isLocationServicesEnabled() ? WatchUi.loadResource(Rez.Strings.LocationServicesEnabled) : WatchUi.loadResource(Rez.Strings.LocationServicesDisabled);
 }
 
 function manualAlertMenuLabel(app as StandaloneApp) as String {
@@ -46,7 +81,111 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :takServer) {
             var takMenu = buildTakServerMenu();
             WatchUi.pushView(takMenu, new TakServerMenuDelegate(app, takMenu), WatchUi.SLIDE_LEFT);
+        } else if (id == :settings) {
+            WatchUi.pushView(buildSettingsMenu(), new SettingsMenuDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :clearPoints) {
+            var confirmation = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.ConfirmClearPointsTitle)});
+            confirmation.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelClearPoints), null, :clear, null));
+            confirmation.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel, null));
+            WatchUi.pushView(confirmation, new ClearPointsDelegate(app), WatchUi.SLIDE_UP);
+        }
+    }
+}
+
+class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        Menu2InputDelegate.initialize();
+        app = application;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :devicePreferences) {
+            var deviceMenu = buildDevicePreferencesMenu(app);
+            WatchUi.pushView(deviceMenu, new DevicePreferencesDelegate(app, deviceMenu), WatchUi.SLIDE_LEFT);
+        } else if (id == :networkPreferences) {
+            var networkMenu = buildNetworkPreferencesMenu();
+            WatchUi.pushView(networkMenu, new NetworkPreferencesDelegate(app, networkMenu), WatchUi.SLIDE_LEFT);
+        } else if (id == :alertingPreferences) {
+            WatchUi.pushView(buildAlertingPreferencesMenu(app), new AlertingPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :toolPreferences) {
+            WatchUi.pushView(buildToolPreferencesMenu(), new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
+        }
+    }
+}
+
+class DevicePreferencesDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var menu as WatchUi.Menu2;
+
+    function initialize(application as StandaloneApp, preferencesMenu as WatchUi.Menu2) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        menu = preferencesMenu;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        if (item.getId() == :locationServices) {
+            app.setLocationServices(!app.isLocationServicesEnabled());
+            item.setSubLabel(locationServicesLabel(app));
+            WatchUi.requestUpdate();
+        }
+    }
+}
+
+class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var menu as WatchUi.Menu2;
+
+    function initialize(application as StandaloneApp, preferencesMenu as WatchUi.Menu2) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        menu = preferencesMenu;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        if (item.getId() == :takServer) {
+            var takMenu = buildTakServerMenu();
+            WatchUi.pushView(takMenu, new TakServerMenuDelegate(app, takMenu), WatchUi.SLIDE_LEFT);
+        }
+    }
+}
+
+class AlertingPreferencesDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        Menu2InputDelegate.initialize();
+        app = application;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :environmentalSensors) {
+            WatchUi.switchToView(new EnvironmentalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
+        } else if (id == :physiologicalSensors) {
+            WatchUi.switchToView(new PhysiologicalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
+        } else if (id == :sos) {
+            var sosMenu = buildSosMenu(app);
+            WatchUi.pushView(sosMenu, new SosMenuDelegate(app, true), WatchUi.SLIDE_LEFT);
+        }
+    }
+}
+
+class ToolPreferencesDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        Menu2InputDelegate.initialize();
+        app = application;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        if (item.getId() == :chat) {
+            WatchUi.pushView(buildChatMenu(app), new ChatMenuDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (item.getId() == :clearPoints) {
             var confirmation = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.ConfirmClearPointsTitle)});
             confirmation.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelClearPoints), null, :clear, null));
             confirmation.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel, null));
