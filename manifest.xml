@@ -8,6 +8,7 @@
             <iq:uses-permission id="PersistedContent"/>
             <iq:uses-permission id="Positioning"/>
             <iq:uses-permission id="Communications"/>
+            <iq:uses-permission id="Sensor"/>
         </iq:permissions>
         <iq:languages>
             <iq:language>eng</iq:language>

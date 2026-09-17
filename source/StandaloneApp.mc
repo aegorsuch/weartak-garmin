@@ -1,12 +1,14 @@
 import Toybox.Application;
 import Toybox.Lang;
 import Toybox.Position;
+import Toybox.Sensor;
 import Toybox.WatchUi;
 
 class StandaloneApp extends Application.AppBase {
     private var view;
     private var takClient;
     private var chatMessages = [];
+    private var sensorInfo;
 
     function initialize() {
         Application.AppBase.initialize();
@@ -14,6 +16,8 @@ class StandaloneApp extends Application.AppBase {
         takClient.incomingCotCallback = method(:onIncomingCot);
         takClient.incomingChatCallback = method(:onIncomingChat);
         Position.enableLocationEvents(Position.LOCATION_CONTINUOUS, method(:onPosition));
+        Sensor.setEnabledSensors([Sensor.SENSOR_HEARTRATE]);
+        Sensor.enableSensorEvents(method(:onSensor));
     }
 
     function onStart(params) {
@@ -24,6 +28,15 @@ class StandaloneApp extends Application.AppBase {
         if (view != null) {
             view.updatePosition(info);
         }
+    }
+
+    function onSensor(info as Sensor.Info) as Void {
+        sensorInfo = info;
+        WatchUi.requestUpdate();
+    }
+
+    function getSensorInfo() as Sensor.Info? {
+        return sensorInfo;
     }
 
     function onIncomingCot(uid, latitude, longitude, type) as Void {

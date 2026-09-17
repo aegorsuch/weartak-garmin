@@ -4,11 +4,13 @@ import Toybox.WatchUi;
 // Builds the app's main menu: choose the map view or manage the ATAK relay.
 function buildMainMenu() as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleMain)});
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemMap), null, :map, null));
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemClearPoints), null, :clearPoints, null));
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemChat), null, :chat, null));
+    menu.addItem(new WatchUi.MenuItem("Environmental Sensors", null, :environmentalSensors, null));
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemMap), null, :map, null));
+    menu.addItem(new WatchUi.MenuItem("Physiological Sensors", null, :physiologicalSensors, null));
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemSos), null, :sos, null));
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemTakServer), null, :takServer, null));
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemClearPoints), null, :clearPoints, null));
     return menu;
 }
 
@@ -29,6 +31,10 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :chat) {
             var chatMenu = buildChatMenu(app);
             WatchUi.pushView(chatMenu, new ChatMenuDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :environmentalSensors) {
+            WatchUi.pushView(new EnvironmentalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
+        } else if (id == :physiologicalSensors) {
+            WatchUi.pushView(new PhysiologicalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
         } else if (id == :sos) {
             var sosMenu = buildSosMenu(app);
             WatchUi.pushView(sosMenu, new SosMenuDelegate(app), WatchUi.SLIDE_LEFT);
