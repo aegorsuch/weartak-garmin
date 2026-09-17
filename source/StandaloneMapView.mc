@@ -267,10 +267,6 @@ class StandaloneMapView extends WatchUi.MapView {
         for (var i = 0; i < ids.size(); i++) {
             result.add(markers.get(ids[i]));
         }
-        if (result.size() == 0) {
-            var placeholderLocation = new Position.Location({:latitude => 89.0, :longitude => 179.0, :format => :degrees});
-            result.add(new StandaloneMapMarker(placeholderLocation));
-        }
         return result;
     }
 
@@ -721,6 +717,7 @@ class PointTypeMenuDelegate extends WatchUi.Menu2InputDelegate {
             view.changePointType(pointId, :unknown, "Unknown 2525D point");
         }
         WatchUi.popView(WatchUi.SLIDE_DOWN);
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
         view.showPointTypeMenu(pointId);
     }
 
@@ -745,6 +742,7 @@ class PointTextPickerDelegate extends WatchUi.TextPickerDelegate {
         if (changed) {
             view.updatePointText(pointId, field, text);
         }
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
         WatchUi.popView(WatchUi.SLIDE_DOWN);
         view.showPointTypeMenu(pointId);
         return true;
