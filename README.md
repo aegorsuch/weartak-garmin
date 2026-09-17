@@ -100,5 +100,17 @@ build output or the private `developer_key.der`; both are ignored by Git.
 
 ## Git workflow
 
-Make changes on `develop` and push them to the `tpc` remote. Merge tested
-changes into `main` when they are ready for release.
+The government repository (`origin`) is the canonical repository. Make changes
+on `develop`, push the branch to both remotes, and open merge requests in both
+repositories when the changes are ready for review. Merge the government
+request first, then merge the GitHub request so both `main` branches remain
+aligned.
+
+```text
+origin  https://git.tak.gov/core/weartak-core/weartak-garmin  (canonical)
+github  https://github.com/aegorsuch/weartak-garmin           (mirror)
+```
+
+Use `git syncboth` to push the current branch to both remotes. Create release
+tags and attach the same `.prg` build artifact to releases on both repositories
+after `main` is aligned. Never commit the private `developer_key.der` file.
