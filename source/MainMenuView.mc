@@ -32,9 +32,9 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
             var chatMenu = buildChatMenu(app);
             WatchUi.pushView(chatMenu, new ChatMenuDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :environmentalSensors) {
-            WatchUi.pushView(new EnvironmentalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
+            WatchUi.switchToView(new EnvironmentalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
         } else if (id == :physiologicalSensors) {
-            WatchUi.pushView(new PhysiologicalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
+            WatchUi.switchToView(new PhysiologicalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
         } else if (id == :sos) {
             var sosMenu = buildSosMenu(app);
             WatchUi.pushView(sosMenu, new SosMenuDelegate(app), WatchUi.SLIDE_LEFT);

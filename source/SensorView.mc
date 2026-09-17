@@ -12,7 +12,8 @@ class EnvironmentalSensorsView extends WatchUi.View {
     }
 
     function onUpdate(dc) {
-        dc.clear();
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
+        dc.fillRectangle(0, 0, System.getDeviceSettings().screenWidth, System.getDeviceSettings().screenHeight);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawText(8, 8, Graphics.FONT_MEDIUM, "Environmental Sensors", Graphics.TEXT_JUSTIFY_LEFT);
         var info = app.getSensorInfo();
@@ -39,7 +40,8 @@ class PhysiologicalSensorsView extends WatchUi.View {
     }
 
     function onUpdate(dc) {
-        dc.clear();
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
+        dc.fillRectangle(0, 0, System.getDeviceSettings().screenWidth, System.getDeviceSettings().screenHeight);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawText(8, 8, Graphics.FONT_MEDIUM, "Physiological Sensors", Graphics.TEXT_JUSTIFY_LEFT);
         var sensorInfo = app.getSensorInfo();
