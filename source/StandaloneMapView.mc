@@ -28,8 +28,6 @@ class StandaloneMapView extends WatchUi.MapView {
     var controlSize = 40;
     var controlGap = 6;
     var controlMargin = 8;
-    var layersControlSize = 40;
-    var mapButtonsVisible = true;
     var hasInitialPosition = false;
     var entityPruneTimer;
     var mapAreaDirty = true;
@@ -40,7 +38,7 @@ class StandaloneMapView extends WatchUi.MapView {
         screenWidth = System.getDeviceSettings().screenWidth;
         screenHeight = System.getDeviceSettings().screenHeight;
         setScreenVisibleArea(0, 0, screenWidth, screenHeight);
-        setMapMode(WatchUi.MAP_MODE_BROWSE);
+        setMapMode(WatchUi.MAP_MODE_PREVIEW);
         var currentInfo = Position.getInfo();
         centerOn(currentInfo != null && currentInfo.position != null ? currentInfo.position : null);
         setMapVisibleArea(mapTopLeft, mapBottomRight);
@@ -108,7 +106,7 @@ class StandaloneMapView extends WatchUi.MapView {
         if (position != null) {
             center = position.toDegrees();
         }
-        var span = 0.005;
+        var span = 0.05;
         mapTopLeft = new Position.Location({:latitude => center[0] + span, :longitude => center[1] - span, :format => :degrees});
         mapBottomRight = new Position.Location({:latitude => center[0] - span, :longitude => center[1] + span, :format => :degrees});
         mapAreaDirty = true;
@@ -121,31 +119,17 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         if (markersDirty) {
             var currentMarkers = markerArray();
+            clear();
             if (currentMarkers.size() > 0) {
                 setMapMarker(currentMarkers);
             }
             markersDirty = false;
         }
         WatchUi.MapView.onUpdate(dc);
-        var left = controlMargin;
-        var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
-        drawLayersControl(dc, (screenWidth - layersControlSize) / 2, controlMargin);
-        if (mapButtonsVisible) {
-            drawControl(dc, left, top, "+");
-            drawTargetControl(dc, left, top + controlSize + controlGap);
-            drawControl(dc, left, top + (controlSize + controlGap) * 2, "-");
-        }
+        var top = (screenHeight - (controlSize * 2 + controlGap)) / 2;
+        drawControl(dc, controlMargin, top, "+");
+        drawControl(dc, controlMargin, top + controlSize + controlGap, "-");
         drawBackControl(dc, screenWidth - controlSize - controlMargin, (screenHeight - controlSize) / 2);
-    }
-
-    function drawLayersControl(dc, x, y) {
-        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(x, y, layersControlSize, layersControlSize);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawRectangle(x, y, layersControlSize, layersControlSize);
-        dc.drawRectangle(x + 9, y + 9, 22, 22);
-        dc.drawRectangle(x + 12, y + 6, 22, 22);
-        dc.drawRectangle(x + 15, y + 3, 22, 22);
     }
 
     function drawControl(dc, x, y, label) {
@@ -154,20 +138,6 @@ class StandaloneMapView extends WatchUi.MapView {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawRectangle(x, y, controlSize, controlSize);
         dc.drawText(x + controlSize / 2, y + 4, Graphics.FONT_LARGE, label, Graphics.TEXT_JUSTIFY_CENTER);
-    }
-
-    function drawTargetControl(dc, x, y) {
-        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(x, y, controlSize, controlSize);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawRectangle(x, y, controlSize, controlSize);
-        var centerX = x + controlSize / 2;
-        var centerY = y + controlSize / 2;
-        dc.drawCircle(centerX, centerY, 11);
-        dc.drawLine(centerX - 16, centerY, centerX - 5, centerY);
-        dc.drawLine(centerX + 5, centerY, centerX + 16, centerY);
-        dc.drawLine(centerX, centerY - 16, centerX, centerY - 5);
-        dc.drawLine(centerX, centerY + 5, centerX, centerY + 16);
     }
 
     function drawBackControl(dc, x, y) {
@@ -215,25 +185,23 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function isControlAt(x, y) {
-        var left = controlMargin;
-        var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
-        var right = screenWidth - controlSize - controlMargin;
-        var backTop = (screenHeight - controlSize) / 2;
-        var layersLeft = (screenWidth - layersControlSize) / 2;
-        var onLayersControl = x >= layersLeft && x < layersLeft + layersControlSize && y >= controlMargin && y < controlMargin + layersControlSize;
-        var onLeftControls = mapButtonsVisible && x >= left && x < left + controlSize && y >= top && y < top + controlSize * 3 + controlGap * 2;
-        var onBackControl = x >= right && x < right + controlSize && y >= backTop && y < backTop + controlSize;
-        return onLayersControl || onLeftControls || onBackControl;
+        return isZoomInControlAt(x, y) || isZoomOutControlAt(x, y) || isBackControlAt(x, y);
     }
 
-    function toggleMapButtons() as Void {
-        mapButtonsVisible = !mapButtonsVisible;
-        WatchUi.requestUpdate();
+    function isZoomInControlAt(x, y) {
+        var top = (screenHeight - (controlSize * 2 + controlGap)) / 2;
+        return x >= controlMargin && x < controlMargin + controlSize && y >= top && y < top + controlSize;
     }
 
-    function isLayersControlAt(x, y) as Boolean {
-        var left = (screenWidth - layersControlSize) / 2;
-        return x >= left && x < left + layersControlSize && y >= controlMargin && y < controlMargin + layersControlSize;
+    function isZoomOutControlAt(x, y) {
+        var top = (screenHeight - (controlSize * 2 + controlGap)) / 2 + controlSize + controlGap;
+        return x >= controlMargin && x < controlMargin + controlSize && y >= top && y < top + controlSize;
+    }
+
+    function isBackControlAt(x, y) {
+        var left = screenWidth - controlSize - controlMargin;
+        var top = (screenHeight - controlSize) / 2;
+        return x >= left && x < left + controlSize && y >= top && y < top + controlSize;
     }
 
     function addPoint(location, type, label) {
@@ -523,33 +491,20 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
             return true;
         }
         var coordinates = evt.getCoordinates();
-        var left = view.controlMargin;
-        var right = view.screenWidth - view.controlSize - view.controlMargin;
-        var top = (view.screenHeight - (view.controlSize * 3 + view.controlGap * 2)) / 2;
-        var backTop = (view.screenHeight - view.controlSize) / 2;
-        if (view.isLayersControlAt(coordinates[0], coordinates[1])) {
-            WatchUi.pushView(new LayersMenuView(view), new LayersMenuDelegate(view), WatchUi.SLIDE_UP);
-            return true;
-        }
-        if (coordinates[0] >= right && coordinates[0] <= right + view.controlSize && coordinates[1] >= backTop && coordinates[1] <= backTop + view.controlSize) {
-            leaveMap();
-            return true;
-        }
-        if (coordinates[0] < left || coordinates[0] > left + view.controlSize) {
-            var pointId = view.pointAtScreen(coordinates[0], coordinates[1]);
-            if (pointId != null) {
-                view.showPointTypeMenu(pointId);
+        if (view.isControlAt(coordinates[0], coordinates[1])) {
+            if (view.isZoomInControlAt(coordinates[0], coordinates[1])) {
+                view.zoom(0.5);
+            } else if (view.isZoomOutControlAt(coordinates[0], coordinates[1])) {
+                view.zoom(2.0);
+            } else if (view.isBackControlAt(coordinates[0], coordinates[1])) {
+                leaveMap();
             }
             return true;
         }
-        if (coordinates[1] >= top && coordinates[1] < top + view.controlSize) {
-            view.zoom(0.5);
-        } else if (coordinates[1] >= top + view.controlSize + view.controlGap && coordinates[1] < top + (view.controlSize * 2) + view.controlGap) {
-            view.snapToSelf();
-        } else if (coordinates[1] >= top + (view.controlSize + view.controlGap) * 2) {
-            view.zoom(2.0);
-        } else {
-            return false;
+        var pointId = view.pointAtScreen(coordinates[0], coordinates[1]);
+        if (pointId != null) {
+            view.showPointTypeMenu(pointId);
+            return true;
         }
         return true;
     }
@@ -557,9 +512,10 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
     function onHold(evt) {
         var coordinates = evt.getCoordinates();
         if (view.isControlAt(coordinates[0], coordinates[1])) {
-            return false;
+            return true;
         }
         view.dropAtScreen(coordinates[0], coordinates[1]);
+        view.setMapMode(WatchUi.MAP_MODE_PREVIEW);
         return true;
     }
 
@@ -596,65 +552,6 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
     function onKey(evt) {
         if (evt.getKey() == WatchUi.KEY_ESC) {
             leaveMap();
-            return true;
-        }
-        return false;
-    }
-}
-
-class LayersMenuView extends WatchUi.View {
-    var mapView;
-
-    function initialize(mapView) {
-        View.initialize();
-        self.mapView = mapView;
-    }
-
-    function onUpdate(dc) {
-        var width = System.getDeviceSettings().screenWidth;
-        var height = System.getDeviceSettings().screenHeight;
-        var rowTop = 45;
-        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(0, 0, width, height);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, 10, Graphics.FONT_MEDIUM, "Layers Menu", Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(18, rowTop + 8, Graphics.FONT_SMALL, "Map Buttons", Graphics.TEXT_JUSTIFY_LEFT);
-        drawEye(dc, width - 30, rowTop + 18, mapView.mapButtonsVisible);
-        dc.drawLine(12, rowTop + 40, width - 12, rowTop + 40);
-    }
-
-    function drawEye(dc, centerX, centerY, visible) {
-        var color = visible ? Graphics.COLOR_WHITE : Graphics.COLOR_DK_GRAY;
-        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-        dc.drawEllipse(centerX - 12, centerY - 7, 24, 14);
-        dc.drawCircle(centerX, centerY, 4);
-        if (!visible) {
-            dc.drawLine(centerX - 14, centerY - 12, centerX + 14, centerY + 12);
-        }
-    }
-}
-
-class LayersMenuDelegate extends WatchUi.InputDelegate {
-    var mapView;
-
-    function initialize(mapView) {
-        InputDelegate.initialize();
-        self.mapView = mapView;
-    }
-
-    function onTap(evt) {
-        var coordinates = evt.getCoordinates();
-        if (coordinates[1] >= 45 && coordinates[1] < 85) {
-            mapView.toggleMapButtons();
-            WatchUi.requestUpdate();
-            return true;
-        }
-        return false;
-    }
-
-    function onKey(evt) {
-        if (evt.getKey() == WatchUi.KEY_ESC) {
-            WatchUi.popView(WatchUi.SLIDE_DOWN);
             return true;
         }
         return false;
