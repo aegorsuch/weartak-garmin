@@ -40,7 +40,7 @@ class StandaloneMapView extends WatchUi.MapView {
         screenWidth = System.getDeviceSettings().screenWidth;
         screenHeight = System.getDeviceSettings().screenHeight;
         setScreenVisibleArea(0, 0, screenWidth, screenHeight);
-        setMapMode(WatchUi.MAP_MODE_PREVIEW);
+        setMapMode(WatchUi.MAP_MODE_BROWSE);
         var currentInfo = Position.getInfo();
         centerOn(currentInfo != null && currentInfo.position != null ? currentInfo.position : null);
         setMapVisibleArea(mapTopLeft, mapBottomRight);
@@ -127,15 +127,7 @@ class StandaloneMapView extends WatchUi.MapView {
             markersDirty = false;
         }
         WatchUi.MapView.onUpdate(dc);
-        var left = controlMargin;
-        var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
         drawLayersControl(dc, (screenWidth - layersControlSize) / 2, controlMargin);
-        if (mapButtonsVisible) {
-            drawControl(dc, left, top, "+");
-            drawTargetControl(dc, left, top + controlSize + controlGap);
-            drawControl(dc, left, top + (controlSize + controlGap) * 2, "-");
-        }
-        drawBackControl(dc, screenWidth - controlSize - controlMargin, (screenHeight - controlSize) / 2);
     }
 
     function drawLayersControl(dc, x, y) {
@@ -523,35 +515,16 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
             return true;
         }
         var coordinates = evt.getCoordinates();
-        var left = view.controlMargin;
-        var right = view.screenWidth - view.controlSize - view.controlMargin;
-        var top = (view.screenHeight - (view.controlSize * 3 + view.controlGap * 2)) / 2;
-        var backTop = (view.screenHeight - view.controlSize) / 2;
         if (view.isLayersControlAt(coordinates[0], coordinates[1])) {
             WatchUi.pushView(new LayersMenuView(view), new LayersMenuDelegate(view), WatchUi.SLIDE_UP);
             return true;
         }
-        if (coordinates[0] >= right && coordinates[0] <= right + view.controlSize && coordinates[1] >= backTop && coordinates[1] <= backTop + view.controlSize) {
-            leaveMap();
+        var pointId = view.pointAtScreen(coordinates[0], coordinates[1]);
+        if (pointId != null) {
+            view.showPointTypeMenu(pointId);
             return true;
         }
-        if (coordinates[0] < left || coordinates[0] > left + view.controlSize) {
-            var pointId = view.pointAtScreen(coordinates[0], coordinates[1]);
-            if (pointId != null) {
-                view.showPointTypeMenu(pointId);
-            }
-            return true;
-        }
-        if (coordinates[1] >= top && coordinates[1] < top + view.controlSize) {
-            view.zoom(0.5);
-        } else if (coordinates[1] >= top + view.controlSize + view.controlGap && coordinates[1] < top + (view.controlSize * 2) + view.controlGap) {
-            view.snapToSelf();
-        } else if (coordinates[1] >= top + (view.controlSize + view.controlGap) * 2) {
-            view.zoom(2.0);
-        } else {
-            return false;
-        }
-        return true;
+        return false;
     }
 
     function onHold(evt) {
