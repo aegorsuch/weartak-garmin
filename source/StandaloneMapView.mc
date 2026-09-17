@@ -106,7 +106,7 @@ class StandaloneMapView extends WatchUi.MapView {
         if (position != null) {
             center = position.toDegrees();
         }
-        var span = 0.005;
+        var span = 0.05;
         mapTopLeft = new Position.Location({:latitude => center[0] + span, :longitude => center[1] - span, :format => :degrees});
         mapBottomRight = new Position.Location({:latitude => center[0] - span, :longitude => center[1] + span, :format => :degrees});
         mapAreaDirty = true;
