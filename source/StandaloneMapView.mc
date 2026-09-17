@@ -40,7 +40,7 @@ class StandaloneMapView extends WatchUi.MapView {
         screenWidth = System.getDeviceSettings().screenWidth;
         screenHeight = System.getDeviceSettings().screenHeight;
         setScreenVisibleArea(0, 0, screenWidth, screenHeight);
-        setMapMode(WatchUi.MAP_MODE_BROWSE);
+        setMapMode(WatchUi.MAP_MODE_PREVIEW);
         var currentInfo = Position.getInfo();
         centerOn(currentInfo != null && currentInfo.position != null ? currentInfo.position : null);
         setMapVisibleArea(mapTopLeft, mapBottomRight);
