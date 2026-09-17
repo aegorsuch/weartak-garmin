@@ -25,10 +25,6 @@ class StandaloneMapView extends WatchUi.MapView {
     var incomingLastSeen = {};
     var nextPointNumber = 1;
     var takClient as TakClient? = null;
-    var controlSize = 40;
-    var controlGap = 6;
-    var controlMargin = 8;
-    var mapButtonsVisible = true;
     var hasInitialPosition = false;
     var entityPruneTimer;
     var mapAreaDirty = true;
@@ -128,39 +124,6 @@ class StandaloneMapView extends WatchUi.MapView {
         WatchUi.MapView.onUpdate(dc);
     }
 
-    function drawControl(dc, x, y, label) {
-        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(x, y, controlSize, controlSize);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawRectangle(x, y, controlSize, controlSize);
-        dc.drawText(x + controlSize / 2, y + 4, Graphics.FONT_LARGE, label, Graphics.TEXT_JUSTIFY_CENTER);
-    }
-
-    function drawTargetControl(dc, x, y) {
-        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(x, y, controlSize, controlSize);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawRectangle(x, y, controlSize, controlSize);
-        var centerX = x + controlSize / 2;
-        var centerY = y + controlSize / 2;
-        dc.drawCircle(centerX, centerY, 11);
-        dc.drawLine(centerX - 16, centerY, centerX - 5, centerY);
-        dc.drawLine(centerX + 5, centerY, centerX + 16, centerY);
-        dc.drawLine(centerX, centerY - 16, centerX, centerY - 5);
-        dc.drawLine(centerX, centerY + 5, centerX, centerY + 16);
-    }
-
-    function drawBackControl(dc, x, y) {
-        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(x, y, controlSize, controlSize);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawRectangle(x, y, controlSize, controlSize);
-        var centerX = x + controlSize / 2;
-        var centerY = y + controlSize / 2;
-        dc.drawLine(centerX + 10, centerY - 12, centerX - 8, centerY);
-        dc.drawLine(centerX - 8, centerY, centerX + 10, centerY + 12);
-    }
-
     function dropAtCurrentLocation() {
         var info = Position.getInfo();
         if (info != null && info.position != null) {
@@ -195,18 +158,7 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function isControlAt(x, y) {
-        var left = controlMargin;
-        var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
-        var right = screenWidth - controlSize - controlMargin;
-        var backTop = (screenHeight - controlSize) / 2;
-        var onLeftControls = mapButtonsVisible && x >= left && x < left + controlSize && y >= top && y < top + controlSize * 3 + controlGap * 2;
-        var onBackControl = x >= right && x < right + controlSize && y >= backTop && y < backTop + controlSize;
-        return onLeftControls || onBackControl;
-    }
-
-    function toggleMapButtons() as Void {
-        mapButtonsVisible = !mapButtonsVisible;
-        WatchUi.requestUpdate();
+        return false;
     }
 
     function addPoint(location, type, label) {
@@ -501,7 +453,7 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
             view.showPointTypeMenu(pointId);
             return true;
         }
-        return true;
+        return false;
     }
 
     function onHold(evt) {
@@ -546,65 +498,6 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
     function onKey(evt) {
         if (evt.getKey() == WatchUi.KEY_ESC) {
             leaveMap();
-            return true;
-        }
-        return false;
-    }
-}
-
-class LayersMenuView extends WatchUi.View {
-    var mapView;
-
-    function initialize(mapView) {
-        View.initialize();
-        self.mapView = mapView;
-    }
-
-    function onUpdate(dc) {
-        var width = System.getDeviceSettings().screenWidth;
-        var height = System.getDeviceSettings().screenHeight;
-        var rowTop = 45;
-        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(0, 0, width, height);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, 10, Graphics.FONT_MEDIUM, "Layers Menu", Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(18, rowTop + 8, Graphics.FONT_SMALL, "Map Buttons", Graphics.TEXT_JUSTIFY_LEFT);
-        drawEye(dc, width - 30, rowTop + 18, mapView.mapButtonsVisible);
-        dc.drawLine(12, rowTop + 40, width - 12, rowTop + 40);
-    }
-
-    function drawEye(dc, centerX, centerY, visible) {
-        var color = visible ? Graphics.COLOR_WHITE : Graphics.COLOR_DK_GRAY;
-        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-        dc.drawEllipse(centerX - 12, centerY - 7, 24, 14);
-        dc.drawCircle(centerX, centerY, 4);
-        if (!visible) {
-            dc.drawLine(centerX - 14, centerY - 12, centerX + 14, centerY + 12);
-        }
-    }
-}
-
-class LayersMenuDelegate extends WatchUi.InputDelegate {
-    var mapView;
-
-    function initialize(mapView) {
-        InputDelegate.initialize();
-        self.mapView = mapView;
-    }
-
-    function onTap(evt) {
-        var coordinates = evt.getCoordinates();
-        if (coordinates[1] >= 45 && coordinates[1] < 85) {
-            mapView.toggleMapButtons();
-            WatchUi.requestUpdate();
-            return true;
-        }
-        return false;
-    }
-
-    function onKey(evt) {
-        if (evt.getKey() == WatchUi.KEY_ESC) {
-            WatchUi.popView(WatchUi.SLIDE_DOWN);
             return true;
         }
         return false;
