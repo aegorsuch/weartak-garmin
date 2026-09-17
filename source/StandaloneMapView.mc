@@ -38,7 +38,7 @@ class StandaloneMapView extends WatchUi.MapView {
         screenWidth = System.getDeviceSettings().screenWidth;
         screenHeight = System.getDeviceSettings().screenHeight;
         setScreenVisibleArea(0, 0, screenWidth, screenHeight);
-        setMapMode(WatchUi.MAP_MODE_PREVIEW);
+        setMapMode(WatchUi.MAP_MODE_BROWSE);
         var currentInfo = Position.getInfo();
         centerOn(currentInfo != null && currentInfo.position != null ? currentInfo.position : null);
         setMapVisibleArea(mapTopLeft, mapBottomRight);
@@ -119,6 +119,7 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         if (markersDirty) {
             var currentMarkers = markerArray();
+            clear();
             if (currentMarkers.size() > 0) {
                 setMapMarker(currentMarkers);
             }
@@ -516,7 +517,7 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
             return true;
         }
         view.dropAtScreen(coordinates[0], coordinates[1]);
-        view.setMapMode(WatchUi.MAP_MODE_PREVIEW);
+        view.setMapMode(WatchUi.MAP_MODE_BROWSE);
         return true;
     }
 
