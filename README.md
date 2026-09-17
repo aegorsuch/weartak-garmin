@@ -9,29 +9,34 @@ WearTAK ATAK companion. ATAK owns TAK server connectivity, mTLS credentials,
 identity, and the authoritative phone location for PLI; the watch provides a
 secondary display and input surface.
 
+> Important: there is no live ATAK connection yet. This build is currently a
+> local map-and-point editing workflow; it does not yet establish a connected,
+> operational TAK/ATAK session with a remote server.
+
 ## Current capabilities
 
-- Relays `marker` and `emergency` JSON envelopes to the ATAK phone
-	companion through Garmin Connect IQ. No TAK endpoint or credentials are
-	stored on the watch.
-- Inherits callsign, team, role, reporting rate, and PLI ownership from ATAK;
-	the watch is a secondary map, point-drop, chat, and SOS interface.
-- Displays the watch's current position on a pan-and-zoom map.
-- Drops app-owned 2525D-style friendly, hostile, unknown, and obstacle points
-	without creating Garmin saved-location flags.
-- Lets the user set a dropped point's title and remark after selecting it on
-	the map, and relays those fields to ATAK.
-- Supports long-press point placement, then lets you select a point to change
-	its type, title, remark, or delete it.
-- Supports swipe, flick, and drag map panning, plus recenter and zoom controls.
-- Provides a confirmed cleanup action for legacy Garmin waypoints named
-	`Unknown 2525D point`.
-- Publishes map points as typed CoT marker events after their type is selected.
-- Provides a confirmed SOS action that sends an emergency event through the
-	ATAK companion.
-- Displays phone-relayed `entity` or `entities` messages on the map.
-- Displays phone-relayed chat messages and sends `Rgr`, `Neg`, `ObjS`, or
-	`nPos` quick replies through the ATAK companion.
+The app is currently focused on a lightweight, local map-and-point workflow.
+There is no live ATAK connection yet, and these are the features working right
+now:
+
+- Open and navigate the map.
+- Drop a point on the map.
+- Rename a point.
+- Change a point's type.
+- Delete a point.
+- Pan, zoom, and recenter the map.
+- Show the current watch position on the map.
+- Publish local point changes as marker operations to the ATAK companion.
+
+The following are still planned capabilities and are not the current scope of
+this build:
+
+- full ATAK chat integration and quick replies
+- SOS and emergency alert workflows
+- incoming entity or entities syncing beyond the current local map groundwork
+- full shared TAK mission/overlay behaviors
+- broader map-layer, team, or operational features beyond point creation and
+	editing
 
 ## Using the app
 
@@ -67,14 +72,19 @@ connection according to the deployment's operational policy.
 
 ## Implementation roadmap
 
-1. **Phone relay** - implemented: dictionary envelopes sent through Garmin
-	Connect IQ to the ATAK companion, with delivery-confirmed startup and an
-	initial entity-sync request.
-2. **ATAK-owned PLI** - implemented: identity and reporting remain owned by
-	the ATAK companion.
-3. **Map input and incoming entities** - implemented: typed map points and
-	phone-relayed entities share the existing on-watch map.
-4. **SOS/manual alert** - implemented: confirmed alert and cancel envelopes.
+This project is intentionally scoped to the currently working features above.
+Everything else is planned work and should be considered future capability,
+not a present guarantee.
+
+1. **Map + point editing** - active: open the map, drop points, rename them,
+	change point type, and delete them.
+2. **ATAK relay plumbing** - planned: expand the watch-to-phone integration
+	beyond the current local point workflow.
+3. **Chat and messaging** - planned: support incoming and outgoing ATAK chat
+	messaging.
+4. **SOS and emergency actions** - planned: full confirmed emergency flows.
+5. **Operational overlays and entity sync** - planned: broader map data,
+	mission-aware entity integration, and multi-user workflow support.
 
 ## Development
 
