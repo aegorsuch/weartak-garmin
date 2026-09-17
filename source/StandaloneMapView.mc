@@ -28,7 +28,6 @@ class StandaloneMapView extends WatchUi.MapView {
     var controlSize = 40;
     var controlGap = 6;
     var controlMargin = 8;
-    var layersControlSize = 40;
     var mapButtonsVisible = true;
     var hasInitialPosition = false;
     var entityPruneTimer;
@@ -127,17 +126,6 @@ class StandaloneMapView extends WatchUi.MapView {
             markersDirty = false;
         }
         WatchUi.MapView.onUpdate(dc);
-        drawLayersControl(dc, (screenWidth - layersControlSize) / 2, controlMargin);
-    }
-
-    function drawLayersControl(dc, x, y) {
-        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-        dc.fillRectangle(x, y, layersControlSize, layersControlSize);
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawRectangle(x, y, layersControlSize, layersControlSize);
-        dc.drawRectangle(x + 9, y + 9, 22, 22);
-        dc.drawRectangle(x + 12, y + 6, 22, 22);
-        dc.drawRectangle(x + 15, y + 3, 22, 22);
     }
 
     function drawControl(dc, x, y, label) {
@@ -211,21 +199,14 @@ class StandaloneMapView extends WatchUi.MapView {
         var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
         var right = screenWidth - controlSize - controlMargin;
         var backTop = (screenHeight - controlSize) / 2;
-        var layersLeft = (screenWidth - layersControlSize) / 2;
-        var onLayersControl = x >= layersLeft && x < layersLeft + layersControlSize && y >= controlMargin && y < controlMargin + layersControlSize;
         var onLeftControls = mapButtonsVisible && x >= left && x < left + controlSize && y >= top && y < top + controlSize * 3 + controlGap * 2;
         var onBackControl = x >= right && x < right + controlSize && y >= backTop && y < backTop + controlSize;
-        return onLayersControl || onLeftControls || onBackControl;
+        return onLeftControls || onBackControl;
     }
 
     function toggleMapButtons() as Void {
         mapButtonsVisible = !mapButtonsVisible;
         WatchUi.requestUpdate();
-    }
-
-    function isLayersControlAt(x, y) as Boolean {
-        var left = (screenWidth - layersControlSize) / 2;
-        return x >= left && x < left + layersControlSize && y >= controlMargin && y < controlMargin + layersControlSize;
     }
 
     function addPoint(location, type, label) {
@@ -515,16 +496,12 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
             return true;
         }
         var coordinates = evt.getCoordinates();
-        if (view.isLayersControlAt(coordinates[0], coordinates[1])) {
-            WatchUi.pushView(new LayersMenuView(view), new LayersMenuDelegate(view), WatchUi.SLIDE_UP);
-            return true;
-        }
         var pointId = view.pointAtScreen(coordinates[0], coordinates[1]);
         if (pointId != null) {
             view.showPointTypeMenu(pointId);
             return true;
         }
-        return false;
+        return true;
     }
 
     function onHold(evt) {
