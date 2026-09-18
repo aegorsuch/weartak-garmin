@@ -157,9 +157,9 @@ function buildProfileValueMenu(app as StandaloneApp, setting as Symbol) as Watch
     if (setting == :birthYear) {
         addProfileNumberValues(menu, 1920, 2026, 1);
     } else if (setting == :height) {
-        addProfileNumberValues(menu, 100, 230, 1);
+        addProfileNumberValues(menu, 48, 84, 1);
     } else if (setting == :weight) {
-        addProfileNumberValues(menu, 30, 200, 1);
+        addProfileNumberValues(menu, 80, 320, 5);
     } else if (setting == :sex) {
         addProfileStringValues(menu, ["Not Set", "Female", "Male"]);
     } else if (setting == :bloodType) {
@@ -365,7 +365,7 @@ class PhysiologicalAlertsDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :restingHeartRateAlerts) {
             WatchUi.pushView(buildRestingHeartRateMenu(app), new RestingHeartRateDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :exertionAlerts) {
-            WatchUi.pushView(buildExertionAlertsMenu(app), new RestingHeartRateDelegate(app), WatchUi.SLIDE_LEFT);
+            WatchUi.pushView(buildExertionAlertsMenu(app), new ExertionAlertsDelegate(app), WatchUi.SLIDE_LEFT);
         }
     }
 }
@@ -381,6 +381,23 @@ class RestingHeartRateDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
         if (id == :highThreshold || id == :highWarning || id == :highAlert || id == :lowThreshold || id == :lowWarning || id == :lowAlert) {
+            var setting = id as Symbol;
+            WatchUi.pushView(buildAlertValueMenu(app, setting, item), new AlertValueDelegate(app, setting, item), WatchUi.SLIDE_LEFT);
+        }
+    }
+}
+
+class ExertionAlertsDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        Menu2InputDelegate.initialize();
+        app = application;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :exertionWarningThreshold || id == :exertionWarningLength || id == :exertionAlertThreshold || id == :exertionAlertLength) {
             var setting = id as Symbol;
             WatchUi.pushView(buildAlertValueMenu(app, setting, item), new AlertValueDelegate(app, setting, item), WatchUi.SLIDE_LEFT);
         }
