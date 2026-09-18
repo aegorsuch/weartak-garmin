@@ -101,10 +101,10 @@ build output or the private `developer_key.der`; both are ignored by Git.
 
 ## Git workflow
 
-The government repository (`origin`) is the canonical repository. Make changes
-on `develop`, push the branch to both remotes, and open merge requests in both
-repositories when the changes are ready for review. Merge the government
-request first, then merge the GitHub request so both `main` branches remain
+The government repository (`origin`) is the canonical repository. New work starts
+on a `feature` branch, is validated there, and is merged into government
+`develop` when ready. After the government merge is complete, mirror the same
+merged commit to the personal GitHub repo (`github`) so both repositories stay
 aligned.
 
 ```text
@@ -112,6 +112,23 @@ origin  https://git.tak.gov/core/weartak-core/weartak-garmin  (canonical)
 github  https://github.com/aegorsuch/weartak-garmin           (mirror)
 ```
 
-Use `git syncboth` to push the current branch to both remotes. Create release
-tags and attach the same `.prg` build artifact to releases on both repositories
-after `main` is aligned. Never commit the private `developer_key.der` file.
+Recommended flow:
+
+```text
+feature -> origin/develop -> github/develop
+```
+
+```bash
+git switch feature
+git push origin feature
+git switch develop
+git pull origin develop
+git merge feature
+git push origin develop
+git push github develop
+```
+
+This keeps the government repo as the source of truth and the personal
+repository as a synchronized mirror. Keep branch names consistent across both
+repos and avoid maintaining separate histories for the same work. Never commit
+the private `developer_key.der` file.
