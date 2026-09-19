@@ -27,12 +27,18 @@ There is no live ATAK connection yet, and these are the features working right
 now:
 
 - Open and navigate the map.
-- Drop a point on the map.
+- Drop an Unknown 2525D point from the main menu or map.
+- Clear all 2525D points from the main menu.
 - Rename a point.
 - Change a point's type.
 - Delete a point.
+- View point and self coordinates in latitude/longitude and MGRS.
 - Pan, zoom, and recenter the map.
-- Show the current watch position on the map.
+- Track a selected point with Bloodhound range, true bearing, proximity radius,
+	vibration, and cancel controls.
+- Show sensor readings for environment and physiology.
+- Show the current watch position internally for mapping, coordinates, and
+	Bloodhound calculations.
 - Configure physiological, exertion, environmental, pressure, and battery alerts
 	plus a BATDOK medical profile. Alert families default to off until the user
 	enables them.
@@ -42,8 +48,8 @@ now:
 	Norwegian, Polish, Portuguese, Romanian, Russian, Slovak, Slovenian, Spanish,
 	Swedish, Thai, Turkish, Ukrainian, or Vietnamese. The manifest also
 	declares those languages for Garmin store/device metadata.
-- Configure Chat and Bloodhound/Compass tools, including proximity vibration,
-	radius, and intensity preferences.
+- Configure Chat and Navigation tools, including proximity vibration, radius,
+	and intensity preferences.
 
 The following are still planned capabilities and are not the current scope of
 this build:
@@ -58,8 +64,8 @@ this build:
 
 ## Using the app
 
-1. Open **Device Preferences** to enable location services, choose a language,
-	or maintain user metrics. When the saved language is not English, the path back
+1. Open **Device Preferences** to choose a language or maintain user metrics.
+	When the saved language is not English, the path back
 	to English includes bilingual labels such as localized **Settings** plus
 	`(Settings)`, localized **Device Preferences** plus `(Device Preferences)`,
 	and localized **Language** plus `(Language)`. Each language option also
@@ -67,20 +73,19 @@ this build:
 2. Open **Alerting Preferences** to opt in to local watch alerts. Warning
 	settings notify the watch user locally; full alert routing across TAK is held
 	for the future ATAK-device connection.
-3. Open **Map** to browse the map, center on the current position, and add
-	local points.
+3. Use **Drop 2525D Point** to add an Unknown point at the current location,
+	then open **Map** to edit points, view coordinates, or start Bloodhound.
 4. Select **SOS** from the main menu for a confirmed emergency action, or
 	select **Clear SOS** after an alert is active.
 
-The ATAK companion may send incoming entities to the watch using `entity` or
-`entities` envelopes. It may send chat using a `chat` envelope with `sender`,
-`text`, and optional `uid` fields. **Send SOS** opens a separate confirmation before
-transmitting; selecting it again clears alerting.
+ATAK companion message envelopes are reserved for the planned plugin connection;
+they are not an integrated operational workflow in this build. **Send SOS**
+opens a separate confirmation before transmitting through the currently available
+relay plumbing; full ATAK integration remains future work.
 
-Marker create and update operations use the `marker` envelope. Deletion uses a
-`marker_delete` envelope with the Garmin marker UID, for example
-`garmin-marker-point-1`. The ATAK companion should remove that UID from its
-authoritative map state when it receives the deletion envelope.
+Marker create and update operations use the `marker` envelope when relay plumbing
+is available. Deletion uses a `marker_delete` envelope with the Garmin marker UID,
+for example `garmin-marker-point-1`; full ATAK handling remains future work.
 
 
 ## Platform limits
