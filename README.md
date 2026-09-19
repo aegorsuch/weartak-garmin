@@ -15,9 +15,10 @@ WearTAK ATAK companion. ATAK owns TAK server connectivity, mTLS credentials,
 identity, and the authoritative phone location for PLI; the watch provides a
 secondary display and input surface.
 
-> Important: there is no live ATAK connection yet. This build is currently a
-> local map-and-point editing workflow; it does not yet establish a connected,
-> operational TAK/ATAK session with a remote server.
+> Important: there is no live ATAK connection yet. The ATAK plugin connection is
+> not integrated in this build. This build is currently a local map-and-point
+> editing workflow; it does not yet establish a connected, operational TAK/ATAK
+> session with a remote server.
 
 ## Current capabilities
 
@@ -35,18 +36,20 @@ now:
 - Configure physiological, exertion, environmental, pressure, and battery alerts
 	plus a BATDOK medical profile. Alert families default to off until the user
 	enables them.
-- Select an in-app language preference for English, Arabic, Danish, Dutch,
-	French, German, Hebrew, Italian, Japanese, Korean, Norwegian, Polish,
-	Romanian, Russian, Spanish, Swedish, Thai, or Ukrainian. The manifest also
+- Select an in-app language preference for English, Arabic, Bulgarian, Croatian,
+	Czech, Danish, Dutch, Estonian, Finnish, French, German, Greek, Hebrew,
+	Hungarian, Indonesian, Italian, Japanese, Korean, Latvian, Lithuanian,
+	Norwegian, Polish, Portuguese, Romanian, Russian, Slovak, Slovenian, Spanish,
+	Swedish, Thai, Turkish, Ukrainian, or Vietnamese. The manifest also
 	declares those languages for Garmin store/device metadata.
 - Configure Chat and Bloodhound/Compass tools, including proximity vibration,
 	radius, and intensity preferences.
-- Publish local point changes as marker operations to the ATAK companion.
 
 The following are still planned capabilities and are not the current scope of
 this build:
 
 - full ATAK chat integration and quick replies
+- WearTAK ATAK plugin connection and relay integration
 - SOS and emergency alert workflows
 - incoming entity or entities syncing beyond the current local map groundwork
 - full shared TAK mission/overlay behaviors
@@ -55,22 +58,18 @@ this build:
 
 ## Using the app
 
-1. Install and start the WearTAK ATAK plugin on the paired Android phone.
-2. Select **Start relay**. The watch waits for Garmin Connect to acknowledge
-	its relay handshake and requests an initial map entity sync from the ATAK
-	companion.
-3. Open **Device Preferences** to enable location services, choose a language,
+1. Open **Device Preferences** to enable location services, choose a language,
 	or maintain user metrics. When the saved language is not English, the path back
 	to English includes bilingual labels such as localized **Settings** plus
 	`(Settings)`, localized **Device Preferences** plus `(Device Preferences)`,
 	and localized **Language** plus `(Language)`. Each language option also
 	includes its English name.
-4. Open **Alerting Preferences** to opt in to local watch alerts. Warning
+2. Open **Alerting Preferences** to opt in to local watch alerts. Warning
 	settings notify the watch user locally; full alert routing across TAK is held
 	for the future ATAK-device connection.
-5. Open **Map** to browse the map, center on the current position, and add
+3. Open **Map** to browse the map, center on the current position, and add
 	local points.
-6. Select **SOS** from the main menu for a confirmed emergency action, or
+4. Select **SOS** from the main menu for a confirmed emergency action, or
 	select **Clear SOS** after an alert is active.
 
 The ATAK companion may send incoming entities to the watch using `entity` or

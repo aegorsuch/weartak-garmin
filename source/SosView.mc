@@ -2,18 +2,18 @@ import Toybox.Lang;
 import Toybox.WatchUi;
 
 function buildSosMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Manual Alert"});
+    var menu = new WatchUi.Menu2({:title => app.text(:manualAlert)});
     var client = app.getTakClient();
     if (client.isAlerting()) {
-        menu.addItem(new WatchUi.MenuItem("Clear Manual Alert (" + client.getAlertType() + " Active)", null, :clear, null));
+        menu.addItem(new WatchUi.MenuItem(app.text(:clearManualAlert) + " (" + app.alertTypeLabel(client.getAlertType()) + " " + app.text(:active) + ")", null, :clear, null));
     } else {
-        menu.addItem(new WatchUi.MenuItem("Gate Runner", null, :gateRunner, null));
-        menu.addItem(new WatchUi.MenuItem("Gunshot", null, :gunshot, null));
-        menu.addItem(new WatchUi.MenuItem("Gunshot Injury", null, :gunshotInjury, null));
-        menu.addItem(new WatchUi.MenuItem("Injury", null, :injury, null));
-        menu.addItem(new WatchUi.MenuItem("UAS", null, :uas, null));
-        menu.addItem(new WatchUi.MenuItem("Vehicle", null, :vehicle, null));
-        menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel, null));
+        menu.addItem(new WatchUi.MenuItem(app.text(:gateRunner), null, :gateRunner, null));
+        menu.addItem(new WatchUi.MenuItem(app.text(:gunshot), null, :gunshot, null));
+        menu.addItem(new WatchUi.MenuItem(app.text(:gunshotInjury), null, :gunshotInjury, null));
+        menu.addItem(new WatchUi.MenuItem(app.text(:injury), null, :injury, null));
+        menu.addItem(new WatchUi.MenuItem(app.text(:uas), null, :uas, null));
+        menu.addItem(new WatchUi.MenuItem(app.text(:vehicle), null, :vehicle, null));
+        menu.addItem(new WatchUi.MenuItem(app.text(:cancel), null, :cancel, null));
     }
     return menu;
 }

@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Kartta</string>
+    <string id="MenuItemSettings">Asetukset</string>
+    <string id="MenuTitleSettings">Asetukset</string>
+    <string id="MenuTitleDevicePreferences">Laiteasetukset</string>
+    <string id="MenuTitleNetworkPreferences">Verkkoasetukset</string>
+    <string id="MenuTitleAlertingPreferences">Halytysasetukset</string>
+    <string id="MenuTitleToolPreferences">Tyokaluasetukset</string>
+    <string id="MenuItemLocationServices">Sijaintipalvelut</string>
+    <string id="LocationServicesEnabled">Paalla</string>
+    <string id="LocationServicesDisabled">Pois</string>
+    <string id="MenuItemChat">Chat</string>
+    <string id="MenuItemSos">Manuaalinen halytys</string>
+    <string id="MenuItemTakServer">ATAK-yhteys</string>
+    <string id="MenuItemClearPoints">Tyhjenna 2525D</string>
+    <string id="ConfirmClearPointsTitle">Tyhjennetaanko pisteet?</string>
+    <string id="LabelClearPoints">Tyhjenna pisteet</string>
+
+    <string id="MenuTitleChat">Chat</string>
+    <string id="MenuTitleQuickReply">Pikavastaus</string>
+    <string id="MenuTitleSos">Manuaalinen halytys</string>
+    <string id="ChatEmpty">Ei viesteja</string>
+    <string id="ChatUnknownSender">Tuntematon</string>
+
+    <string id="MenuTitleTakServer">ATAK-yhteys</string>
+    <string id="LabelServerName">Kellon nimi</string>
+    <string id="LabelTeam">Tiimi</string>
+    <string id="LabelRole">Rooli</string>
+    <string id="LabelUsername">Kayttajanimi</string>
+    <string id="LabelPassword">Salasana</string>
+    <string id="LabelPort">Portti</string>
+    <string id="LabelTrackingMode">Seurantatila</string>
+    <string id="TrackingModeDynamic">Dynaaminen</string>
+    <string id="TrackingModeStatic">Staattinen</string>
+    <string id="LabelAlertInterval">Halytyssekunnit</string>
+    <string id="LabelMovingInterval">Liikesekunnit</string>
+    <string id="LabelStationaryInterval">Paikallaan sekunnit</string>
+    <string id="LabelStaticInterval">Staattiset sekunnit</string>
+    <string id="LabelIncomingCotPath">Saapuva CoT-polku</string>
+    <string id="LabelIncomingCotInterval">Saapuvat sekunnit</string>
+    <string id="LabelHealthTelemetry">Terveystelemetria</string>
+    <string id="LabelEnabled">Kaytossa</string>
+    <string id="LabelDisabled">Ei kaytossa</string>
+    <string id="LabelSosControl">Manuaalinen halytys</string>
+    <string id="LabelSendSos">Laheta SOS</string>
+    <string id="LabelClearSos">Tyhjenna SOS</string>
+    <string id="LabelCancel">Peruuta</string>
+    <string id="ConfirmSosTitle">Laheta SOS?</string>
+    <string id="LabelConnect">Kaynnista relay</string>
+    <string id="LabelDisconnect">Pysayta relay</string>
+    <string id="LabelNotSet">Ei asetettu</string>
+    <string id="StatusIdle">Relay pysaytetty</string>
+    <string id="StatusConnecting">Yhdistetaan...</string>
+    <string id="StatusRetrying">Yritetaan uudelleen</string>
+    <string id="StatusConnected">Relay aktiivinen</string>
+    <string id="StatusFailed">Epaonnistui</string>
+</resources>
