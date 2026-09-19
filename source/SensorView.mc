@@ -91,12 +91,12 @@ class BloodhoundCompassView extends WatchUi.View {
             var bearing = mapView.getBloodhoundBearingDegrees();
             drawArrow(dc, centerX, centerY - 4, bearing, 42);
             dc.drawText(centerX, centerY + 58, Graphics.FONT_XTINY, mapView.getBloodhoundTitle(), Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(centerX, centerY + 76, Graphics.FONT_XTINY, "Range: " + mapView.getBloodhoundRangeMeters().toString() + " m", Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(centerX, centerY + 94, Graphics.FONT_XTINY, "True bearing: " + bearing.toString() + " deg", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(centerX, centerY + 76, Graphics.FONT_XTINY, app.text(:range) + ": " + mapView.getBloodhoundRangeMeters().toString() + " m", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(centerX, centerY + 94, Graphics.FONT_XTINY, app.text(:bearing) + ": " + bearing.toString() + " deg", Graphics.TEXT_JUSTIFY_CENTER);
         } else {
             drawArrow(dc, centerX, centerY - 4, 0, 42);
-            dc.drawText(centerX, centerY + 66, Graphics.FONT_XTINY, "No Bloodhound target", Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(centerX, centerY + 86, Graphics.FONT_XTINY, "Tap a map point to start", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(centerX, centerY + 66, Graphics.FONT_XTINY, app.text(:noBloodhoundTarget), Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(centerX, centerY + 86, Graphics.FONT_XTINY, app.text(:tapMapPoint), Graphics.TEXT_JUSTIFY_CENTER);
         }
     }
 
@@ -123,6 +123,36 @@ class BloodhoundCompassView extends WatchUi.View {
         dc.drawLine(tipX, tipY, centerX + (Math.sin(angle + 0.45) * 24).toNumber(), centerY - (Math.cos(angle + 0.45) * 24).toNumber());
     }
 
+}
+
+class DiagnosticsView extends WatchUi.View {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        View.initialize();
+        app = application;
+    }
+
+    function onUpdate(dc) {
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
+        dc.fillRectangle(0, 0, System.getDeviceSettings().screenWidth, System.getDeviceSettings().screenHeight);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        var screenWidth = System.getDeviceSettings().screenWidth;
+        var centerX = screenWidth / 2;
+        dc.drawText(centerX, 8, Graphics.FONT_MEDIUM, "Diagnostics", Graphics.TEXT_JUSTIFY_CENTER);
+        var stats = System.getSystemStats();
+        drawReading(dc, screenWidth, 44, "Version", app.getAppVersion());
+        drawReading(dc, screenWidth, 68, "Device", System.getDeviceSettings().partNumber);
+        drawReading(dc, screenWidth, 92, "Mem Used", stats.usedMemory.toString() + " B");
+        drawReading(dc, screenWidth, 116, "Mem Free", stats.freeMemory.toString() + " B");
+        drawReading(dc, screenWidth, 140, "Last Relay", app.getTakClient().getLastRelayMessageSummary());
+    }
+
+    function drawReading(dc, screenWidth, y, label, value) {
+        var margin = 18;
+        dc.drawText(margin, y, Graphics.FONT_XTINY, label, Graphics.TEXT_JUSTIFY_LEFT);
+        dc.drawText(screenWidth - margin, y, Graphics.FONT_XTINY, value, Graphics.TEXT_JUSTIFY_RIGHT);
+    }
 }
 
 class SensorViewDelegate extends WatchUi.InputDelegate {

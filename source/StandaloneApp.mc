@@ -8,8 +8,13 @@ import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
 
 class StandaloneApp extends Application.AppBase {
+    const APP_VERSION = "5.8.0.2.1";
+
     private var view;
     private var takClient;
+    private var versionTapCount as Number = 0;
+    private var devModeEnabled as Boolean = false;
+    private var verboseLoggingEnabled as Boolean = false;
     private var chatMessages = [];
     private var sensorInfo;
     private var exertionPercent as Number = 0;
@@ -67,9 +72,47 @@ class StandaloneApp extends Application.AppBase {
             locationServices = storedLocationServices as Boolean;
         }
         loadAlertSettings();
+        takClient.setVerboseLogging(verboseLoggingEnabled);
         applyLocationServices();
         Sensor.setEnabledSensors([Sensor.SENSOR_HEARTRATE]);
         Sensor.enableSensorEvents(method(:onSensor));
+    }
+
+    function getAppVersion() as String {
+        return APP_VERSION;
+    }
+
+    // Returns true the moment the 7th consecutive tap unlocks dev mode.
+    function registerVersionTap() as Boolean {
+        versionTapCount += 1;
+        if (versionTapCount < 7) {
+            return false;
+        }
+        versionTapCount = 0;
+        if (devModeEnabled) {
+            return false;
+        }
+        devModeEnabled = true;
+        Application.Storage.setValue("devModeEnabled", true);
+        return true;
+    }
+
+    function resetVersionTapCount() as Void {
+        versionTapCount = 0;
+    }
+
+    function isDevModeEnabled() as Boolean {
+        return devModeEnabled;
+    }
+
+    function isVerboseLoggingEnabled() as Boolean {
+        return verboseLoggingEnabled;
+    }
+
+    function setVerboseLoggingEnabled(enabled as Boolean) as Void {
+        verboseLoggingEnabled = enabled;
+        Application.Storage.setValue("verboseLoggingEnabled", enabled);
+        takClient.setVerboseLogging(enabled);
     }
 
     function setLocationServices(enabled as Boolean) as Void {
@@ -192,6 +235,34 @@ class StandaloneApp extends Application.AppBase {
             return translated("Old points cleared", "تم مسح النقاط القديمة", "Gamle punkter ryddet", "Oude punten gewist", "Anciens points effaces", "Alte Punkte geloscht", "נקודות ישנות נוקו", "Vecchi punti cancellati", "古いポイントを消去しました", "이전 포인트 삭제됨", "Gamle punkter fjernet", "Stare punkty wyczyszczone", "Punctele vechi au fost sterse", "Старые точки очищены", "Puntos antiguos borrados", "Gamla punkter rensade", "ล้างจุดเก่าแล้ว", "Старі точки очищено");
         } else if (key == :active) {
             return translated("Active", "نشط", "Aktiv", "Actief", "Actif", "Aktiv", "פעיל", "Attivo", "アクティブ", "활성", "Aktiv", "Aktywny", "Activ", "Активен", "Activo", "Aktiv", "ใช้งาน", "Активний");
+        } else if (key == :unknownPoint) {
+            return translated("Unknown 2525D point", "نقطة 2525D غير معروفة", "Ukendt 2525D-punkt", "Onbekend 2525D-punt", "Point 2525D inconnu", "Unbekannter 2525D-Punkt", "נקודת 2525D לא ידועה", "Punto 2525D sconosciuto", "不明な2525Dポイント", "알 수 없는 2525D 포인트", "Ukjent 2525D-punkt", "Nieznany punkt 2525D", "Punct 2525D necunoscut", "Неизвестная точка 2525D", "Punto 2525D desconocido", "Okand 2525D-punkt", "จุด 2525D ที่ไม่รู้จัก", "Невідома точка 2525D");
+        } else if (key == :friendlyPoint) {
+            return translated("Friendly 2525D point", "نقطة 2525D صديقة", "Venligt 2525D-punkt", "Vriendelijk 2525D-punt", "Point 2525D ami", "Freundlicher 2525D-Punkt", "נקודת 2525D ידידותית", "Punto 2525D amico", "友軍2525Dポイント", "아군 2525D 포인트", "Vennlig 2525D-punkt", "Przyjazny punkt 2525D", "Punct 2525D prietenos", "Дружественная точка 2525D", "Punto 2525D amigo", "Vanlig 2525D-punkt", "จุด 2525D ฝ่ายมิตร", "Дружня точка 2525D");
+        } else if (key == :hostilePoint) {
+            return translated("Hostile 2525D point", "نقطة 2525D معادية", "Fjendtligt 2525D-punkt", "Vijandig 2525D-punt", "Point 2525D hostile", "Feindlicher 2525D-Punkt", "נקודת 2525D עוינת", "Punto 2525D ostile", "敵軍2525Dポイント", "적군 2525D 포인트", "Fiendtlig 2525D-punkt", "Wrogi punkt 2525D", "Punct 2525D ostil", "Вражеская точка 2525D", "Punto 2525D hostil", "Fientligt 2525D-punkt", "จุด 2525D ฝ่ายศัตรู", "Ворожа точка 2525D");
+        } else if (key == :obstaclePoint) {
+            return translated("Obstacle 2525D point", "نقطة 2525D عائق", "Forhindring 2525D-punkt", "Obstakel 2525D-punt", "Point 2525D obstacle", "Hindernis 2525D-Punkt", "נקודת 2525D מכשול", "Punto 2525D ostacolo", "障害物2525Dポイント", "장애물 2525D 포인트", "Hindringspunkt 2525D", "Punkt przeszkody 2525D", "Punct 2525D obstacol", "Точка препятствия 2525D", "Punto 2525D obstaculo", "Hinder 2525D-punkt", "จุด 2525D สิ่งกีดขวาง", "Точка перешкоди 2525D");
+        } else if (key == :waitingForLocation) {
+            return translated("Waiting for location", "في انتظار الموقع", "Venter pa placering", "Wachten op locatie", "En attente de la position", "Warte auf Standort", "ממתין למיקום", "In attesa della posizione", "位置情報を待機中", "위치 대기 중", "Venter pa posisjon", "Oczekiwanie na lokalizacje", "Se asteapta locatia", "Ожидание местоположения", "Esperando ubicacion", "Vantar pa plats", "กำลังรอตำแหน่ง", "Очікування місцезнаходження");
+        } else if (key == :highHrThreshold) {
+            return translated("High HR Threshold", "حد نبض مرتفع", "Hoj pulsterskel", "Hoge hartslagdrempel", "Seuil FC haute", "Hohe HF-Schwelle", "סף דופק גבוה", "Soglia FC alta", "高心拍しきい値", "높은 심박 임계값", "Hoy pulsterskel", "Prog wysokiego tetna", "Prag puls ridicat", "Порог высокого пульса", "Umbral FC alto", "Hog pulstroskel", "เกณฑ์อัตราการเต้นหัวใจสูง", "Поріг високого пульсу");
+        } else if (key == :lowHrThreshold) {
+            return translated("Low HR Threshold", "حد نبض منخفض", "Lav pulsterskel", "Lage hartslagdrempel", "Seuil FC basse", "Niedrige HF-Schwelle", "סף דופק נמוך", "Soglia FC bassa", "低心拍しきい値", "낮은 심박 임계값", "Lav pulsterskel", "Prog niskiego tetna", "Prag puls scazut", "Порог низкого пульса", "Umbral FC bajo", "Lag pulstroskel", "เกณฑ์อัตราการเต้นหัวใจต่ำ", "Поріг низького пульсу");
+        } else if (key == :navigationTitle) {
+            return text(:bloodhoundCompass);
+        } else if (key == :proximityRadiusTitle) {
+            return text(:proximityRadius);
+        } else if (key == :proximityIntensityTitle) {
+            return text(:proximityIntensity);
+        } else if (key == :range) {
+            return translated("Range", "المدى", "Raekkevidde", "Bereik", "Portee", "Reichweite", "טווח", "Distanza", "距離", "거리", "Rekkevidde", "Zasieg", "Distanta", "Дальность", "Rango", "Avstand", "ระยะทาง", "Дальність");
+        } else if (key == :bearing) {
+            return translated("Bearing", "الاتجاه", "Pejling", "Peiling", "Azimut", "Peilung", "כיוון", "Rilevamento", "方位", "방위", "Peiling", "Azymut", "Azimut", "Азимут", "Rumbo", "Peiling", "ทิศทาง", "Азимут");
+        } else if (key == :noBloodhoundTarget) {
+            return translated("No Bloodhound target", "لا يوجد هدف تتبع", "Intet sporingsmal", "Geen volgdoel", "Aucune cible", "Kein Verfolgungsziel", "אין יעד מעקב", "Nessun obiettivo", "追跡対象なし", "추적 대상 없음", "Ingen sporingsmal", "Brak celu", "Nicio tinta", "Нет цели", "Sin objetivo", "Inget mål", "ไม่มีเป้าหมาย", "Немає цілі");
+        } else if (key == :tapMapPoint) {
+            return translated("Tap a map point to start", "اضغط على نقطة لبدء التتبع", "Tryk pa et kortpunkt for at starte", "Tik op een kaartpunt om te starten", "Touchez un point pour commencer", "Tippe auf einen Kartenpunkt", "הקש על נקודה כדי להתחיל", "Tocca un punto per iniziare", "地図のポイントをタップして開始", "지도 지점을 눌러 시작", "Trykk pa et kartpunkt", "Dotknij punktu na mapie", "Atinge un punct pentru a incepe", "Нажмите точку", "Toca un punto del mapa", "Tryck pa en kartpunkt", "แตะจุดบนแผนที่เพื่อเริ่ม", "Торкніться точки на карті");
         } else if (key == :physiology) {
             return translated("Physiology", "الفسيولوجيا", "Fysiologi", "Fysiologie", "Physiologie", "Physiologie", "פיזיולוגיה", "Fisiologia", "生理", "생리", "Fysiologi", "Fizjologia", "Fiziologie", "Физиология", "Fisiologia", "Fysiologi", "สรีรวิทยา", "Фізіологія");
         } else if (key == :devicePreferences) {
@@ -264,6 +335,18 @@ class StandaloneApp extends Application.AppBase {
             return translated("Warning Threshold", "حد التحذير", "Advarselsterskel", "Waarschuwingsdrempel", "Seuil avertissement", "Warnschwelle", "סף אזהרה", "Soglia avviso", "警告しきい値", "경고 임계값", "Varselsterskel", "Prog ostrzezenia", "Prag avertizare", "Порог предупреждения", "Umbral de alerta", "Varningströskel", "เกณฑ์แจ้งเตือน", "Поріг попередження");
         } else if (key == :alertThreshold) {
             return translated("Alert Threshold", "حد التنبيه", "Alarmterskel", "Alarmdrempel", "Seuil alerte", "Alarmschwelle", "סף התראה", "Soglia allarme", "アラートしきい値", "알림 임계값", "Varselsterskel", "Prog alertu", "Prag alerta", "Порог оповещения", "Umbral de alerta", "Larmtröskel", "เกณฑ์แจ้งเตือน", "Поріг тривоги");
+        } else if (key == :heartRateThreshold) {
+            return translated("Heart Rate Threshold", "حد معدل ضربات القلب", "Pulsterskel", "Hartslagdrempel", "Seuil frequence cardiaque", "Herzfrequenzschwelle", "סף דופק", "Soglia frequenza cardiaca", "心拍数しきい値", "심박수 임계값", "Pulsterskel", "Prog tetna", "Prag puls", "Порог пульса", "Umbral de frecuencia cardiaca", "Pulstroskel", "เกณฑ์อัตราการเต้นของหัวใจ", "Поріг частоти серця");
+        } else if (key == :alertDuration) {
+            return translated("Alert Duration", "مدة التنبيه", "Alarmvarighed", "Alarmduur", "Duree alerte", "Alarmdauer", "משך התראה", "Durata allarme", "アラート時間", "알림 기간", "Alarmvarighet", "Czas alertu", "Durata alertei", "Длительность оповещения", "Duracion de alerta", "Larmtid", "ระยะเวลาแจ้งเตือน", "Тривалість тривоги");
+        } else if (key == :setTypeTitle) {
+            return text(:setType);
+        } else if (key == :friendly) {
+            return text(:friendlyPoint);
+        } else if (key == :hostile) {
+            return text(:hostilePoint);
+        } else if (key == :obstacle) {
+            return text(:obstaclePoint);
         } else if (key == :selected) {
             return translated("Selected", "محدد", "Valgt", "Geselecteerd", "Selectionne", "Ausgewahlt", "נבחר", "Selezionato", "選択済み", "선택됨", "Valgt", "Wybrane", "Selectat", "Выбрано", "Seleccionado", "Vald", "เลือกแล้ว", "Вибрано");
         } else if (key == :on) {
@@ -853,6 +936,8 @@ class StandaloneApp extends Application.AppBase {
         uniformPantsLength = storedNumber("uniformPantsLength", uniformPantsLength);
         loadoutWeight = storedNumber("loadoutWeight", loadoutWeight);
         language = storedString("language", language);
+        devModeEnabled = storedBoolean("devModeEnabled", devModeEnabled);
+        verboseLoggingEnabled = storedBoolean("verboseLoggingEnabled", verboseLoggingEnabled);
     }
 
     function storedNumber(key as String, fallback as Number) as Number {

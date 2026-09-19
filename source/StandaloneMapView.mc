@@ -46,6 +46,9 @@ class StandaloneMapView extends WatchUi.MapView {
         setScreenVisibleArea(0, 0, screenWidth, screenHeight);
         setMapMode(WatchUi.MAP_MODE_PREVIEW);
         var currentInfo = Position.getInfo();
+        if (currentInfo != null && currentInfo.position != null) {
+            currentPosition = currentInfo.position;
+        }
         centerOn(currentInfo != null && currentInfo.position != null ? currentInfo.position : null);
         setMapVisibleArea(mapTopLeft, mapBottomRight);
         mapAreaDirty = false;
@@ -196,12 +199,9 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function drawBloodhound(dc) as Void {
-        if (bloodhoundPointId == null || currentPosition == null || pointLocations.hasKey(bloodhoundPointId) == false) {
+        if (bloodhoundPointId == null || pointLocations.hasKey(bloodhoundPointId) == false) {
             return;
         }
-        var target = pointLocations.get(bloodhoundPointId);
-        var rangeMeters = distanceMeters(currentPosition, target).toNumber();
-        var bearing = bearingDegrees(currentPosition, target).toNumber();
         var title = getPointText(bloodhoundPointId, "title");
         if (title.equals("")) {
             title = "Bloodhound";
@@ -212,9 +212,16 @@ class StandaloneMapView extends WatchUi.MapView {
         dc.fillRectangle(4, panelTop, screenWidth - 8, panelHeight);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawRectangle(4, panelTop, screenWidth - 8, panelHeight);
-        dc.drawText(screenWidth / 2, panelTop + 4, Graphics.FONT_XTINY, title, Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(screenWidth / 2, panelTop + 22, Graphics.FONT_XTINY, "Range " + rangeMeters.toString() + " m", Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(screenWidth / 2, panelTop + 40, Graphics.FONT_XTINY, "Bearing " + bearing.toString() + " deg", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(screenWidth / 2, panelTop + 4, Graphics.FONT_XTINY, title, Graphics.TEXT_JUSTIFY_CENTER);
+        if (currentPosition == null) {
+                dc.drawText(screenWidth / 2, panelTop + 30, Graphics.FONT_XTINY, application.text(:waitingForLocation), Graphics.TEXT_JUSTIFY_CENTER);
+        } else {
+            var target = pointLocations.get(bloodhoundPointId);
+            var rangeMeters = distanceMeters(currentPosition, target).toNumber();
+            var bearing = bearingDegrees(currentPosition, target).toNumber();
+            dc.drawText(screenWidth / 2, panelTop + 22, Graphics.FONT_XTINY, application.text(:range) + " " + rangeMeters.toString() + " m", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(screenWidth / 2, panelTop + 40, Graphics.FONT_XTINY, application.text(:bearing) + " " + bearing.toString() + " deg", Graphics.TEXT_JUSTIFY_CENTER);
+        }
     }
 
     function isBloodhoundPanelAt(x, y) as Boolean {
@@ -260,7 +267,7 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function isBloodhoundActive() as Boolean {
-        return bloodhoundPointId != null && currentPosition != null && pointLocations.hasKey(bloodhoundPointId);
+        return bloodhoundPointId != null && pointLocations.hasKey(bloodhoundPointId);
     }
 
     function getBloodhoundTitle() as String {
@@ -272,14 +279,14 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function getBloodhoundRangeMeters() as Number {
-        if (!isBloodhoundActive()) {
+        if (!isBloodhoundActive() || currentPosition == null) {
             return 0;
         }
         return distanceMeters(currentPosition, pointLocations.get(bloodhoundPointId)).toNumber();
     }
 
     function getBloodhoundBearingDegrees() as Number {
-        if (!isBloodhoundActive()) {
+        if (!isBloodhoundActive() || currentPosition == null) {
             return 0;
         }
         return bearingDegrees(currentPosition, pointLocations.get(bloodhoundPointId)).toNumber();
@@ -425,7 +432,7 @@ class StandaloneMapView extends WatchUi.MapView {
     function dropAtCurrentLocation() as Boolean {
         var info = Position.getInfo();
         if (info != null && info.position != null) {
-            addPoint(info.position, :unknown, "Unknown 2525D point");
+            addPoint(info.position, :unknown, application.text(:unknownPoint));
             return true;
         }
         return false;
@@ -452,7 +459,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var yRatio = y.toFloat() / screenHeight.toFloat();
         var latitude = topLeft[0] + (bottomRight[0] - topLeft[0]) * yRatio;
         var longitude = topLeft[1] + (bottomRight[1] - topLeft[1]) * xRatio;
-        addPoint(new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees}), :unknown, "Unknown 2525D point");
+        addPoint(new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees}), :unknown, application.text(:unknownPoint));
         WatchUi.showToast(application != null ? application.text(:pointDropped) : "2525D point dropped", null);
         WatchUi.requestUpdate();
     }
@@ -566,13 +573,13 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function defaultPointTitle(type as Symbol) as String {
         if (type == :friendly) {
-            return "Friendly 2525D point";
+            return application.text(:friendlyPoint);
         } else if (type == :hostile) {
-            return "Hostile 2525D point";
+            return application.text(:hostilePoint);
         } else if (type == :obstacle) {
-            return "Obstacle 2525D point";
+            return application.text(:obstaclePoint);
         }
-        return "Unknown 2525D point";
+        return application.text(:unknownPoint);
     }
 
     function updatePointText(id, field, value) {
@@ -597,12 +604,12 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function getPointTypeLabel(id) as String {
         if (pointDetails.hasKey(id) == false) {
-            return "Unknown 2525D point";
+            return application.text(:unknownPoint);
         }
         var details = pointDetails.get(id) as Dictionary;
         var type = details.get("type");
         if (type == null) {
-            return "Unknown 2525D point";
+            return application.text(:unknownPoint);
         }
         return defaultPointTitle(type as Symbol);
     }
@@ -888,11 +895,11 @@ class PointMenuDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.pushView(new WatchUi.TextPicker(view.getPointText(pointId, "remark")), new PointTextPickerDelegate(view, pointId, "remark"), WatchUi.SLIDE_UP);
             return;
         } else if (id == :type) {
-            var typeMenu = new WatchUi.Menu2({:title => "Set Type"});
-            typeMenu.addItem(new WatchUi.MenuItem("Friendly", null, :friendly, null));
-            typeMenu.addItem(new WatchUi.MenuItem("Unknown", null, :unknown, null));
-            typeMenu.addItem(new WatchUi.MenuItem("Hostile", null, :hostile, null));
-            typeMenu.addItem(new WatchUi.MenuItem("Obstacle", null, :obstacle, null));
+            var typeMenu = new WatchUi.Menu2({:title => view.application.text(:setTypeTitle)});
+            typeMenu.addItem(new WatchUi.MenuItem(view.application.text(:friendly), null, :friendly, null));
+            typeMenu.addItem(new WatchUi.MenuItem(view.application.text(:unknownPoint), null, :unknown, null));
+            typeMenu.addItem(new WatchUi.MenuItem(view.application.text(:hostile), null, :hostile, null));
+            typeMenu.addItem(new WatchUi.MenuItem(view.application.text(:obstacle), null, :obstacle, null));
             WatchUi.pushView(typeMenu, new PointTypeMenuDelegate(view, pointId), WatchUi.SLIDE_LEFT);
             return;
         } else if (id == :delete) {
@@ -958,7 +965,7 @@ class PointTypeMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :obstacle) {
             view.changePointType(pointId, :obstacle, "Obstacle 2525D point");
         } else {
-            view.changePointType(pointId, :unknown, "Unknown 2525D point");
+            view.changePointType(pointId, :unknown, view.application.text(:unknownPoint));
         }
         WatchUi.popView(WatchUi.SLIDE_DOWN);
         WatchUi.popView(WatchUi.SLIDE_DOWN);

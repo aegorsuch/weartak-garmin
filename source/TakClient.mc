@@ -34,6 +34,9 @@ class TakClient {
     var incomingCotCallback as Method? = null;
     var incomingChatCallback as Method? = null;
     var pendingMarkerOperations = [];
+    var verboseLoggingEnabled as Boolean = false;
+    var lastRelayMessageType as String? = null;
+    var lastRelayMessageTime as Time.Moment? = null;
 
     function initialize() {
         Communications.registerForPhoneAppMessages(method(:onPhoneMessage));
@@ -182,6 +185,11 @@ class TakClient {
     }
 
     function transmit(msgType as String, payload as Dictionary) as Void {
+        lastRelayMessageType = "-> " + msgType;
+        lastRelayMessageTime = Time.now();
+        if (verboseLoggingEnabled) {
+            System.println("TAK relay out: " + msgType);
+        }
         Communications.transmit({"msgType" => msgType, "payload" => payload}, null, new PhoneRelayListener(self));
     }
 
@@ -194,6 +202,11 @@ class TakClient {
         var payload = envelope.get("payload");
         if (!(payload instanceof Dictionary)) {
             return;
+        }
+        lastRelayMessageType = "<- " + msgType.toString();
+        lastRelayMessageTime = Time.now();
+        if (verboseLoggingEnabled) {
+            System.println("TAK relay in: " + msgType.toString());
         }
         if (msgType == "chat" && incomingChatCallback != null) {
             incomingChatCallback.invoke(payload as Dictionary);
@@ -236,6 +249,18 @@ class TakClient {
         if (statusCallback != null) {
             statusCallback.invoke();
         }
+    }
+
+    function setVerboseLogging(enabled as Boolean) as Void {
+        verboseLoggingEnabled = enabled;
+    }
+
+    function getLastRelayMessageSummary() as String {
+        if (lastRelayMessageType == null || lastRelayMessageTime == null) {
+            return "None";
+        }
+        var secondsAgo = Time.now().value() - lastRelayMessageTime.value();
+        return lastRelayMessageType + " (" + secondsAgo.toString() + "s ago)";
     }
 
     function statusText() as String {

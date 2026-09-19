@@ -21,6 +21,17 @@ function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     menu.addItem(new WatchUi.MenuItem(app.text(:networkPreferences), null, :networkPreferences, null));
     menu.addItem(new WatchUi.MenuItem(app.text(:alertingPreferences), null, :alertingPreferences, null));
     menu.addItem(new WatchUi.MenuItem(app.text(:toolPreferences), null, :toolPreferences, null));
+    if (app.isDevModeEnabled()) {
+        menu.addItem(new WatchUi.MenuItem("Developer Options", null, :developerOptions, null));
+    }
+    menu.addItem(new WatchUi.MenuItem("Version " + app.getAppVersion(), null, :appVersion, null));
+    return menu;
+}
+
+function buildDeveloperOptionsMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Developer Options"});
+    menu.addItem(new WatchUi.MenuItem("Verbose Logging", toolToggleLabel(app.isVerboseLoggingEnabled()), :verboseLoggingToggle, null));
+    menu.addItem(new WatchUi.MenuItem("Diagnostics", null, :diagnostics, null));
     return menu;
 }
 
@@ -83,11 +94,11 @@ function buildPhysiologicalAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 function buildRestingHeartRateMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => app.text(:restingHeartRateTitle)});
     menu.addItem(new WatchUi.MenuItem(app.text(:highRestingHeartRate), null, :highHeading, null));
-    menu.addItem(new WatchUi.MenuItem("High HR Threshold", app.getAlertSetting(:highThreshold).toString() + " bpm", :highThreshold, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:highHrThreshold), app.getAlertSetting(:highThreshold).toString() + " bpm", :highThreshold, null));
     menu.addItem(new WatchUi.MenuItem(app.text(:warningLength), app.getAlertSetting(:highWarning).toString() + " minutes", :highWarning, null));
     menu.addItem(new WatchUi.MenuItem(app.text(:alertLength), app.getAlertSetting(:highAlert).toString() + " minutes", :highAlert, null));
     menu.addItem(new WatchUi.MenuItem(app.text(:lowRestingHeartRate), null, :lowHeading, null));
-    menu.addItem(new WatchUi.MenuItem("Low HR Threshold", app.getAlertSetting(:lowThreshold).toString() + " bpm", :lowThreshold, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:lowHrThreshold), app.getAlertSetting(:lowThreshold).toString() + " bpm", :lowThreshold, null));
     menu.addItem(new WatchUi.MenuItem(app.text(:warningLength), app.getAlertSetting(:lowWarning).toString() + " minutes", :lowWarning, null));
     menu.addItem(new WatchUi.MenuItem(app.text(:alertLength), app.getAlertSetting(:lowAlert).toString() + " minutes", :lowAlert, null));
     return menu;
@@ -135,7 +146,7 @@ function buildGaitTrackingMenu(app as StandaloneApp) as WatchUi.Menu2 {
 }
 
 function buildAllergiesMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Allergies"});
+    var menu = new WatchUi.Menu2({:title => app.text(:allergies)});
     var options = allergyOptions();
     for (var i = 0; i < options.size(); i++) {
         var allergy = options[i] as String;
@@ -174,7 +185,7 @@ function alertSettingLabel(setting as Symbol, value as Number) as String {
 }
 
 function buildAlertValueMenu(app as StandaloneApp, setting as Symbol, parentItem as WatchUi.MenuItem) as WatchUi.Menu2 {
-    var title = setting == :highThreshold || setting == :lowThreshold ? "Heart Rate Threshold" : "Alert Duration";
+    var title = setting == :highThreshold || setting == :lowThreshold ? app.text(:heartRateThreshold) : app.text(:alertDuration);
     var menu = new WatchUi.Menu2({:title => title});
     if (setting == :highThreshold) {
         addAlertValues(menu, 80, 200, 5);
@@ -265,21 +276,21 @@ function buildToolPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
 }
 
 function buildBloodhoundMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Navigation"});
+    var menu = new WatchUi.Menu2({:title => app.text(:navigationTitle)});
     menu.addItem(new WatchUi.MenuItem(app.text(:proximityVibration), toolToggleLabel(app.isBloodhoundProximityVibrationEnabled()), :bloodhoundProximityVibrationToggle, null));
     menu.addItem(new WatchUi.MenuItem(app.text(:proximityRadius), app.getBloodhoundProximityRadius().toString() + " meters", :bloodhoundProximityRadius, null));
     menu.addItem(new WatchUi.MenuItem(app.text(:proximityIntensity), app.getBloodhoundProximityIntensity(), :bloodhoundProximityIntensity, null));
     return menu;
 }
 
-function buildBloodhoundRadiusMenu() as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Bloodhound Proximity Radius"});
+function buildBloodhoundRadiusMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => app.text(:proximityRadiusTitle)});
     addAlertValues(menu, 10, 200, 10);
     return menu;
 }
 
-function buildBloodhoundIntensityMenu() as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Bloodhound Proximity Intensity"});
+function buildBloodhoundIntensityMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => app.text(:proximityIntensityTitle)});
     addProfileStringValues(menu, ["Single Burst", "Triple Burst", "Until In Position"]);
     return menu;
 }
@@ -361,6 +372,9 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
 
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
+        if (id != :appVersion) {
+            app.resetVersionTapCount();
+        }
         if (id == :devicePreferences) {
             var deviceMenu = buildDevicePreferencesMenu(app);
             WatchUi.pushView(deviceMenu, new DevicePreferencesDelegate(app, deviceMenu), WatchUi.SLIDE_LEFT);
@@ -372,6 +386,33 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.pushView(alertingMenu, new AlertingPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :toolPreferences) {
             WatchUi.pushView(buildToolPreferencesMenu(app), new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :developerOptions) {
+            WatchUi.pushView(buildDeveloperOptionsMenu(app), new DeveloperOptionsDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :appVersion) {
+            if (app.registerVersionTap()) {
+                WatchUi.showToast("Developer mode enabled", null);
+                WatchUi.switchToView(buildSettingsMenu(app), new SettingsMenuDelegate(app), WatchUi.SLIDE_LEFT);
+            }
+        }
+    }
+}
+
+class DeveloperOptionsDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        Menu2InputDelegate.initialize();
+        app = application;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :verboseLoggingToggle) {
+            app.setVerboseLoggingEnabled(!app.isVerboseLoggingEnabled());
+            item.setSubLabel(toolToggleLabel(app.isVerboseLoggingEnabled()));
+            WatchUi.requestUpdate();
+        } else if (id == :diagnostics) {
+            WatchUi.pushView(new DiagnosticsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
         }
     }
 }
@@ -408,6 +449,13 @@ class LanguageDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         var language = item.getId() as String;
         app.setLanguage(language);
+        // Pop back to the original (stale-language) Main Menu, then swap
+        // just that top view for a fresh one, so no stale ancestor menus
+        // (Device Preferences/Settings) linger underneath for a back-swipe
+        // to reveal, and the app isn't left with an empty stack in between.
+        WatchUi.popView(WatchUi.SLIDE_IMMEDIATE);
+        WatchUi.popView(WatchUi.SLIDE_IMMEDIATE);
+        WatchUi.popView(WatchUi.SLIDE_IMMEDIATE);
         WatchUi.switchToView(buildMainMenu(app), new MainMenuDelegate(app), WatchUi.SLIDE_RIGHT);
     }
 }
@@ -737,9 +785,9 @@ class BloodhoundDelegate extends WatchUi.Menu2InputDelegate {
             item.setSubLabel(toolToggleLabel(app.isBloodhoundProximityVibrationEnabled()));
             WatchUi.requestUpdate();
         } else if (id == :bloodhoundProximityRadius) {
-            WatchUi.pushView(buildBloodhoundRadiusMenu(), new BloodhoundValueDelegate(app, :radius, item), WatchUi.SLIDE_LEFT);
+            WatchUi.pushView(buildBloodhoundRadiusMenu(app), new BloodhoundValueDelegate(app, :radius, item), WatchUi.SLIDE_LEFT);
         } else if (id == :bloodhoundProximityIntensity) {
-            WatchUi.pushView(buildBloodhoundIntensityMenu(), new BloodhoundValueDelegate(app, :intensity, item), WatchUi.SLIDE_LEFT);
+            WatchUi.pushView(buildBloodhoundIntensityMenu(app), new BloodhoundValueDelegate(app, :intensity, item), WatchUi.SLIDE_LEFT);
         }
     }
 }
