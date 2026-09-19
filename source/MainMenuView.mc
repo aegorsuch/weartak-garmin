@@ -4,6 +4,9 @@ import Toybox.WatchUi;
 // Builds the app's main menu: choose the map view or manage the ATAK relay.
 function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleMain)});
+    menu.addItem(new WatchUi.MenuItem("Clear 2525D", null, :clearPoints, null));
+    menu.addItem(new WatchUi.MenuItem("Exit", null, :exit, null));
+    menu.addItem(new WatchUi.MenuItem(manualAlertMenuLabel(app), null, :sos, null));
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemMap), null, :map, null));
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemSettings), null, :settings, null));
     return menu;
@@ -33,9 +36,26 @@ function buildNetworkPreferencesMenu() as WatchUi.Menu2 {
 
 function buildAlertingPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleAlertingPreferences)});
-    menu.addItem(new WatchUi.MenuItem("Environmental Alerts", null, :environmentalAlerts, null));
-    menu.addItem(new WatchUi.MenuItem(manualAlertMenuLabel(app), null, :sos, null));
     menu.addItem(new WatchUi.MenuItem("Physiological Alerts", null, :physiologicalAlerts, null));
+    menu.addItem(new WatchUi.MenuItem("Environmental Alerts", null, :environmentalAlerts, null));
+    menu.addItem(new WatchUi.MenuItem("----------------", null, :alertSeparator, null));
+    menu.addItem(new WatchUi.MenuItem("Battery Alerts", batteryAlertsLabel(app), :batteryAlertsToggle, null));
+    return menu;
+}
+
+function buildEnvironmentalAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Environmental Alerts"});
+    menu.addItem(new WatchUi.MenuItem("Immersion Alerts", immersionAlertsLabel(app), :immersionAlertsToggle, null));
+    menu.addItem(new WatchUi.MenuItem("Atm Pressure Alerts", null, :atmPressureAlerts, null));
+    return menu;
+}
+
+function buildAtmPressureAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Atm Pressure Alerts"});
+    menu.addItem(new WatchUi.MenuItem("Low Pressure Alert", pressureAlertsLabel(app.isLowPressureAlertsEnabled()), :lowPressureAlertsToggle, null));
+    menu.addItem(new WatchUi.MenuItem("Low Pressure Threshold", app.getAlertSetting(:lowPressureThreshold).toString() + " hPa", :lowPressureThreshold, null));
+    menu.addItem(new WatchUi.MenuItem("High Pressure Alert", pressureAlertsLabel(app.isHighPressureAlertsEnabled()), :highPressureAlertsToggle, null));
+    menu.addItem(new WatchUi.MenuItem("High Pressure Threshold", app.getAlertSetting(:highPressureThreshold).toString() + " hPa", :highPressureThreshold, null));
     return menu;
 }
 
@@ -115,8 +135,22 @@ function physiologicalAlertsLabel(app as StandaloneApp) as String {
     return app.isPhysiologicalAlertsEnabled() ? "On" : "Off";
 }
 
+function batteryAlertsLabel(app as StandaloneApp) as String {
+    return app.isBatteryAlertsEnabled() ? "On (50%, 25%)" : "Off";
+}
+
+function immersionAlertsLabel(app as StandaloneApp) as String {
+    return pressureAlertsLabel(app.isImmersionAlertsEnabled());
+}
+
+function pressureAlertsLabel(enabled as Boolean) as String {
+    return enabled ? "On" : "Off";
+}
+
 function alertSettingLabel(setting as Symbol, value as Number) as String {
-    if (setting == :highThreshold || setting == :lowThreshold) {
+    if (setting == :lowPressureThreshold || setting == :highPressureThreshold) {
+        return value.toString() + " hPa";
+    } else if (setting == :highThreshold || setting == :lowThreshold) {
         return value.toString() + " bpm";
     } else if (setting == :exertionWarningThreshold || setting == :exertionAlertThreshold) {
         return value.toString() + "%";
@@ -210,11 +244,37 @@ function profileSettingLabel(setting as Symbol, value) as String {
     return value.toString();
 }
 
-function buildToolPreferencesMenu() as WatchUi.Menu2 {
+function buildToolPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleToolPreferences)});
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemChat), null, :chat, null));
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemChat), toolToggleLabel(app.isChatEnabled()), :chatToggle, null));
+    menu.addItem(new WatchUi.MenuItem("Bloodhound/Compass", null, :bloodhoundCompass, null));
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemClearPoints), null, :clearPoints, null));
     return menu;
+}
+
+function buildBloodhoundMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Bloodhound/Compass"});
+    menu.addItem(new WatchUi.MenuItem("Bloodhound/Compass", toolToggleLabel(app.isBloodhoundCompassEnabled()), :bloodhoundCompassToggle, null));
+    menu.addItem(new WatchUi.MenuItem("Bloodhound Proximity Vibration", toolToggleLabel(app.isBloodhoundProximityVibrationEnabled()), :bloodhoundProximityVibrationToggle, null));
+    menu.addItem(new WatchUi.MenuItem("Bloodhound Proximity Radius", app.getBloodhoundProximityRadius().toString() + " meters", :bloodhoundProximityRadius, null));
+    menu.addItem(new WatchUi.MenuItem("Bloodhound Proximity Intensity", app.getBloodhoundProximityIntensity(), :bloodhoundProximityIntensity, null));
+    return menu;
+}
+
+function buildBloodhoundRadiusMenu() as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Bloodhound Proximity Radius"});
+    addAlertValues(menu, 10, 200, 10);
+    return menu;
+}
+
+function buildBloodhoundIntensityMenu() as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Bloodhound Proximity Intensity"});
+    addProfileStringValues(menu, ["Single Burst", "Triple Burst", "Until In Position"]);
+    return menu;
+}
+
+function toolToggleLabel(enabled as Boolean) as String {
+    return enabled ? "On" : "Off";
 }
 
 function locationServicesLabel(app as StandaloneApp) as String {
@@ -244,7 +304,7 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
             var chatMenu = buildChatMenu(app);
             WatchUi.pushView(chatMenu, new ChatMenuDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :environmentalAlerts) {
-            WatchUi.switchToView(new EnvironmentalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
+            WatchUi.pushView(buildEnvironmentalAlertsMenu(app), new EnvironmentalAlertsDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :physiologicalAlerts) {
             WatchUi.pushView(buildPhysiologicalAlertsMenu(app), new PhysiologicalAlertsDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :sos) {
@@ -255,9 +315,11 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.pushView(takMenu, new TakServerMenuDelegate(app, takMenu), WatchUi.SLIDE_LEFT);
         } else if (id == :settings) {
             WatchUi.pushView(buildSettingsMenu(), new SettingsMenuDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :exit) {
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
         } else if (id == :clearPoints) {
             var confirmation = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.ConfirmClearPointsTitle)});
-            confirmation.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelClearPoints), null, :clear, null));
+            confirmation.addItem(new WatchUi.MenuItem("Clear 2525D", null, :clear, null));
             confirmation.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel, null));
             WatchUi.pushView(confirmation, new ClearPointsDelegate(app), WatchUi.SLIDE_UP);
         }
@@ -281,9 +343,10 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             var networkMenu = buildNetworkPreferencesMenu();
             WatchUi.pushView(networkMenu, new NetworkPreferencesDelegate(app, networkMenu), WatchUi.SLIDE_LEFT);
         } else if (id == :alertingPreferences) {
-            WatchUi.pushView(buildAlertingPreferencesMenu(app), new AlertingPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
+            var alertingMenu = buildAlertingPreferencesMenu(app);
+            WatchUi.pushView(alertingMenu, new AlertingPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :toolPreferences) {
-            WatchUi.pushView(buildToolPreferencesMenu(), new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
+            WatchUi.pushView(buildToolPreferencesMenu(app), new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
         }
     }
 }
@@ -338,14 +401,75 @@ class AlertingPreferencesDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
         if (id == :environmentalAlerts) {
-            WatchUi.switchToView(new EnvironmentalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
+            WatchUi.pushView(buildEnvironmentalAlertsMenu(app), new EnvironmentalAlertsDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :batteryAlertsToggle) {
+            app.setBatteryAlertsEnabled(!app.isBatteryAlertsEnabled());
+            item.setSubLabel(batteryAlertsLabel(app));
+            WatchUi.requestUpdate();
         } else if (id == :physiologicalAlerts) {
             WatchUi.pushView(buildPhysiologicalAlertsMenu(app), new PhysiologicalAlertsDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :sos) {
             var sosMenu = buildSosMenu(app);
             WatchUi.pushView(sosMenu, new SosMenuDelegate(app, true), WatchUi.SLIDE_LEFT);
+        } else if (id == :toolPreferences) {
+            WatchUi.pushView(buildToolPreferencesMenu(app), new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
         }
     }
+}
+
+class EnvironmentalAlertsDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        Menu2InputDelegate.initialize();
+        app = application;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :immersionAlertsToggle) {
+            app.setImmersionAlertsEnabled(!app.isImmersionAlertsEnabled());
+            item.setSubLabel(immersionAlertsLabel(app));
+            WatchUi.requestUpdate();
+        } else if (id == :atmPressureAlerts) {
+            WatchUi.pushView(buildAtmPressureAlertsMenu(app), new AtmPressureAlertsDelegate(app), WatchUi.SLIDE_LEFT);
+        }
+    }
+}
+
+class AtmPressureAlertsDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        Menu2InputDelegate.initialize();
+        app = application;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :lowPressureAlertsToggle) {
+            app.setLowPressureAlertsEnabled(!app.isLowPressureAlertsEnabled());
+            item.setSubLabel(pressureAlertsLabel(app.isLowPressureAlertsEnabled()));
+            WatchUi.requestUpdate();
+        } else if (id == :highPressureAlertsToggle) {
+            app.setHighPressureAlertsEnabled(!app.isHighPressureAlertsEnabled());
+            item.setSubLabel(pressureAlertsLabel(app.isHighPressureAlertsEnabled()));
+            WatchUi.requestUpdate();
+        } else if (id == :lowPressureThreshold || id == :highPressureThreshold) {
+            var setting = id as Symbol;
+            WatchUi.pushView(buildPressureValueMenu(app, setting), new AlertValueDelegate(app, setting, item), WatchUi.SLIDE_LEFT);
+        }
+    }
+}
+
+function buildPressureValueMenu(app as StandaloneApp, setting as Symbol) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => setting == :lowPressureThreshold ? "Low Pressure Threshold" : "High Pressure Threshold"});
+    if (setting == :lowPressureThreshold) {
+        addAlertValues(menu, 800, 1100, 5);
+    } else {
+        addAlertValues(menu, 1000, 3000, 5);
+    }
+    return menu;
 }
 
 class PhysiologicalAlertsDelegate extends WatchUi.Menu2InputDelegate {
@@ -536,14 +660,72 @@ class ToolPreferencesDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function onSelect(item as WatchUi.MenuItem) as Void {
-        if (item.getId() == :chat) {
-            WatchUi.pushView(buildChatMenu(app), new ChatMenuDelegate(app), WatchUi.SLIDE_LEFT);
-        } else if (item.getId() == :clearPoints) {
+        var id = item.getId();
+        if (id == :chatToggle) {
+            app.setChatEnabled(!app.isChatEnabled());
+            item.setSubLabel(toolToggleLabel(app.isChatEnabled()));
+            WatchUi.requestUpdate();
+        } else if (id == :bloodhoundCompass) {
+            WatchUi.pushView(buildBloodhoundMenu(app), new BloodhoundDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :clearPoints) {
             var confirmation = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.ConfirmClearPointsTitle)});
             confirmation.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelClearPoints), null, :clear, null));
             confirmation.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel, null));
             WatchUi.pushView(confirmation, new ClearPointsDelegate(app), WatchUi.SLIDE_UP);
+        } else if (id == :chat) {
+            WatchUi.pushView(buildChatMenu(app), new ChatMenuDelegate(app), WatchUi.SLIDE_LEFT);
         }
+    }
+}
+
+class BloodhoundDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        Menu2InputDelegate.initialize();
+        app = application;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :bloodhoundCompassToggle) {
+            app.setBloodhoundCompassEnabled(!app.isBloodhoundCompassEnabled());
+            item.setSubLabel(toolToggleLabel(app.isBloodhoundCompassEnabled()));
+            WatchUi.requestUpdate();
+        } else if (id == :bloodhoundProximityVibrationToggle) {
+            app.setBloodhoundProximityVibrationEnabled(!app.isBloodhoundProximityVibrationEnabled());
+            item.setSubLabel(toolToggleLabel(app.isBloodhoundProximityVibrationEnabled()));
+            WatchUi.requestUpdate();
+        } else if (id == :bloodhoundProximityRadius) {
+            WatchUi.pushView(buildBloodhoundRadiusMenu(), new BloodhoundValueDelegate(app, :radius, item), WatchUi.SLIDE_LEFT);
+        } else if (id == :bloodhoundProximityIntensity) {
+            WatchUi.pushView(buildBloodhoundIntensityMenu(), new BloodhoundValueDelegate(app, :intensity, item), WatchUi.SLIDE_LEFT);
+        }
+    }
+}
+
+class BloodhoundValueDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var setting as Symbol;
+    var parentItem as WatchUi.MenuItem;
+
+    function initialize(application as StandaloneApp, bloodhoundSetting as Symbol, item as WatchUi.MenuItem) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        setting = bloodhoundSetting;
+        parentItem = item;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var value = item.getId();
+        if (setting == :radius) {
+            app.setBloodhoundProximityRadius(value as Number);
+            parentItem.setSubLabel((value as Number).toString() + " meters");
+        } else {
+            app.setBloodhoundProximityIntensity(value as String);
+            parentItem.setSubLabel(value as String);
+        }
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
     }
 }
 

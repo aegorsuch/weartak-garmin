@@ -11,6 +11,17 @@ class StandaloneApp extends Application.AppBase {
     private var sensorInfo;
     private var locationServices as Boolean = true;
     private var physiologicalAlertsEnabled as Boolean = true;
+    private var batteryAlertsEnabled as Boolean = true;
+    private var immersionAlertsEnabled as Boolean = true;
+    private var lowPressureAlertsEnabled as Boolean = true;
+    private var highPressureAlertsEnabled as Boolean = true;
+    private var lowPressureThreshold as Number = 950;
+    private var highPressureThreshold as Number = 2000;
+    private var chatEnabled as Boolean = true;
+    private var bloodhoundCompassEnabled as Boolean = true;
+    private var bloodhoundProximityVibrationEnabled as Boolean = true;
+    private var bloodhoundProximityRadius as Number = 50;
+    private var bloodhoundProximityIntensity as String = "Single Burst";
     private var highRestingHeartRate as Number = 120;
     private var highRestingWarningLength as Number = 5;
     private var highRestingAlertLength as Number = 10;
@@ -63,6 +74,17 @@ class StandaloneApp extends Application.AppBase {
         if (storedValue != null) {
             physiologicalAlertsEnabled = storedValue as Boolean;
         }
+        batteryAlertsEnabled = storedBoolean("batteryAlertsEnabled", batteryAlertsEnabled);
+        immersionAlertsEnabled = storedBoolean("immersionAlertsEnabled", immersionAlertsEnabled);
+        lowPressureAlertsEnabled = storedBoolean("lowPressureAlertsEnabled", lowPressureAlertsEnabled);
+        highPressureAlertsEnabled = storedBoolean("highPressureAlertsEnabled", highPressureAlertsEnabled);
+        lowPressureThreshold = storedNumber("lowPressureThreshold", lowPressureThreshold);
+        highPressureThreshold = storedNumber("highPressureThreshold", highPressureThreshold);
+        chatEnabled = storedBoolean("chatEnabled", chatEnabled);
+        bloodhoundCompassEnabled = storedBoolean("bloodhoundCompassEnabled", bloodhoundCompassEnabled);
+        bloodhoundProximityVibrationEnabled = storedBoolean("bloodhoundProximityVibrationEnabled", bloodhoundProximityVibrationEnabled);
+        bloodhoundProximityRadius = storedNumber("bloodhoundProximityRadius", bloodhoundProximityRadius);
+        bloodhoundProximityIntensity = storedString("bloodhoundProximityIntensity", bloodhoundProximityIntensity);
         highRestingHeartRate = storedNumber("highRestingHeartRate", highRestingHeartRate);
         highRestingWarningLength = storedNumber("highRestingWarningLength", highRestingWarningLength);
         highRestingAlertLength = storedNumber("highRestingAlertLength", highRestingAlertLength);
@@ -94,6 +116,11 @@ class StandaloneApp extends Application.AppBase {
         return storedValue == null ? fallback : storedValue as Number;
     }
 
+    function storedBoolean(key as String, fallback as Boolean) as Boolean {
+        var storedValue = Application.Storage.getValue(key);
+        return storedValue == null ? fallback : storedValue as Boolean;
+    }
+
     function storedString(key as String, fallback as String) as String {
         var storedValue = Application.Storage.getValue(key);
         return storedValue == null ? fallback : storedValue as String;
@@ -106,6 +133,87 @@ class StandaloneApp extends Application.AppBase {
     function setPhysiologicalAlertsEnabled(enabled as Boolean) as Void {
         physiologicalAlertsEnabled = enabled;
         Application.Storage.setValue("physiologicalAlertsEnabled", enabled);
+    }
+
+    function isBatteryAlertsEnabled() as Boolean {
+        return batteryAlertsEnabled;
+    }
+
+    function setBatteryAlertsEnabled(enabled as Boolean) as Void {
+        batteryAlertsEnabled = enabled;
+        Application.Storage.setValue("batteryAlertsEnabled", enabled);
+    }
+
+    function isImmersionAlertsEnabled() as Boolean {
+        return immersionAlertsEnabled;
+    }
+
+    function setImmersionAlertsEnabled(enabled as Boolean) as Void {
+        immersionAlertsEnabled = enabled;
+        Application.Storage.setValue("immersionAlertsEnabled", enabled);
+    }
+
+    function isLowPressureAlertsEnabled() as Boolean {
+        return lowPressureAlertsEnabled;
+    }
+
+    function setLowPressureAlertsEnabled(enabled as Boolean) as Void {
+        lowPressureAlertsEnabled = enabled;
+        Application.Storage.setValue("lowPressureAlertsEnabled", enabled);
+    }
+
+    function isHighPressureAlertsEnabled() as Boolean {
+        return highPressureAlertsEnabled;
+    }
+
+    function setHighPressureAlertsEnabled(enabled as Boolean) as Void {
+        highPressureAlertsEnabled = enabled;
+        Application.Storage.setValue("highPressureAlertsEnabled", enabled);
+    }
+
+    function isChatEnabled() as Boolean {
+        return chatEnabled;
+    }
+
+    function setChatEnabled(enabled as Boolean) as Void {
+        chatEnabled = enabled;
+        Application.Storage.setValue("chatEnabled", enabled);
+    }
+
+    function isBloodhoundCompassEnabled() as Boolean {
+        return bloodhoundCompassEnabled;
+    }
+
+    function setBloodhoundCompassEnabled(enabled as Boolean) as Void {
+        bloodhoundCompassEnabled = enabled;
+        Application.Storage.setValue("bloodhoundCompassEnabled", enabled);
+    }
+
+    function isBloodhoundProximityVibrationEnabled() as Boolean {
+        return bloodhoundProximityVibrationEnabled;
+    }
+
+    function setBloodhoundProximityVibrationEnabled(enabled as Boolean) as Void {
+        bloodhoundProximityVibrationEnabled = enabled;
+        Application.Storage.setValue("bloodhoundProximityVibrationEnabled", enabled);
+    }
+
+    function getBloodhoundProximityRadius() as Number {
+        return bloodhoundProximityRadius;
+    }
+
+    function setBloodhoundProximityRadius(radius as Number) as Void {
+        bloodhoundProximityRadius = radius;
+        Application.Storage.setValue("bloodhoundProximityRadius", radius);
+    }
+
+    function getBloodhoundProximityIntensity() as String {
+        return bloodhoundProximityIntensity;
+    }
+
+    function setBloodhoundProximityIntensity(intensity as String) as Void {
+        bloodhoundProximityIntensity = intensity;
+        Application.Storage.setValue("bloodhoundProximityIntensity", intensity);
     }
 
     function getAlertSetting(setting as Symbol) as Number {
@@ -127,6 +235,10 @@ class StandaloneApp extends Application.AppBase {
             return exertionWarningLength;
         } else if (setting == :exertionAlertThreshold) {
             return exertionAlertThreshold;
+        } else if (setting == :lowPressureThreshold) {
+            return lowPressureThreshold;
+        } else if (setting == :highPressureThreshold) {
+            return highPressureThreshold;
         }
         return exertionAlertLength;
     }
@@ -160,6 +272,12 @@ class StandaloneApp extends Application.AppBase {
         } else if (setting == :exertionAlertThreshold) {
             exertionAlertThreshold = value;
             key = "exertionAlertThreshold";
+        } else if (setting == :lowPressureThreshold) {
+            lowPressureThreshold = value;
+            key = "lowPressureThreshold";
+        } else if (setting == :highPressureThreshold) {
+            highPressureThreshold = value;
+            key = "highPressureThreshold";
         } else {
             exertionAlertLength = value;
         }
@@ -320,8 +438,6 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function getInitialView() {
-        var mapView = getMapView();
-        mapView.setTakClient(takClient);
-        return [mapView, new StandaloneMapDelegate(mapView, true, self)];
+        return [buildMainMenu(self), new MainMenuDelegate(self)];
     }
 }

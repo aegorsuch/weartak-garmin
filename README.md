@@ -31,7 +31,10 @@ now:
 - Delete a point.
 - Pan, zoom, and recenter the map.
 - Show the current watch position on the map.
-- Configure physiological and exertion alerts plus a BATDOK medical profile.
+- Configure physiological, exertion, environmental, pressure, and battery alerts
+	plus a BATDOK medical profile.
+- Configure Chat and Bloodhound/Compass tools, including proximity vibration,
+	radius, and intensity preferences.
 - Publish local point changes as marker operations to the ATAK companion.
 
 The following are still planned capabilities and are not the current scope of
