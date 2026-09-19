@@ -3,13 +3,25 @@
 WearTAK-Garmin is a standalone Garmin Connect IQ watch application for basic
 Team Awareness Kit (TAK) operational awareness. It is designed for Garmin
 watches with maps and GPS, currently targeting the fenix 7X, Tactix 8 class,
-and fēnix 8 class devices. Tactix Delta hardware is expected to be compatible,
-but its product target is not recognized by the installed SDK yet.
+fēnix 8 class, and fenix 6X Pro / Tactix Delta class devices.
 
 ## Project links
 
 - Personal GitHub: https://github.com/aegorsuch/weartak-garmin
 - Government repo: https://git.tak.gov/core/weartak-core/weartak-garmin
+
+## Installation
+
+1. Download `WearTAK-Garmin.iq` from the latest GitHub release.
+2. Connect the watch to your computer with its USB cable and wait for it to
+	appear as a removable drive.
+3. Open the watch drive and navigate to `GARMIN/Apps`.
+4. Drag `WearTAK-Garmin.iq` into the `GARMIN/Apps` folder.
+5. Safely eject the watch, disconnect the USB cable, and launch WearTAK from
+	the watch's app list.
+
+The `.iq` package supports all listed watch targets. Garmin uses the watch's
+system language for localized app text.
 
 The app uses Garmin Connect IQ phone messages to relay watch input to the
 WearTAK ATAK companion. ATAK owns TAK server connectivity, mTLS credentials,
@@ -43,12 +55,8 @@ now:
 - Configure physiological, exertion, environmental, pressure, and battery alerts
 	plus a BATDOK medical profile. Alert families default to off until the user
 	enables them.
-- Select an in-app language preference for English, Arabic, Bulgarian, Croatian,
-	Czech, Danish, Dutch, Estonian, Finnish, French, German, Greek, Hebrew,
-	Hungarian, Indonesian, Italian, Japanese, Korean, Latvian, Lithuanian,
-	Norwegian, Polish, Portuguese, Romanian, Russian, Slovak, Slovenian, Spanish,
-	Swedish, Thai, Turkish, Ukrainian, or Vietnamese. The manifest also
-	declares those languages for Garmin store/device metadata.
+- Use localized app text based on the watch's system language. The manifest
+	declares the supported languages for Garmin store/device metadata.
 - Configure Chat and Navigation tools, including proximity vibration, radius,
 	and intensity preferences.
 
@@ -65,12 +73,8 @@ this build:
 
 ## Using the app
 
-1. Open **Device Preferences** to choose a language or maintain user metrics.
-	When the saved language is not English, the path back
-	to English includes bilingual labels such as localized **Settings** plus
-	`(Settings)`, localized **Device Preferences** plus `(Device Preferences)`,
-	and localized **Language** plus `(Language)`. Each language option also
-	includes its English name.
+1. Open **Device Preferences** to maintain user metrics. App text follows the
+	watch's system language.
 2. Open **Alerting Preferences** to opt in to local watch alerts. Warning
 	settings notify the watch user locally; full alert routing across TAK is held
 	for the future ATAK-device connection.
@@ -96,10 +100,9 @@ services, Compose, Tiles, MDM managed configuration, Android plugins, Samsung
 Health APIs, or APK tooling. It sends only dictionary messages through Garmin
 Connect; all TAK network transport and mTLS remain on ATAK.
 
-Garmin localized resources are selected by the watch/Garmin locale. The in-app
-language preference is saved and shown in Device Preferences, but app-controlled
-runtime language switching requires each app label to route through an internal
-translation lookup instead of Garmin's locale resource loader.
+Garmin localized resources are selected automatically by the watch's system
+locale via Connect IQ's built-in `Rez.Strings` mechanism; there is no in-app
+language override.
 
 Treat location and saved waypoints as sensitive data. Configure ATAK's TAK
 connection according to the deployment's operational policy.
@@ -164,9 +167,9 @@ the private `developer_key.der` file.
 ## Releasing
 
 Releases are built and published manually; there is no CI automation. The
-`.iq` bundle covers all three supported products (fenix7x, fenix847mm,
-fenix8solar51mm) in a single file, so it is the only artifact attached to a
-release.
+`.iq` bundle covers all five supported products (fenix7x, fenix847mm,
+fenix8solar47mm, fenix8solar51mm, fenix6xpro) in a single file, so it is the
+only artifact attached to a release.
 
 1. Bump `APP_VERSION` in `source/StandaloneApp.mc` to the new version and
    commit it (consistent with the government repo being canonical, merge this
