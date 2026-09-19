@@ -2,7 +2,8 @@
 
 WearTAK-Garmin is a standalone Garmin Connect IQ watch application for basic
 Team Awareness Kit (TAK) operational awareness. It is designed for Garmin
-watches with maps and GPS, currently targeting the fenix 7X.
+watches with maps and GPS, currently targeting the fenix 7X and Tactix 8 class
+devices.
 
 ## Project links
 
@@ -32,7 +33,12 @@ now:
 - Pan, zoom, and recenter the map.
 - Show the current watch position on the map.
 - Configure physiological, exertion, environmental, pressure, and battery alerts
-	plus a BATDOK medical profile.
+	plus a BATDOK medical profile. Alert families default to off until the user
+	enables them.
+- Select an in-app language preference for English, Arabic, Danish, Dutch,
+	French, German, Hebrew, Italian, Japanese, Korean, Norwegian, Polish,
+	Romanian, Russian, Spanish, Swedish, Thai, or Ukrainian. The manifest also
+	declares those languages for Garmin store/device metadata.
 - Configure Chat and Bloodhound/Compass tools, including proximity vibration,
 	radius, and intensity preferences.
 - Publish local point changes as marker operations to the ATAK companion.
@@ -53,9 +59,18 @@ this build:
 2. Select **Start relay**. The watch waits for Garmin Connect to acknowledge
 	its relay handshake and requests an initial map entity sync from the ATAK
 	companion.
-3. Open **Map** to browse the map, center on the current position, and add
+3. Open **Device Preferences** to enable location services, choose a language,
+	or maintain user metrics. When the saved language is not English, the path back
+	to English includes bilingual labels such as localized **Settings** plus
+	`(Settings)`, localized **Device Preferences** plus `(Device Preferences)`,
+	and localized **Language** plus `(Language)`. Each language option also
+	includes its English name.
+4. Open **Alerting Preferences** to opt in to local watch alerts. Warning
+	settings notify the watch user locally; full alert routing across TAK is held
+	for the future ATAK-device connection.
+5. Open **Map** to browse the map, center on the current position, and add
 	local points.
-4. Select **SOS** from the main menu for a confirmed emergency action, or
+6. Select **SOS** from the main menu for a confirmed emergency action, or
 	select **Clear SOS** after an alert is active.
 
 The ATAK companion may send incoming entities to the watch using `entity` or
@@ -75,6 +90,11 @@ Connect IQ is not Wear OS. This application cannot use Android foreground
 services, Compose, Tiles, MDM managed configuration, Android plugins, Samsung
 Health APIs, or APK tooling. It sends only dictionary messages through Garmin
 Connect; all TAK network transport and mTLS remain on ATAK.
+
+Garmin localized resources are selected by the watch/Garmin locale. The in-app
+language preference is saved and shown in Device Preferences, but app-controlled
+runtime language switching requires each app label to route through an internal
+translation lookup instead of Garmin's locale resource loader.
 
 Treat location and saved waypoints as sensitive data. Configure ATAK's TAK
 connection according to the deployment's operational policy.

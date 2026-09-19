@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">แผนที่</string>
+    <string id="MenuItemSettings">การตั้งค่า</string>
+    <string id="MenuTitleSettings">การตั้งค่า</string>
+    <string id="MenuTitleDevicePreferences">การตั้งค่าอุปกรณ์</string>
+    <string id="MenuTitleNetworkPreferences">การตั้งค่าเครือข่าย</string>
+    <string id="MenuTitleAlertingPreferences">การตั้งค่าการแจ้งเตือน</string>
+    <string id="MenuTitleToolPreferences">การตั้งค่าเครื่องมือ</string>
+    <string id="MenuItemLocationServices">บริการตำแหน่ง</string>
+    <string id="LocationServicesEnabled">เปิด</string>
+    <string id="LocationServicesDisabled">ปิด</string>
+    <string id="MenuItemChat">แชท</string>
+    <string id="MenuItemSos">แจ้งเตือนด้วยตนเอง</string>
+    <string id="MenuItemTakServer">เชื่อมต่อ ATAK</string>
+    <string id="MenuItemClearPoints">ล้าง 2525D</string>
+    <string id="ConfirmClearPointsTitle">ล้างจุดของแอป?</string>
+    <string id="LabelClearPoints">ล้างจุดของแอป</string>
+
+    <string id="MenuTitleChat">แชท</string>
+    <string id="MenuTitleQuickReply">ตอบกลับด่วน</string>
+    <string id="MenuTitleSos">แจ้งเตือนด้วยตนเอง</string>
+    <string id="ChatEmpty">ไม่มีข้อความ</string>
+    <string id="ChatUnknownSender">ไม่ทราบ</string>
+
+    <string id="MenuTitleTakServer">เชื่อมต่อ ATAK</string>
+    <string id="LabelServerName">ชื่อบนนาฬิกา</string>
+    <string id="LabelTeam">ทีม</string>
+    <string id="LabelRole">บทบาท</string>
+    <string id="LabelUsername">ชื่อผู้ใช้</string>
+    <string id="LabelPassword">รหัสผ่าน</string>
+    <string id="LabelPort">พอร์ต</string>
+    <string id="LabelTrackingMode">โหมดติดตาม</string>
+    <string id="TrackingModeDynamic">ไดนามิก</string>
+    <string id="TrackingModeStatic">คงที่</string>
+    <string id="LabelAlertInterval">วินาทีแจ้งเตือน</string>
+    <string id="LabelMovingInterval">วินาทีเคลื่อนที่</string>
+    <string id="LabelStationaryInterval">วินาทีหยุดนิ่ง</string>
+    <string id="LabelStaticInterval">วินาทีคงที่</string>
+    <string id="LabelIncomingCotPath">เส้นทาง CoT ขาเข้า</string>
+    <string id="LabelIncomingCotInterval">วินาทีขาเข้า</string>
+    <string id="LabelHealthTelemetry">ข้อมูลสุขภาพ</string>
+    <string id="LabelEnabled">เปิดใช้งาน</string>
+    <string id="LabelDisabled">ปิดใช้งาน</string>
+    <string id="LabelSosControl">แจ้งเตือนด้วยตนเอง</string>
+    <string id="LabelSendSos">ส่ง SOS</string>
+    <string id="LabelClearSos">ล้าง SOS</string>
+    <string id="LabelCancel">ยกเลิก</string>
+    <string id="ConfirmSosTitle">ส่ง SOS?</string>
+    <string id="LabelConnect">เริ่มรีเลย์</string>
+    <string id="LabelDisconnect">หยุดรีเลย์</string>
+    <string id="LabelNotSet">ไม่ได้ตั้งค่า</string>
+    <string id="StatusIdle">รีเลย์หยุดแล้ว</string>
+    <string id="StatusConnecting">กำลังเชื่อมต่อ...</string>
+    <string id="StatusRetrying">กำลังลองใหม่</string>
+    <string id="StatusConnected">รีเลย์ทำงาน</string>
+    <string id="StatusFailed">ล้มเหลว</string>
+</resources>

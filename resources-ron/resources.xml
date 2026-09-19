@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Harta</string>
+    <string id="MenuItemSettings">Setari</string>
+    <string id="MenuTitleSettings">Setari</string>
+    <string id="MenuTitleDevicePreferences">Preferinte dispozitiv</string>
+    <string id="MenuTitleNetworkPreferences">Preferinte retea</string>
+    <string id="MenuTitleAlertingPreferences">Preferinte alerte</string>
+    <string id="MenuTitleToolPreferences">Preferinte unelte</string>
+    <string id="MenuItemLocationServices">Servicii locatie</string>
+    <string id="LocationServicesEnabled">Pornit</string>
+    <string id="LocationServicesDisabled">Oprit</string>
+    <string id="MenuItemChat">Chat</string>
+    <string id="MenuItemSos">Alerta manuala</string>
+    <string id="MenuItemTakServer">Conectare ATAK</string>
+    <string id="MenuItemClearPoints">Sterge 2525D</string>
+    <string id="ConfirmClearPointsTitle">Sterge punctele?</string>
+    <string id="LabelClearPoints">Sterge punctele</string>
+
+    <string id="MenuTitleChat">Chat</string>
+    <string id="MenuTitleQuickReply">Raspuns rapid</string>
+    <string id="MenuTitleSos">Alerta manuala</string>
+    <string id="ChatEmpty">Niciun mesaj</string>
+    <string id="ChatUnknownSender">Necunoscut</string>
+
+    <string id="MenuTitleTakServer">Conectare ATAK</string>
+    <string id="LabelServerName">Nume ceas</string>
+    <string id="LabelTeam">Echipa</string>
+    <string id="LabelRole">Rol</string>
+    <string id="LabelUsername">Utilizator</string>
+    <string id="LabelPassword">Parola</string>
+    <string id="LabelPort">Port</string>
+    <string id="LabelTrackingMode">Mod urmarire</string>
+    <string id="TrackingModeDynamic">Dinamic</string>
+    <string id="TrackingModeStatic">Static</string>
+    <string id="LabelAlertInterval">Secunde alerta</string>
+    <string id="LabelMovingInterval">Secunde miscare</string>
+    <string id="LabelStationaryInterval">Secunde stationar</string>
+    <string id="LabelStaticInterval">Secunde static</string>
+    <string id="LabelIncomingCotPath">Cale CoT primita</string>
+    <string id="LabelIncomingCotInterval">Secunde primire</string>
+    <string id="LabelHealthTelemetry">Telemetrie sanatate</string>
+    <string id="LabelEnabled">Activat</string>
+    <string id="LabelDisabled">Dezactivat</string>
+    <string id="LabelSosControl">Alerta manuala</string>
+    <string id="LabelSendSos">Trimite SOS</string>
+    <string id="LabelClearSos">Sterge SOS</string>
+    <string id="LabelCancel">Anuleaza</string>
+    <string id="ConfirmSosTitle">Trimite SOS?</string>
+    <string id="LabelConnect">Porneste releul</string>
+    <string id="LabelDisconnect">Opreste releul</string>
+    <string id="LabelNotSet">Nesetat</string>
+    <string id="StatusIdle">Releu oprit</string>
+    <string id="StatusConnecting">Conectare...</string>
+    <string id="StatusRetrying">Reincercare</string>
+    <string id="StatusConnected">Releu activ</string>
+    <string id="StatusFailed">Esec</string>
+</resources>

@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Kart</string>
+    <string id="MenuItemSettings">Innstillinger</string>
+    <string id="MenuTitleSettings">Innstillinger</string>
+    <string id="MenuTitleDevicePreferences">Enhetsvalg</string>
+    <string id="MenuTitleNetworkPreferences">Nettverksvalg</string>
+    <string id="MenuTitleAlertingPreferences">Varslingsvalg</string>
+    <string id="MenuTitleToolPreferences">Verktoyvalg</string>
+    <string id="MenuItemLocationServices">Posisjonstjenester</string>
+    <string id="LocationServicesEnabled">Pa</string>
+    <string id="LocationServicesDisabled">Av</string>
+    <string id="MenuItemChat">Chat</string>
+    <string id="MenuItemSos">Manuelt varsel</string>
+    <string id="MenuItemTakServer">ATAK-tilkobling</string>
+    <string id="MenuItemClearPoints">Tomm 2525D</string>
+    <string id="ConfirmClearPointsTitle">Slette app-punkter?</string>
+    <string id="LabelClearPoints">Slett app-punkter</string>
+
+    <string id="MenuTitleChat">Chat</string>
+    <string id="MenuTitleQuickReply">Hurtigsvar</string>
+    <string id="MenuTitleSos">Manuelt varsel</string>
+    <string id="ChatEmpty">Ingen meldinger</string>
+    <string id="ChatUnknownSender">Ukjent</string>
+
+    <string id="MenuTitleTakServer">ATAK-tilkobling</string>
+    <string id="LabelServerName">Klokkenavn</string>
+    <string id="LabelTeam">Lag</string>
+    <string id="LabelRole">Rolle</string>
+    <string id="LabelUsername">Brukernavn</string>
+    <string id="LabelPassword">Passord</string>
+    <string id="LabelPort">Port</string>
+    <string id="LabelTrackingMode">Sporingsmodus</string>
+    <string id="TrackingModeDynamic">Dynamisk</string>
+    <string id="TrackingModeStatic">Statisk</string>
+    <string id="LabelAlertInterval">Varselsekunder</string>
+    <string id="LabelMovingInterval">Sekunder i bevegelse</string>
+    <string id="LabelStationaryInterval">Sekunder stille</string>
+    <string id="LabelStaticInterval">Statiske sekunder</string>
+    <string id="LabelIncomingCotPath">Innkommende CoT-bane</string>
+    <string id="LabelIncomingCotInterval">Innkommende sekunder</string>
+    <string id="LabelHealthTelemetry">Helse-telemetri</string>
+    <string id="LabelEnabled">Aktivert</string>
+    <string id="LabelDisabled">Deaktivert</string>
+    <string id="LabelSosControl">Manuelt varsel</string>
+    <string id="LabelSendSos">Send SOS</string>
+    <string id="LabelClearSos">Tomm SOS</string>
+    <string id="LabelCancel">Avbryt</string>
+    <string id="ConfirmSosTitle">Sende SOS?</string>
+    <string id="LabelConnect">Start rele</string>
+    <string id="LabelDisconnect">Stopp rele</string>
+    <string id="LabelNotSet">Ikke satt</string>
+    <string id="StatusIdle">Rele stoppet</string>
+    <string id="StatusConnecting">Kobler til...</string>
+    <string id="StatusRetrying">Prover igjen</string>
+    <string id="StatusConnected">Rele aktivt</string>
+    <string id="StatusFailed">Mislyktes</string>
+</resources>

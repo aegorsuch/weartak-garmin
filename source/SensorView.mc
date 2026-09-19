@@ -50,7 +50,8 @@ class PhysiologicalSensorsView extends WatchUi.View {
         var centerX = System.getDeviceSettings().screenWidth / 2;
         dc.drawText(centerX, 8, Graphics.FONT_MEDIUM, "Physiology", Graphics.TEXT_JUSTIFY_CENTER);
         var sensorInfo = app.getSensorInfo();
-        drawReading(dc, centerX, 50, "Heart Rate", sensorInfo != null ? formatValue(sensorInfo.heartRate, " BPM") : "Unavailable");
+        drawReading(dc, centerX, 50, "Exertion", formatValue(app.getExertionPercent(), "%"));
+        drawReading(dc, centerX, 78, "Heart Rate", sensorInfo != null ? formatValue(sensorInfo.heartRate, " BPM") : "Unavailable");
     }
 
     function drawReading(dc, x, y, label, value) {

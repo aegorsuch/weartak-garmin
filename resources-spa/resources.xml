@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Mapa</string>
+    <string id="MenuItemSettings">Ajustes</string>
+    <string id="MenuTitleSettings">Ajustes</string>
+    <string id="MenuTitleDevicePreferences">Preferencias del dispositivo</string>
+    <string id="MenuTitleNetworkPreferences">Preferencias de red</string>
+    <string id="MenuTitleAlertingPreferences">Preferencias de alertas</string>
+    <string id="MenuTitleToolPreferences">Preferencias de herramientas</string>
+    <string id="MenuItemLocationServices">Servicios de ubicacion</string>
+    <string id="LocationServicesEnabled">Activado</string>
+    <string id="LocationServicesDisabled">Desactivado</string>
+    <string id="MenuItemChat">Chat</string>
+    <string id="MenuItemSos">Alerta manual</string>
+    <string id="MenuItemTakServer">Conexion ATAK</string>
+    <string id="MenuItemClearPoints">Borrar 2525D</string>
+    <string id="ConfirmClearPointsTitle">Borrar puntos?</string>
+    <string id="LabelClearPoints">Borrar puntos</string>
+
+    <string id="MenuTitleChat">Chat</string>
+    <string id="MenuTitleQuickReply">Respuesta rapida</string>
+    <string id="MenuTitleSos">Alerta manual</string>
+    <string id="ChatEmpty">Sin mensajes</string>
+    <string id="ChatUnknownSender">Desconocido</string>
+
+    <string id="MenuTitleTakServer">Conexion ATAK</string>
+    <string id="LabelServerName">Nombre del reloj</string>
+    <string id="LabelTeam">Equipo</string>
+    <string id="LabelRole">Rol</string>
+    <string id="LabelUsername">Usuario</string>
+    <string id="LabelPassword">Contrasena</string>
+    <string id="LabelPort">Puerto</string>
+    <string id="LabelTrackingMode">Modo de seguimiento</string>
+    <string id="TrackingModeDynamic">Dinamico</string>
+    <string id="TrackingModeStatic">Estatico</string>
+    <string id="LabelAlertInterval">Segundos de alerta</string>
+    <string id="LabelMovingInterval">Segundos en movimiento</string>
+    <string id="LabelStationaryInterval">Segundos detenido</string>
+    <string id="LabelStaticInterval">Segundos estaticos</string>
+    <string id="LabelIncomingCotPath">Ruta CoT entrante</string>
+    <string id="LabelIncomingCotInterval">Segundos entrantes</string>
+    <string id="LabelHealthTelemetry">Telemetria de salud</string>
+    <string id="LabelEnabled">Activado</string>
+    <string id="LabelDisabled">Desactivado</string>
+    <string id="LabelSosControl">Alerta manual</string>
+    <string id="LabelSendSos">Enviar SOS</string>
+    <string id="LabelClearSos">Borrar SOS</string>
+    <string id="LabelCancel">Cancelar</string>
+    <string id="ConfirmSosTitle">Enviar SOS?</string>
+    <string id="LabelConnect">Iniciar relay</string>
+    <string id="LabelDisconnect">Detener relay</string>
+    <string id="LabelNotSet">No configurado</string>
+    <string id="StatusIdle">Relay detenido</string>
+    <string id="StatusConnecting">Conectando...</string>
+    <string id="StatusRetrying">Reintentando</string>
+    <string id="StatusConnected">Relay activo</string>
+    <string id="StatusFailed">Fallo</string>
+</resources>

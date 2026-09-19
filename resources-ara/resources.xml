@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">الخريطة</string>
+    <string id="MenuItemSettings">الإعدادات</string>
+    <string id="MenuTitleSettings">الإعدادات</string>
+    <string id="MenuTitleDevicePreferences">تفضيلات الجهاز</string>
+    <string id="MenuTitleNetworkPreferences">تفضيلات الشبكة</string>
+    <string id="MenuTitleAlertingPreferences">تفضيلات التنبيهات</string>
+    <string id="MenuTitleToolPreferences">تفضيلات الأدوات</string>
+    <string id="MenuItemLocationServices">خدمات الموقع</string>
+    <string id="LocationServicesEnabled">تشغيل</string>
+    <string id="LocationServicesDisabled">إيقاف</string>
+    <string id="MenuItemChat">دردشة</string>
+    <string id="MenuItemSos">تنبيه يدوي</string>
+    <string id="MenuItemTakServer">اتصال ATAK</string>
+    <string id="MenuItemClearPoints">مسح 2525D</string>
+    <string id="ConfirmClearPointsTitle">مسح نقاط التطبيق؟</string>
+    <string id="LabelClearPoints">مسح نقاط التطبيق</string>
+
+    <string id="MenuTitleChat">دردشة</string>
+    <string id="MenuTitleQuickReply">رد سريع</string>
+    <string id="MenuTitleSos">تنبيه يدوي</string>
+    <string id="ChatEmpty">لا توجد رسائل</string>
+    <string id="ChatUnknownSender">غير معروف</string>
+
+    <string id="MenuTitleTakServer">اتصال ATAK</string>
+    <string id="LabelServerName">اسم الساعة</string>
+    <string id="LabelTeam">الفريق</string>
+    <string id="LabelRole">الدور</string>
+    <string id="LabelUsername">اسم المستخدم</string>
+    <string id="LabelPassword">كلمة المرور</string>
+    <string id="LabelPort">المنفذ</string>
+    <string id="LabelTrackingMode">وضع التتبع</string>
+    <string id="TrackingModeDynamic">ديناميكي</string>
+    <string id="TrackingModeStatic">ثابت</string>
+    <string id="LabelAlertInterval">ثواني التنبيه</string>
+    <string id="LabelMovingInterval">ثواني الحركة</string>
+    <string id="LabelStationaryInterval">ثواني الثبات</string>
+    <string id="LabelStaticInterval">ثواني ثابتة</string>
+    <string id="LabelIncomingCotPath">مسار CoT الوارد</string>
+    <string id="LabelIncomingCotInterval">ثواني واردة</string>
+    <string id="LabelHealthTelemetry">قياسات الصحة</string>
+    <string id="LabelEnabled">مفعل</string>
+    <string id="LabelDisabled">معطل</string>
+    <string id="LabelSosControl">تنبيه يدوي</string>
+    <string id="LabelSendSos">إرسال SOS</string>
+    <string id="LabelClearSos">مسح SOS</string>
+    <string id="LabelCancel">إلغاء</string>
+    <string id="ConfirmSosTitle">إرسال SOS؟</string>
+    <string id="LabelConnect">بدء الترحيل</string>
+    <string id="LabelDisconnect">إيقاف الترحيل</string>
+    <string id="LabelNotSet">غير محدد</string>
+    <string id="StatusIdle">الترحيل متوقف</string>
+    <string id="StatusConnecting">جار الاتصال...</string>
+    <string id="StatusRetrying">إعادة المحاولة</string>
+    <string id="StatusConnected">الترحيل نشط</string>
+    <string id="StatusFailed">فشل</string>
+</resources>

@@ -4,27 +4,40 @@ import Toybox.WatchUi;
 // Builds the app's main menu: choose the map view or manage the ATAK relay.
 function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleMain)});
-    menu.addItem(new WatchUi.MenuItem("Clear 2525D", null, :clearPoints, null));
-    menu.addItem(new WatchUi.MenuItem("Exit", null, :exit, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:clear2525d), null, :clearPoints, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:environment), null, :environment, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:exit), null, :exit, null));
     menu.addItem(new WatchUi.MenuItem(manualAlertMenuLabel(app), null, :sos, null));
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemMap), null, :map, null));
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemSettings), null, :settings, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:map), null, :map, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:physiology), null, :physiology, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:settings), null, :settings, null));
     return menu;
 }
 
-function buildSettingsMenu() as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleSettings)});
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuTitleDevicePreferences), null, :devicePreferences, null));
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuTitleNetworkPreferences), null, :networkPreferences, null));
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuTitleAlertingPreferences), null, :alertingPreferences, null));
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuTitleToolPreferences), null, :toolPreferences, null));
+function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => app.text(:settings)});
+    menu.addItem(new WatchUi.MenuItem(app.text(:devicePreferences), null, :devicePreferences, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:networkPreferences), null, :networkPreferences, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:alertingPreferences), null, :alertingPreferences, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:toolPreferences), null, :toolPreferences, null));
     return menu;
 }
 
 function buildDevicePreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleDevicePreferences)});
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemLocationServices), locationServicesLabel(app), :locationServices, null));
-    menu.addItem(new WatchUi.MenuItem("My User Metrics", null, :userMetrics, null));
+    var menu = new WatchUi.Menu2({:title => app.text(:devicePreferences)});
+    menu.addItem(new WatchUi.MenuItem(app.text(:locationServices), locationServicesLabel(app), :locationServices, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:language), app.languageLabel(app.getLanguage()), :language, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:userMetrics), null, :userMetrics, null));
+    return menu;
+}
+
+function buildLanguageMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => app.text(:language)});
+    var languages = app.languageOptions();
+    for (var i = 0; i < languages.size(); i++) {
+        var language = languages[i] as String;
+        menu.addItem(new WatchUi.MenuItem(app.languageLabel(language), language.equals(app.getLanguage()) ? app.text(:selected) : null, language, null));
+    }
     return menu;
 }
 
@@ -35,18 +48,18 @@ function buildNetworkPreferencesMenu() as WatchUi.Menu2 {
 }
 
 function buildAlertingPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleAlertingPreferences)});
-    menu.addItem(new WatchUi.MenuItem("Physiological Alerts", null, :physiologicalAlerts, null));
-    menu.addItem(new WatchUi.MenuItem("Environmental Alerts", null, :environmentalAlerts, null));
+    var menu = new WatchUi.Menu2({:title => app.text(:alertingPreferences)});
+    menu.addItem(new WatchUi.MenuItem(app.text(:physiologicalAlerts), null, :physiologicalAlerts, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:environmentalAlerts), null, :environmentalAlerts, null));
     menu.addItem(new WatchUi.MenuItem("----------------", null, :alertSeparator, null));
-    menu.addItem(new WatchUi.MenuItem("Battery Alerts", batteryAlertsLabel(app), :batteryAlertsToggle, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:batteryAlerts), batteryAlertsLabel(app), :batteryAlertsToggle, null));
     return menu;
 }
 
 function buildEnvironmentalAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Environmental Alerts"});
-    menu.addItem(new WatchUi.MenuItem("Immersion Alerts", immersionAlertsLabel(app), :immersionAlertsToggle, null));
-    menu.addItem(new WatchUi.MenuItem("Atm Pressure Alerts", null, :atmPressureAlerts, null));
+    var menu = new WatchUi.Menu2({:title => app.text(:environmentalAlerts)});
+    menu.addItem(new WatchUi.MenuItem(app.text(:immersionAlerts), immersionAlertsLabel(app), :immersionAlertsToggle, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:atmPressureAlerts), null, :atmPressureAlerts, null));
     return menu;
 }
 
@@ -60,10 +73,10 @@ function buildAtmPressureAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 }
 
 function buildPhysiologicalAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Physiological Alerts"});
-    menu.addItem(new WatchUi.MenuItem("Physiological Alerts", physiologicalAlertsLabel(app), :physiologicalAlertsToggle, null));
-    menu.addItem(new WatchUi.MenuItem("Resting Heart Rate Alerts", null, :restingHeartRateAlerts, null));
-    menu.addItem(new WatchUi.MenuItem("Exertion Alerts", null, :exertionAlerts, null));
+    var menu = new WatchUi.Menu2({:title => app.text(:physiologicalAlerts)});
+    menu.addItem(new WatchUi.MenuItem(app.text(:physiologicalAlerts), physiologicalAlertsLabel(app), :physiologicalAlertsToggle, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:restingHeartRateAlerts), null, :restingHeartRateAlerts, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:exertionAlerts), null, :exertionAlerts, null));
     return menu;
 }
 
@@ -245,10 +258,10 @@ function profileSettingLabel(setting as Symbol, value) as String {
 }
 
 function buildToolPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleToolPreferences)});
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemChat), toolToggleLabel(app.isChatEnabled()), :chatToggle, null));
-    menu.addItem(new WatchUi.MenuItem("Bloodhound/Compass", null, :bloodhoundCompass, null));
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.MenuItemClearPoints), null, :clearPoints, null));
+    var menu = new WatchUi.Menu2({:title => app.text(:toolPreferences)});
+    menu.addItem(new WatchUi.MenuItem(app.text(:chat), toolToggleLabel(app.isChatEnabled()), :chatToggle, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:bloodhoundCompass), null, :bloodhoundCompass, null));
+    menu.addItem(new WatchUi.MenuItem(app.text(:clear2525d), null, :clearPoints, null));
     return menu;
 }
 
@@ -278,12 +291,12 @@ function toolToggleLabel(enabled as Boolean) as String {
 }
 
 function locationServicesLabel(app as StandaloneApp) as String {
-    return app.isLocationServicesEnabled() ? WatchUi.loadResource(Rez.Strings.LocationServicesEnabled) : WatchUi.loadResource(Rez.Strings.LocationServicesDisabled);
+    return app.isLocationServicesEnabled() ? app.text(:on) : app.text(:off);
 }
 
 function manualAlertMenuLabel(app as StandaloneApp) as String {
     var client = app.getTakClient();
-    return client.isAlerting() ? "Manual Alert (" + client.getAlertType() + " Active)" : "Manual Alert";
+    return client.isAlerting() ? app.text(:manualAlert) + " (" + client.getAlertType() + " Active)" : app.text(:manualAlert);
 }
 
 class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
@@ -300,6 +313,10 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
             var mapView = app.getMapView();
             mapView.setTakClient(app.getTakClient());
             WatchUi.pushView(mapView, new StandaloneMapDelegate(mapView, false, app), WatchUi.SLIDE_LEFT);
+        } else if (id == :environment) {
+            WatchUi.pushView(new EnvironmentalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
+        } else if (id == :physiology) {
+            WatchUi.pushView(new PhysiologicalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
         } else if (id == :chat) {
             var chatMenu = buildChatMenu(app);
             WatchUi.pushView(chatMenu, new ChatMenuDelegate(app), WatchUi.SLIDE_LEFT);
@@ -314,7 +331,7 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
             var takMenu = buildTakServerMenu();
             WatchUi.pushView(takMenu, new TakServerMenuDelegate(app, takMenu), WatchUi.SLIDE_LEFT);
         } else if (id == :settings) {
-            WatchUi.pushView(buildSettingsMenu(), new SettingsMenuDelegate(app), WatchUi.SLIDE_LEFT);
+            WatchUi.pushView(buildSettingsMenu(app), new SettingsMenuDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :exit) {
             WatchUi.popView(WatchUi.SLIDE_DOWN);
         } else if (id == :clearPoints) {
@@ -366,9 +383,28 @@ class DevicePreferencesDelegate extends WatchUi.Menu2InputDelegate {
             app.setLocationServices(!app.isLocationServicesEnabled());
             item.setSubLabel(locationServicesLabel(app));
             WatchUi.requestUpdate();
+        } else if (item.getId() == :language) {
+            WatchUi.pushView(buildLanguageMenu(app), new LanguageDelegate(app, item), WatchUi.SLIDE_LEFT);
         } else if (item.getId() == :userMetrics) {
             WatchUi.pushView(buildUserMetricsMenu(), new UserMetricsDelegate(app), WatchUi.SLIDE_LEFT);
         }
+    }
+}
+
+class LanguageDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var parentItem as WatchUi.MenuItem;
+
+    function initialize(application as StandaloneApp, languageItem as WatchUi.MenuItem) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        parentItem = languageItem;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var language = item.getId() as String;
+        app.setLanguage(language);
+        WatchUi.switchToView(buildMainMenu(app), new MainMenuDelegate(app), WatchUi.SLIDE_RIGHT);
     }
 }
 

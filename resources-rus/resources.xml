@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Карта</string>
+    <string id="MenuItemSettings">Настройки</string>
+    <string id="MenuTitleSettings">Настройки</string>
+    <string id="MenuTitleDevicePreferences">Параметры устройства</string>
+    <string id="MenuTitleNetworkPreferences">Параметры сети</string>
+    <string id="MenuTitleAlertingPreferences">Параметры оповещений</string>
+    <string id="MenuTitleToolPreferences">Параметры инструментов</string>
+    <string id="MenuItemLocationServices">Службы геолокации</string>
+    <string id="LocationServicesEnabled">Вкл.</string>
+    <string id="LocationServicesDisabled">Выкл.</string>
+    <string id="MenuItemChat">Чат</string>
+    <string id="MenuItemSos">Ручное оповещение</string>
+    <string id="MenuItemTakServer">Подключение ATAK</string>
+    <string id="MenuItemClearPoints">Очистить 2525D</string>
+    <string id="ConfirmClearPointsTitle">Очистить точки?</string>
+    <string id="LabelClearPoints">Очистить точки</string>
+
+    <string id="MenuTitleChat">Чат</string>
+    <string id="MenuTitleQuickReply">Быстрый ответ</string>
+    <string id="MenuTitleSos">Ручное оповещение</string>
+    <string id="ChatEmpty">Нет сообщений</string>
+    <string id="ChatUnknownSender">Неизвестно</string>
+
+    <string id="MenuTitleTakServer">Подключение ATAK</string>
+    <string id="LabelServerName">Имя часов</string>
+    <string id="LabelTeam">Команда</string>
+    <string id="LabelRole">Роль</string>
+    <string id="LabelUsername">Имя пользователя</string>
+    <string id="LabelPassword">Пароль</string>
+    <string id="LabelPort">Порт</string>
+    <string id="LabelTrackingMode">Режим отслеживания</string>
+    <string id="TrackingModeDynamic">Динамический</string>
+    <string id="TrackingModeStatic">Статический</string>
+    <string id="LabelAlertInterval">Секунды оповещения</string>
+    <string id="LabelMovingInterval">Секунды движения</string>
+    <string id="LabelStationaryInterval">Секунды стоянки</string>
+    <string id="LabelStaticInterval">Статические секунды</string>
+    <string id="LabelIncomingCotPath">Путь входящего CoT</string>
+    <string id="LabelIncomingCotInterval">Входящие секунды</string>
+    <string id="LabelHealthTelemetry">Телеметрия здоровья</string>
+    <string id="LabelEnabled">Включено</string>
+    <string id="LabelDisabled">Отключено</string>
+    <string id="LabelSosControl">Ручное оповещение</string>
+    <string id="LabelSendSos">Отправить SOS</string>
+    <string id="LabelClearSos">Очистить SOS</string>
+    <string id="LabelCancel">Отмена</string>
+    <string id="ConfirmSosTitle">Отправить SOS?</string>
+    <string id="LabelConnect">Запустить ретранслятор</string>
+    <string id="LabelDisconnect">Остановить ретранслятор</string>
+    <string id="LabelNotSet">Не задано</string>
+    <string id="StatusIdle">Ретранслятор остановлен</string>
+    <string id="StatusConnecting">Подключение...</string>
+    <string id="StatusRetrying">Повторная попытка</string>
+    <string id="StatusConnected">Ретранслятор активен</string>
+    <string id="StatusFailed">Сбой</string>
+</resources>
