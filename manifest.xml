@@ -2,8 +2,10 @@
 <iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
     <iq:application entry="StandaloneApp" id="5721f67e-bcc4-47e8-b337-2ad96ee77c0a" launcherIcon="@Drawables.LauncherIcon" minSdkVersion="3.3.0" name="@Strings.AppName" type="watch-app">
         <iq:products>
+            <iq:product id="fenix6xpro"/>
             <iq:product id="fenix7x"/>
             <iq:product id="fenix847mm"/>
+            <iq:product id="fenix8solar47mm"/>
             <iq:product id="fenix8solar51mm"/>
         </iq:products>
         <iq:permissions>

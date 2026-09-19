@@ -23,7 +23,7 @@
     <string id="MenuTitleChat">Chat</string>
     <string id="MenuTitleQuickReply">Rychla odpoved</string>
     <string id="MenuTitleSos">Rucni upozorneni</string>
-    <string id="ChatEmpty">Zadne zpravy</string>
+    <string id="ChatEmpty">Vyberte uzivatele na mape</string>
     <string id="ChatUnknownSender">Neznamy</string>
 
     <string id="MenuTitleTakServer">Pripojeni ATAK</string>
@@ -58,4 +58,5 @@
     <string id="StatusRetrying">Opakovani</string>
     <string id="StatusConnected">Relay aktivni</string>
     <string id="StatusFailed">Selhalo</string>
+<string id="TextAlertingPreferences">Predvolby upozorneni</string><string id="TextAtmPressureAlerts">Upozorneni tlaku</string><string id="TextBatteryAlerts">Upozorneni baterie</string><string id="TextBloodhoundCompass">Navigace</string><string id="TextCancel">Zrusit</string><string id="TextChat">Chat</string><string id="TextClear2525d">Vymazat 2525D</string><string id="TextClearPointsMain">Vymazat body 2525D</string><string id="TextClearPointsPrompt">Vymazat body aplikace?</string><string id="TextDevicePreferences">Predvolby zarizeni</string><string id="TextDropPoint">Vlozit bod 2525D</string><string id="TextEnvironment">Prostredi</string><string id="TextEnvironmentalAlerts">Prostredni upozorneni</string><string id="TextExertionAlerts">Upozorneni namahy</string><string id="TextExit">Konec</string><string id="TextImmersionAlerts">Upozorneni ponoreni</string><string id="TextLocationServices">Polohove sluzby</string><string id="TextLocationUnavailable">Poloha nedostupna</string><string id="TextManualAlert">Rucni upozorneni</string><string id="TextMap">Mapa</string><string id="TextNetworkPreferences">Predvolby site</string><string id="TextOff">Vypnuto</string><string id="TextOn">Zapnuto</string><string id="TextPhysiologicalAlerts">Fyziologicka upozorneni</string><string id="TextPhysiology">Fyziologie</string><string id="TextPointDropped">Bod 2525D vlozen</string><string id="TextRestingHeartRateAlerts">Upozorneni klidove TF</string><string id="TextSelected">Vybrano</string><string id="TextSettings">Nastaveni</string><string id="TextToolPreferences">Predvolby nastroju</string><string id="TextUserMetrics">Moje udaje</string>
 </resources>

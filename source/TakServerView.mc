@@ -4,6 +4,7 @@ import Toybox.WatchUi;
 // Builds the phone relay controls. ATAK owns identity and reporting.
 function buildTakServerMenu() as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleTakServer)});
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelTakPlaceholder), null, :placeholderNotice, null));
     menu.addItem(new WatchUi.MenuItem(connectActionLabel(), null, :toggleConnect, null));
     return menu;
 }
@@ -24,6 +25,8 @@ class TakServerMenuDelegate extends WatchUi.Menu2InputDelegate {
         var id = item.getId();
         if (id == :toggleConnect) {
             toggleConnect();
+        } else if (id == :placeholderNotice) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.LabelTakPlaceholder), null);
         }
     }
 

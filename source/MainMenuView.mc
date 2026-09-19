@@ -4,6 +4,9 @@ import Toybox.WatchUi;
 // Builds the app's main menu: choose the map view or manage the ATAK relay.
 function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleMain)});
+    if (app.isChatEnabled()) {
+        menu.addItem(new WatchUi.MenuItem(app.text(:chat), null, :chat, null));
+    }
     menu.addItem(new WatchUi.MenuItem(app.text(:clearPointsMain), null, :clearPoints, null));
     menu.addItem(new WatchUi.MenuItem(app.text(:dropPoint), null, :dropPoint, null));
     menu.addItem(new WatchUi.MenuItem(app.text(:environment), null, :environment, null));
@@ -37,18 +40,7 @@ function buildDeveloperOptionsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function buildDevicePreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => app.text(:devicePreferences)});
-    menu.addItem(new WatchUi.MenuItem(app.text(:language), app.languageLabel(app.getLanguage()), :language, null));
     menu.addItem(new WatchUi.MenuItem(app.text(:userMetrics), null, :userMetrics, null));
-    return menu;
-}
-
-function buildLanguageMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:language)});
-    var languages = app.languageOptions();
-    for (var i = 0; i < languages.size(); i++) {
-        var language = languages[i] as String;
-        menu.addItem(new WatchUi.MenuItem(app.languageLabel(language), language.equals(app.getLanguage()) ? app.text(:selected) : null, language, null));
-    }
     return menu;
 }
 
@@ -428,35 +420,9 @@ class DevicePreferencesDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function onSelect(item as WatchUi.MenuItem) as Void {
-        if (item.getId() == :language) {
-            WatchUi.pushView(buildLanguageMenu(app), new LanguageDelegate(app, item), WatchUi.SLIDE_LEFT);
-        } else if (item.getId() == :userMetrics) {
+        if (item.getId() == :userMetrics) {
             WatchUi.pushView(buildUserMetricsMenu(app), new UserMetricsDelegate(app), WatchUi.SLIDE_LEFT);
         }
-    }
-}
-
-class LanguageDelegate extends WatchUi.Menu2InputDelegate {
-    var app as StandaloneApp;
-    var parentItem as WatchUi.MenuItem;
-
-    function initialize(application as StandaloneApp, languageItem as WatchUi.MenuItem) {
-        Menu2InputDelegate.initialize();
-        app = application;
-        parentItem = languageItem;
-    }
-
-    function onSelect(item as WatchUi.MenuItem) as Void {
-        var language = item.getId() as String;
-        app.setLanguage(language);
-        // Pop back to the original (stale-language) Main Menu, then swap
-        // just that top view for a fresh one, so no stale ancestor menus
-        // (Device Preferences/Settings) linger underneath for a back-swipe
-        // to reveal, and the app isn't left with an empty stack in between.
-        WatchUi.popView(WatchUi.SLIDE_IMMEDIATE);
-        WatchUi.popView(WatchUi.SLIDE_IMMEDIATE);
-        WatchUi.popView(WatchUi.SLIDE_IMMEDIATE);
-        WatchUi.switchToView(buildMainMenu(app), new MainMenuDelegate(app), WatchUi.SLIDE_RIGHT);
     }
 }
 

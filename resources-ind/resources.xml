@@ -23,7 +23,7 @@
     <string id="MenuTitleChat">Chat</string>
     <string id="MenuTitleQuickReply">Balasan cepat</string>
     <string id="MenuTitleSos">Peringatan manual</string>
-    <string id="ChatEmpty">Tidak ada pesan</string>
+    <string id="ChatEmpty">Pilih pengguna di peta</string>
     <string id="ChatUnknownSender">Tidak dikenal</string>
 
     <string id="MenuTitleTakServer">Koneksi ATAK</string>
@@ -58,4 +58,5 @@
     <string id="StatusRetrying">Mencoba lagi</string>
     <string id="StatusConnected">Relay aktif</string>
     <string id="StatusFailed">Gagal</string>
+<string id="TextAlertingPreferences">Preferensi peringatan</string><string id="TextAtmPressureAlerts">Peringatan tekanan</string><string id="TextBatteryAlerts">Peringatan baterai</string><string id="TextBloodhoundCompass">Navigasi</string><string id="TextCancel">Batal</string><string id="TextChat">Chat</string><string id="TextClear2525d">Hapus 2525D</string><string id="TextClearPointsMain">Hapus titik 2525D</string><string id="TextClearPointsPrompt">Hapus titik aplikasi?</string><string id="TextDevicePreferences">Preferensi perangkat</string><string id="TextDropPoint">Letakkan titik 2525D</string><string id="TextEnvironment">Lingkungan</string><string id="TextEnvironmentalAlerts">Peringatan lingkungan</string><string id="TextExertionAlerts">Peringatan upaya</string><string id="TextExit">Keluar</string><string id="TextImmersionAlerts">Peringatan imersi</string><string id="TextLocationServices">Layanan lokasi</string><string id="TextLocationUnavailable">Lokasi tidak tersedia</string><string id="TextManualAlert">Peringatan manual</string><string id="TextMap">Peta</string><string id="TextNetworkPreferences">Preferensi jaringan</string><string id="TextOff">Nonaktif</string><string id="TextOn">Aktif</string><string id="TextPhysiologicalAlerts">Peringatan fisiologi</string><string id="TextPhysiology">Fisiologi</string><string id="TextPointDropped">Titik 2525D ditambahkan</string><string id="TextRestingHeartRateAlerts">Peringatan detak istirahat</string><string id="TextSelected">Dipilih</string><string id="TextSettings">Pengaturan</string><string id="TextToolPreferences">Preferensi alat</string><string id="TextUserMetrics">Data pengguna</string>
 </resources>

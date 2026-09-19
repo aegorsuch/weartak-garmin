@@ -28,6 +28,9 @@ class ChatMenuDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         var index = item.getId();
         if (index == :empty) {
+            var mapView = app.getMapView();
+            mapView.setTakClient(app.getTakClient());
+            WatchUi.pushView(mapView, new StandaloneMapDelegate(mapView, false, app), WatchUi.SLIDE_LEFT);
             return;
         }
         var messages = app.getChatMessages();

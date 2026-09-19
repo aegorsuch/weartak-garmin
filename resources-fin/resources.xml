@@ -23,7 +23,7 @@
     <string id="MenuTitleChat">Chat</string>
     <string id="MenuTitleQuickReply">Pikavastaus</string>
     <string id="MenuTitleSos">Manuaalinen halytys</string>
-    <string id="ChatEmpty">Ei viesteja</string>
+    <string id="ChatEmpty">Valitse kayttaja kartalta</string>
     <string id="ChatUnknownSender">Tuntematon</string>
 
     <string id="MenuTitleTakServer">ATAK-yhteys</string>
@@ -58,4 +58,5 @@
     <string id="StatusRetrying">Yritetaan uudelleen</string>
     <string id="StatusConnected">Relay aktiivinen</string>
     <string id="StatusFailed">Epaonnistui</string>
+<string id="TextAlertingPreferences">Halytysasetukset</string><string id="TextAtmPressureAlerts">Ilmanpainehalytykset</string><string id="TextBatteryAlerts">Akkuhalytykset</string><string id="TextBloodhoundCompass">Navigointi</string><string id="TextCancel">Peruuta</string><string id="TextChat">Chat</string><string id="TextClear2525d">Tyhjenna 2525D</string><string id="TextClearPointsMain">Tyhjenna 2525D-pisteet</string><string id="TextClearPointsPrompt">Tyhjennetaanko sovelluksen pisteet?</string><string id="TextDevicePreferences">Laiteasetukset</string><string id="TextDropPoint">Pudota 2525D-piste</string><string id="TextEnvironment">Ymparisto</string><string id="TextEnvironmentalAlerts">Ymparistohalytykset</string><string id="TextExertionAlerts">Rasitushalytykset</string><string id="TextExit">Poistu</string><string id="TextImmersionAlerts">Upotushalytykset</string><string id="TextLocationServices">Sijaintipalvelut</string><string id="TextLocationUnavailable">Sijainti ei ole kaytettavissa</string><string id="TextManualAlert">Manuaalinen halytys</string><string id="TextMap">Kartta</string><string id="TextNetworkPreferences">Verkkoasetukset</string><string id="TextOff">Pois</string><string id="TextOn">Paalla</string><string id="TextPhysiologicalAlerts">Fysiologiset halytykset</string><string id="TextPhysiology">Fysiologia</string><string id="TextPointDropped">2525D-piste lisatty</string><string id="TextRestingHeartRateAlerts">Leposykehalytykset</string><string id="TextSelected">Valittu</string><string id="TextSettings">Asetukset</string><string id="TextToolPreferences">Tyokaluasetukset</string><string id="TextUserMetrics">Omat tiedot</string>
 </resources>
