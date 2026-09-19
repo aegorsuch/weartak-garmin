@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Мапа</string>
+    <string id="MenuItemSettings">Налаштування</string>
+    <string id="MenuTitleSettings">Налаштування</string>
+    <string id="MenuTitleDevicePreferences">Параметри пристрою</string>
+    <string id="MenuTitleNetworkPreferences">Параметри мережі</string>
+    <string id="MenuTitleAlertingPreferences">Параметри тривог</string>
+    <string id="MenuTitleToolPreferences">Параметри інструментів</string>
+    <string id="MenuItemLocationServices">Служби геолокації</string>
+    <string id="LocationServicesEnabled">Увімкнено</string>
+    <string id="LocationServicesDisabled">Вимкнено</string>
+    <string id="MenuItemChat">Чат</string>
+    <string id="MenuItemSos">Ручна тривога</string>
+    <string id="MenuItemTakServer">Підключення ATAK</string>
+    <string id="MenuItemClearPoints">Очистити 2525D</string>
+    <string id="ConfirmClearPointsTitle">Очистити точки?</string>
+    <string id="LabelClearPoints">Очистити точки</string>
+
+    <string id="MenuTitleChat">Чат</string>
+    <string id="MenuTitleQuickReply">Швидка відповідь</string>
+    <string id="MenuTitleSos">Ручна тривога</string>
+    <string id="ChatEmpty">Немає повідомлень</string>
+    <string id="ChatUnknownSender">Невідомий</string>
+
+    <string id="MenuTitleTakServer">Підключення ATAK</string>
+    <string id="LabelServerName">Назва годинника</string>
+    <string id="LabelTeam">Команда</string>
+    <string id="LabelRole">Роль</string>
+    <string id="LabelUsername">Ім'я користувача</string>
+    <string id="LabelPassword">Пароль</string>
+    <string id="LabelPort">Порт</string>
+    <string id="LabelTrackingMode">Режим відстеження</string>
+    <string id="TrackingModeDynamic">Динамічний</string>
+    <string id="TrackingModeStatic">Статичний</string>
+    <string id="LabelAlertInterval">Секунди тривоги</string>
+    <string id="LabelMovingInterval">Секунди руху</string>
+    <string id="LabelStationaryInterval">Секунди стояння</string>
+    <string id="LabelStaticInterval">Статичні секунди</string>
+    <string id="LabelIncomingCotPath">Шлях вхідного CoT</string>
+    <string id="LabelIncomingCotInterval">Вхідні секунди</string>
+    <string id="LabelHealthTelemetry">Телеметрія здоров'я</string>
+    <string id="LabelEnabled">Увімкнено</string>
+    <string id="LabelDisabled">Вимкнено</string>
+    <string id="LabelSosControl">Ручна тривога</string>
+    <string id="LabelSendSos">Надіслати SOS</string>
+    <string id="LabelClearSos">Очистити SOS</string>
+    <string id="LabelCancel">Скасувати</string>
+    <string id="ConfirmSosTitle">Надіслати SOS?</string>
+    <string id="LabelConnect">Запустити ретрансляцію</string>
+    <string id="LabelDisconnect">Зупинити ретрансляцію</string>
+    <string id="LabelNotSet">Не задано</string>
+    <string id="StatusIdle">Ретрансляцію зупинено</string>
+    <string id="StatusConnecting">Підключення...</string>
+    <string id="StatusRetrying">Повторна спроба</string>
+    <string id="StatusConnected">Ретрансляція активна</string>
+    <string id="StatusFailed">Помилка</string>
+</resources>

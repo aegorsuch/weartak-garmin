@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">מפה</string>
+    <string id="MenuItemSettings">הגדרות</string>
+    <string id="MenuTitleSettings">הגדרות</string>
+    <string id="MenuTitleDevicePreferences">העדפות מכשיר</string>
+    <string id="MenuTitleNetworkPreferences">העדפות רשת</string>
+    <string id="MenuTitleAlertingPreferences">העדפות התראות</string>
+    <string id="MenuTitleToolPreferences">העדפות כלים</string>
+    <string id="MenuItemLocationServices">שירותי מיקום</string>
+    <string id="LocationServicesEnabled">פועל</string>
+    <string id="LocationServicesDisabled">כבוי</string>
+    <string id="MenuItemChat">צ'אט</string>
+    <string id="MenuItemSos">התראה ידנית</string>
+    <string id="MenuItemTakServer">חיבור ATAK</string>
+    <string id="MenuItemClearPoints">נקה 2525D</string>
+    <string id="ConfirmClearPointsTitle">לנקות נקודות?</string>
+    <string id="LabelClearPoints">נקה נקודות</string>
+
+    <string id="MenuTitleChat">צ'אט</string>
+    <string id="MenuTitleQuickReply">תגובה מהירה</string>
+    <string id="MenuTitleSos">התראה ידנית</string>
+    <string id="ChatEmpty">אין הודעות</string>
+    <string id="ChatUnknownSender">לא ידוע</string>
+
+    <string id="MenuTitleTakServer">חיבור ATAK</string>
+    <string id="LabelServerName">שם השעון</string>
+    <string id="LabelTeam">צוות</string>
+    <string id="LabelRole">תפקיד</string>
+    <string id="LabelUsername">שם משתמש</string>
+    <string id="LabelPassword">סיסמה</string>
+    <string id="LabelPort">פורט</string>
+    <string id="LabelTrackingMode">מצב מעקב</string>
+    <string id="TrackingModeDynamic">דינמי</string>
+    <string id="TrackingModeStatic">סטטי</string>
+    <string id="LabelAlertInterval">שניות התראה</string>
+    <string id="LabelMovingInterval">שניות בתנועה</string>
+    <string id="LabelStationaryInterval">שניות נייח</string>
+    <string id="LabelStaticInterval">שניות סטטי</string>
+    <string id="LabelIncomingCotPath">נתיב CoT נכנס</string>
+    <string id="LabelIncomingCotInterval">שניות נכנסות</string>
+    <string id="LabelHealthTelemetry">טלמטריית בריאות</string>
+    <string id="LabelEnabled">מופעל</string>
+    <string id="LabelDisabled">מושבת</string>
+    <string id="LabelSosControl">התראה ידנית</string>
+    <string id="LabelSendSos">שלח SOS</string>
+    <string id="LabelClearSos">נקה SOS</string>
+    <string id="LabelCancel">ביטול</string>
+    <string id="ConfirmSosTitle">לשלוח SOS?</string>
+    <string id="LabelConnect">התחל ממסר</string>
+    <string id="LabelDisconnect">עצור ממסר</string>
+    <string id="LabelNotSet">לא הוגדר</string>
+    <string id="StatusIdle">הממסר נעצר</string>
+    <string id="StatusConnecting">מתחבר...</string>
+    <string id="StatusRetrying">מנסה שוב</string>
+    <string id="StatusConnected">הממסר פעיל</string>
+    <string id="StatusFailed">נכשל</string>
+</resources>

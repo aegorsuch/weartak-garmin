@@ -1,17 +1,36 @@
 <?xml version="1.0"?>
 <iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
-    <iq:application entry="StandaloneApp" id="95a20b8f-a30c-47a7-9fc9-1ada1f452ba2" launcherIcon="@Drawables.LauncherIcon" minSdkVersion="3.3.0" name="@Strings.AppName" type="watch-app">
+    <iq:application entry="StandaloneApp" id="5721f67e-bcc4-47e8-b337-2ad96ee77c0a" launcherIcon="@Drawables.LauncherIcon" minSdkVersion="3.3.0" name="@Strings.AppName" type="watch-app">
         <iq:products>
             <iq:product id="fenix7x"/>
+            <iq:product id="fenix847mm"/>
+            <iq:product id="fenix8solar51mm"/>
         </iq:products>
         <iq:permissions>
+            <iq:uses-permission id="Communications"/>
             <iq:uses-permission id="PersistedContent"/>
             <iq:uses-permission id="Positioning"/>
-            <iq:uses-permission id="Communications"/>
             <iq:uses-permission id="Sensor"/>
         </iq:permissions>
         <iq:languages>
+            <iq:language>ara</iq:language>
+            <iq:language>da</iq:language>
+            <iq:language>deu</iq:language>
             <iq:language>eng</iq:language>
+            <iq:language>fre</iq:language>
+            <iq:language>heb</iq:language>
+            <iq:language>ita</iq:language>
+            <iq:language>jpn</iq:language>
+            <iq:language>kor</iq:language>
+            <iq:language>nl</iq:language>
+            <iq:language>nob</iq:language>
+            <iq:language>pol</iq:language>
+            <iq:language>ron</iq:language>
+            <iq:language>rus</iq:language>
+            <iq:language>spa</iq:language>
+            <iq:language>swe</iq:language>
+            <iq:language>tha</iq:language>
+            <iq:language>ukr</iq:language>
         </iq:languages>
         <iq:barrels/>
     </iq:application>

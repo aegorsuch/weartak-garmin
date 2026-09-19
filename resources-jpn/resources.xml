@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">地図</string>
+    <string id="MenuItemSettings">設定</string>
+    <string id="MenuTitleSettings">設定</string>
+    <string id="MenuTitleDevicePreferences">デバイス設定</string>
+    <string id="MenuTitleNetworkPreferences">ネットワーク設定</string>
+    <string id="MenuTitleAlertingPreferences">アラート設定</string>
+    <string id="MenuTitleToolPreferences">ツール設定</string>
+    <string id="MenuItemLocationServices">位置情報サービス</string>
+    <string id="LocationServicesEnabled">オン</string>
+    <string id="LocationServicesDisabled">オフ</string>
+    <string id="MenuItemChat">チャット</string>
+    <string id="MenuItemSos">手動アラート</string>
+    <string id="MenuItemTakServer">ATAK接続</string>
+    <string id="MenuItemClearPoints">2525Dを消去</string>
+    <string id="ConfirmClearPointsTitle">ポイントを消去?</string>
+    <string id="LabelClearPoints">ポイントを消去</string>
+
+    <string id="MenuTitleChat">チャット</string>
+    <string id="MenuTitleQuickReply">クイック返信</string>
+    <string id="MenuTitleSos">手動アラート</string>
+    <string id="ChatEmpty">メッセージなし</string>
+    <string id="ChatUnknownSender">不明</string>
+
+    <string id="MenuTitleTakServer">ATAK接続</string>
+    <string id="LabelServerName">時計名</string>
+    <string id="LabelTeam">チーム</string>
+    <string id="LabelRole">役割</string>
+    <string id="LabelUsername">ユーザー名</string>
+    <string id="LabelPassword">パスワード</string>
+    <string id="LabelPort">ポート</string>
+    <string id="LabelTrackingMode">追跡モード</string>
+    <string id="TrackingModeDynamic">動的</string>
+    <string id="TrackingModeStatic">静的</string>
+    <string id="LabelAlertInterval">アラート秒</string>
+    <string id="LabelMovingInterval">移動秒</string>
+    <string id="LabelStationaryInterval">停止秒</string>
+    <string id="LabelStaticInterval">静止秒</string>
+    <string id="LabelIncomingCotPath">受信CoTパス</string>
+    <string id="LabelIncomingCotInterval">受信秒</string>
+    <string id="LabelHealthTelemetry">健康テレメトリ</string>
+    <string id="LabelEnabled">有効</string>
+    <string id="LabelDisabled">無効</string>
+    <string id="LabelSosControl">手動アラート</string>
+    <string id="LabelSendSos">SOS送信</string>
+    <string id="LabelClearSos">SOS消去</string>
+    <string id="LabelCancel">キャンセル</string>
+    <string id="ConfirmSosTitle">SOSを送信?</string>
+    <string id="LabelConnect">リレー開始</string>
+    <string id="LabelDisconnect">リレー停止</string>
+    <string id="LabelNotSet">未設定</string>
+    <string id="StatusIdle">リレー停止</string>
+    <string id="StatusConnecting">接続中...</string>
+    <string id="StatusRetrying">再試行中</string>
+    <string id="StatusConnected">リレー有効</string>
+    <string id="StatusFailed">失敗</string>
+</resources>

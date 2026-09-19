@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Karta</string>
+    <string id="MenuItemSettings">Installningar</string>
+    <string id="MenuTitleSettings">Installningar</string>
+    <string id="MenuTitleDevicePreferences">Enhetsinstallningar</string>
+    <string id="MenuTitleNetworkPreferences">Natverksinstallningar</string>
+    <string id="MenuTitleAlertingPreferences">Larminstallningar</string>
+    <string id="MenuTitleToolPreferences">Verktygsinstallningar</string>
+    <string id="MenuItemLocationServices">Platstjanster</string>
+    <string id="LocationServicesEnabled">Pa</string>
+    <string id="LocationServicesDisabled">Av</string>
+    <string id="MenuItemChat">Chatt</string>
+    <string id="MenuItemSos">Manuellt larm</string>
+    <string id="MenuItemTakServer">ATAK-anslutning</string>
+    <string id="MenuItemClearPoints">Rensa 2525D</string>
+    <string id="ConfirmClearPointsTitle">Rensa app-punkter?</string>
+    <string id="LabelClearPoints">Rensa app-punkter</string>
+
+    <string id="MenuTitleChat">Chatt</string>
+    <string id="MenuTitleQuickReply">Snabbsvar</string>
+    <string id="MenuTitleSos">Manuellt larm</string>
+    <string id="ChatEmpty">Inga meddelanden</string>
+    <string id="ChatUnknownSender">Okand</string>
+
+    <string id="MenuTitleTakServer">ATAK-anslutning</string>
+    <string id="LabelServerName">Klocknamn</string>
+    <string id="LabelTeam">Team</string>
+    <string id="LabelRole">Roll</string>
+    <string id="LabelUsername">Anvandarnamn</string>
+    <string id="LabelPassword">Losenord</string>
+    <string id="LabelPort">Port</string>
+    <string id="LabelTrackingMode">Sparningslage</string>
+    <string id="TrackingModeDynamic">Dynamiskt</string>
+    <string id="TrackingModeStatic">Statiskt</string>
+    <string id="LabelAlertInterval">Larmsekunder</string>
+    <string id="LabelMovingInterval">Sekunder i rorelse</string>
+    <string id="LabelStationaryInterval">Sekunder stilla</string>
+    <string id="LabelStaticInterval">Statiska sekunder</string>
+    <string id="LabelIncomingCotPath">Inkommande CoT-sokvag</string>
+    <string id="LabelIncomingCotInterval">Inkommande sekunder</string>
+    <string id="LabelHealthTelemetry">Halsotelemetri</string>
+    <string id="LabelEnabled">Aktiverad</string>
+    <string id="LabelDisabled">Inaktiverad</string>
+    <string id="LabelSosControl">Manuellt larm</string>
+    <string id="LabelSendSos">Skicka SOS</string>
+    <string id="LabelClearSos">Rensa SOS</string>
+    <string id="LabelCancel">Avbryt</string>
+    <string id="ConfirmSosTitle">Skicka SOS?</string>
+    <string id="LabelConnect">Starta relay</string>
+    <string id="LabelDisconnect">Stoppa relay</string>
+    <string id="LabelNotSet">Inte angivet</string>
+    <string id="StatusIdle">Relay stoppad</string>
+    <string id="StatusConnecting">Ansluter...</string>
+    <string id="StatusRetrying">Forsoker igen</string>
+    <string id="StatusConnected">Relay aktiv</string>
+    <string id="StatusFailed">Misslyckades</string>
+</resources>

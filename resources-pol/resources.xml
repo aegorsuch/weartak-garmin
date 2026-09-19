@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Mapa</string>
+    <string id="MenuItemSettings">Ustawienia</string>
+    <string id="MenuTitleSettings">Ustawienia</string>
+    <string id="MenuTitleDevicePreferences">Preferencje urzadzenia</string>
+    <string id="MenuTitleNetworkPreferences">Preferencje sieci</string>
+    <string id="MenuTitleAlertingPreferences">Preferencje alertow</string>
+    <string id="MenuTitleToolPreferences">Preferencje narzedzi</string>
+    <string id="MenuItemLocationServices">Uslugi lokalizacji</string>
+    <string id="LocationServicesEnabled">Wl.</string>
+    <string id="LocationServicesDisabled">Wyl.</string>
+    <string id="MenuItemChat">Czat</string>
+    <string id="MenuItemSos">Alert reczny</string>
+    <string id="MenuItemTakServer">Polaczenie ATAK</string>
+    <string id="MenuItemClearPoints">Wyczysc 2525D</string>
+    <string id="ConfirmClearPointsTitle">Wyczysc punkty?</string>
+    <string id="LabelClearPoints">Wyczysc punkty</string>
+
+    <string id="MenuTitleChat">Czat</string>
+    <string id="MenuTitleQuickReply">Szybka odpowiedz</string>
+    <string id="MenuTitleSos">Alert reczny</string>
+    <string id="ChatEmpty">Brak wiadomosci</string>
+    <string id="ChatUnknownSender">Nieznany</string>
+
+    <string id="MenuTitleTakServer">Polaczenie ATAK</string>
+    <string id="LabelServerName">Nazwa zegarka</string>
+    <string id="LabelTeam">Zespol</string>
+    <string id="LabelRole">Rola</string>
+    <string id="LabelUsername">Uzytkownik</string>
+    <string id="LabelPassword">Haslo</string>
+    <string id="LabelPort">Port</string>
+    <string id="LabelTrackingMode">Tryb sledzenia</string>
+    <string id="TrackingModeDynamic">Dynamiczny</string>
+    <string id="TrackingModeStatic">Statyczny</string>
+    <string id="LabelAlertInterval">Sekundy alertu</string>
+    <string id="LabelMovingInterval">Sekundy ruchu</string>
+    <string id="LabelStationaryInterval">Sekundy postoju</string>
+    <string id="LabelStaticInterval">Sekundy statyczne</string>
+    <string id="LabelIncomingCotPath">Sciezka CoT przychodz.</string>
+    <string id="LabelIncomingCotInterval">Sekundy przychodz.</string>
+    <string id="LabelHealthTelemetry">Telemetria zdrowia</string>
+    <string id="LabelEnabled">Wlaczone</string>
+    <string id="LabelDisabled">Wylaczone</string>
+    <string id="LabelSosControl">Alert reczny</string>
+    <string id="LabelSendSos">Wyslij SOS</string>
+    <string id="LabelClearSos">Wyczysc SOS</string>
+    <string id="LabelCancel">Anuluj</string>
+    <string id="ConfirmSosTitle">Wyslac SOS?</string>
+    <string id="LabelConnect">Uruchom przekaznik</string>
+    <string id="LabelDisconnect">Zatrzymaj przekaznik</string>
+    <string id="LabelNotSet">Nie ustawiono</string>
+    <string id="StatusIdle">Przekaznik zatrzymany</string>
+    <string id="StatusConnecting">Laczenie...</string>
+    <string id="StatusRetrying">Ponawianie</string>
+    <string id="StatusConnected">Przekaznik aktywny</string>
+    <string id="StatusFailed">Niepowodzenie</string>
+</resources>

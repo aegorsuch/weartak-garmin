@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Kaart</string>
+    <string id="MenuItemSettings">Instellingen</string>
+    <string id="MenuTitleSettings">Instellingen</string>
+    <string id="MenuTitleDevicePreferences">Apparaatvoorkeuren</string>
+    <string id="MenuTitleNetworkPreferences">Netwerkvoorkeuren</string>
+    <string id="MenuTitleAlertingPreferences">Alarmvoorkeuren</string>
+    <string id="MenuTitleToolPreferences">Hulpmiddelvoorkeuren</string>
+    <string id="MenuItemLocationServices">Locatieservices</string>
+    <string id="LocationServicesEnabled">Aan</string>
+    <string id="LocationServicesDisabled">Uit</string>
+    <string id="MenuItemChat">Chat</string>
+    <string id="MenuItemSos">Handmatig alarm</string>
+    <string id="MenuItemTakServer">ATAK-verbinding</string>
+    <string id="MenuItemClearPoints">2525D wissen</string>
+    <string id="ConfirmClearPointsTitle">App-punten wissen?</string>
+    <string id="LabelClearPoints">App-punten wissen</string>
+
+    <string id="MenuTitleChat">Chat</string>
+    <string id="MenuTitleQuickReply">Snel antwoord</string>
+    <string id="MenuTitleSos">Handmatig alarm</string>
+    <string id="ChatEmpty">Geen berichten</string>
+    <string id="ChatUnknownSender">Onbekend</string>
+
+    <string id="MenuTitleTakServer">ATAK-verbinding</string>
+    <string id="LabelServerName">Horlogenaam</string>
+    <string id="LabelTeam">Team</string>
+    <string id="LabelRole">Rol</string>
+    <string id="LabelUsername">Gebruikersnaam</string>
+    <string id="LabelPassword">Wachtwoord</string>
+    <string id="LabelPort">Poort</string>
+    <string id="LabelTrackingMode">Volgmodus</string>
+    <string id="TrackingModeDynamic">Dynamisch</string>
+    <string id="TrackingModeStatic">Statisch</string>
+    <string id="LabelAlertInterval">Alarmseconden</string>
+    <string id="LabelMovingInterval">Seconden bewegend</string>
+    <string id="LabelStationaryInterval">Seconden stilstaand</string>
+    <string id="LabelStaticInterval">Statische seconden</string>
+    <string id="LabelIncomingCotPath">Inkomend CoT-pad</string>
+    <string id="LabelIncomingCotInterval">Inkomende seconden</string>
+    <string id="LabelHealthTelemetry">Gezondheidstelemetrie</string>
+    <string id="LabelEnabled">Ingeschakeld</string>
+    <string id="LabelDisabled">Uitgeschakeld</string>
+    <string id="LabelSosControl">Handmatig alarm</string>
+    <string id="LabelSendSos">SOS verzenden</string>
+    <string id="LabelClearSos">SOS wissen</string>
+    <string id="LabelCancel">Annuleren</string>
+    <string id="ConfirmSosTitle">SOS verzenden?</string>
+    <string id="LabelConnect">Relay starten</string>
+    <string id="LabelDisconnect">Relay stoppen</string>
+    <string id="LabelNotSet">Niet ingesteld</string>
+    <string id="StatusIdle">Relay gestopt</string>
+    <string id="StatusConnecting">Verbinden...</string>
+    <string id="StatusRetrying">Opnieuw proberen</string>
+    <string id="StatusConnected">Relay actief</string>
+    <string id="StatusFailed">Mislukt</string>
+</resources>
