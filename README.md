@@ -2,8 +2,9 @@
 
 WearTAK-Garmin is a standalone Garmin Connect IQ watch application for basic
 Team Awareness Kit (TAK) operational awareness. It is designed for Garmin
-watches with maps and GPS, currently targeting the fenix 7X and Tactix 8 class
-devices.
+watches with maps and GPS, currently targeting the fenix 7X, Tactix 8 class,
+and fēnix 8 class devices. Tactix Delta hardware is expected to be compatible,
+but its product target is not recognized by the installed SDK yet.
 
 ## Project links
 
@@ -159,3 +160,24 @@ This keeps the government repo as the source of truth and the personal
 repository as a synchronized mirror. Keep branch names consistent across both
 repos and avoid maintaining separate histories for the same work. Never commit
 the private `developer_key.der` file.
+
+## Releasing
+
+Releases are built and published manually; there is no CI automation. The
+`.iq` bundle covers all three supported products (fenix7x, fenix847mm,
+fenix8solar51mm) in a single file, so it is the only artifact attached to a
+release.
+
+1. Bump `APP_VERSION` in `source/StandaloneApp.mc` to the new version and
+   commit it (consistent with the government repo being canonical, merge this
+   into `develop` first as described above).
+2. Build `WearTAK-Garmin.iq` locally with the Garmin Connect IQ SDK (the VS
+   Code Monkey C extension's build/export flow uses `monkey.jungle` and the
+   local `developer_key.der` already configured in `.vscode/settings.json`).
+3. Tag the release commit `vX.Y.Z.Z.Z`, matching `APP_VERSION` exactly.
+4. Push the tag and create a release from it on `origin`
+   (git.tak.gov/core/weartak-core/weartak-garmin), attaching the built `.iq`.
+5. Mirror the same release to `github`
+   (https://github.com/aegorsuch/weartak-garmin): push the tag there and
+   create a release attaching the same `.iq` file.
+
