@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Karte</string>
+    <string id="MenuItemSettings">Iestatijumi</string>
+    <string id="MenuTitleSettings">Iestatijumi</string>
+    <string id="MenuTitleDevicePreferences">Ierices preferences</string>
+    <string id="MenuTitleNetworkPreferences">Tikla preferences</string>
+    <string id="MenuTitleAlertingPreferences">Bridinajumu preferences</string>
+    <string id="MenuTitleToolPreferences">Riku preferences</string>
+    <string id="MenuItemLocationServices">Atrasanas vietas pakalpojumi</string>
+    <string id="LocationServicesEnabled">Ieslegts</string>
+    <string id="LocationServicesDisabled">Izslegts</string>
+    <string id="MenuItemChat">Cata</string>
+    <string id="MenuItemSos">Manuals bridinajums</string>
+    <string id="MenuItemTakServer">ATAK savienojums</string>
+    <string id="MenuItemClearPoints">Notirit 2525D</string>
+    <string id="ConfirmClearPointsTitle">Notirit punktus?</string>
+    <string id="LabelClearPoints">Notirit punktus</string>
+
+    <string id="MenuTitleChat">Cata</string>
+    <string id="MenuTitleQuickReply">Atra atbilde</string>
+    <string id="MenuTitleSos">Manuals bridinajums</string>
+    <string id="ChatEmpty">Nav zinojumu</string>
+    <string id="ChatUnknownSender">Nezinams</string>
+
+    <string id="MenuTitleTakServer">ATAK savienojums</string>
+    <string id="LabelServerName">Pulkstena nosaukums</string>
+    <string id="LabelTeam">Komanda</string>
+    <string id="LabelRole">Loma</string>
+    <string id="LabelUsername">Lietotajvards</string>
+    <string id="LabelPassword">Parole</string>
+    <string id="LabelPort">Ports</string>
+    <string id="LabelTrackingMode">Sekošanas režims</string>
+    <string id="TrackingModeDynamic">Dinamisks</string>
+    <string id="TrackingModeStatic">Statisks</string>
+    <string id="LabelAlertInterval">Bridinajuma sekundes</string>
+    <string id="LabelMovingInterval">Kustibas sekundes</string>
+    <string id="LabelStationaryInterval">Stavesanas sekundes</string>
+    <string id="LabelStaticInterval">Statiskas sekundes</string>
+    <string id="LabelIncomingCotPath">Ienakosa CoT cela</string>
+    <string id="LabelIncomingCotInterval">Ienakosas sekundes</string>
+    <string id="LabelHealthTelemetry">Veselibas telemetrija</string>
+    <string id="LabelEnabled">Iespejots</string>
+    <string id="LabelDisabled">Atspejots</string>
+    <string id="LabelSosControl">Manuals bridinajums</string>
+    <string id="LabelSendSos">Sutit SOS</string>
+    <string id="LabelClearSos">Notirit SOS</string>
+    <string id="LabelCancel">Atcelt</string>
+    <string id="ConfirmSosTitle">Sutit SOS?</string>
+    <string id="LabelConnect">Sakt relay</string>
+    <string id="LabelDisconnect">Apturet relay</string>
+    <string id="LabelNotSet">Nav iestatits</string>
+    <string id="StatusIdle">Relay apturets</string>
+    <string id="StatusConnecting">Savienojas...</string>
+    <string id="StatusRetrying">Megina velreiz</string>
+    <string id="StatusConnected">Relay aktivs</string>
+    <string id="StatusFailed">Neizdevas</string>
+</resources>

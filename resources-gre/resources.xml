@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Χαρτης</string>
+    <string id="MenuItemSettings">Ρυθμισεις</string>
+    <string id="MenuTitleSettings">Ρυθμισεις</string>
+    <string id="MenuTitleDevicePreferences">Προτιμησεις συσκευης</string>
+    <string id="MenuTitleNetworkPreferences">Προτιμησεις δικτυου</string>
+    <string id="MenuTitleAlertingPreferences">Προτιμησεις ειδοποιησεων</string>
+    <string id="MenuTitleToolPreferences">Προτιμησεις εργαλειων</string>
+    <string id="MenuItemLocationServices">Υπηρεσιες τοποθεσιας</string>
+    <string id="LocationServicesEnabled">Ενεργο</string>
+    <string id="LocationServicesDisabled">Ανενεργο</string>
+    <string id="MenuItemChat">Chat</string>
+    <string id="MenuItemSos">Χειροκινητη ειδοποιηση</string>
+    <string id="MenuItemTakServer">Συνδεση ATAK</string>
+    <string id="MenuItemClearPoints">Καθαρισμος 2525D</string>
+    <string id="ConfirmClearPointsTitle">Καθαρισμος σημειων;</string>
+    <string id="LabelClearPoints">Καθαρισμος σημειων</string>
+
+    <string id="MenuTitleChat">Chat</string>
+    <string id="MenuTitleQuickReply">Γρηγορη απαντηση</string>
+    <string id="MenuTitleSos">Χειροκινητη ειδοποιηση</string>
+    <string id="ChatEmpty">Δεν υπαρχουν μηνυματα</string>
+    <string id="ChatUnknownSender">Αγνωστος</string>
+
+    <string id="MenuTitleTakServer">Συνδεση ATAK</string>
+    <string id="LabelServerName">Ονομα ρολογιου</string>
+    <string id="LabelTeam">Ομαδα</string>
+    <string id="LabelRole">Ρολος</string>
+    <string id="LabelUsername">Ονομα χρηστη</string>
+    <string id="LabelPassword">Κωδικος</string>
+    <string id="LabelPort">Θυρα</string>
+    <string id="LabelTrackingMode">Λειτουργια ιχνηλατησης</string>
+    <string id="TrackingModeDynamic">Δυναμικη</string>
+    <string id="TrackingModeStatic">Στατικη</string>
+    <string id="LabelAlertInterval">Δευτ. ειδοποιησης</string>
+    <string id="LabelMovingInterval">Δευτ. κινησης</string>
+    <string id="LabelStationaryInterval">Δευτ. στασης</string>
+    <string id="LabelStaticInterval">Στατικα δευτ.</string>
+    <string id="LabelIncomingCotPath">Διαδρομη εισερχ. CoT</string>
+    <string id="LabelIncomingCotInterval">Εισερχ. δευτ.</string>
+    <string id="LabelHealthTelemetry">Τηλεμετρια υγειας</string>
+    <string id="LabelEnabled">Ενεργοποιημενο</string>
+    <string id="LabelDisabled">Απενεργοποιημενο</string>
+    <string id="LabelSosControl">Χειροκινητη ειδοποιηση</string>
+    <string id="LabelSendSos">Αποστολη SOS</string>
+    <string id="LabelClearSos">Καθαρισμος SOS</string>
+    <string id="LabelCancel">Ακυρωση</string>
+    <string id="ConfirmSosTitle">Αποστολη SOS;</string>
+    <string id="LabelConnect">Εναρξη relay</string>
+    <string id="LabelDisconnect">Διακοπη relay</string>
+    <string id="LabelNotSet">Δεν οριστηκε</string>
+    <string id="StatusIdle">Relay σταματημενο</string>
+    <string id="StatusConnecting">Συνδεση...</string>
+    <string id="StatusRetrying">Νεα προσπαθεια</string>
+    <string id="StatusConnected">Relay ενεργο</string>
+    <string id="StatusFailed">Αποτυχια</string>
+</resources>

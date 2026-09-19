@@ -1,5 +1,7 @@
 import Toybox.Graphics;
+import Toybox.Attention;
 import Toybox.Lang;
+import Toybox.Math;
 import Toybox.PersistedContent;
 import Toybox.Position;
 import Toybox.System;
@@ -29,6 +31,10 @@ class StandaloneMapView extends WatchUi.MapView {
     var controlGap = 6;
     var controlMargin = 8;
     var hasInitialPosition = false;
+    var currentPosition = null;
+    var bloodhoundPointId = null;
+    var application;
+    var bloodhoundProximityNotified = false;
     var entityPruneTimer;
     var mapAreaDirty = true;
     var markersDirty = true;
@@ -51,17 +57,12 @@ class StandaloneMapView extends WatchUi.MapView {
         if (info == null || info.position == null) {
             return;
         }
+        currentPosition = info.position;
+        evaluateBloodhoundProximity();
 
         if (!hasInitialPosition) {
             centerOn(info.position);
         }
-
-        var selfMarker = new StandaloneMapMarker(info.position);
-        var selfIcon = WatchUi.loadResource(Rez.Drawables.TargetIcon);
-        selfMarker.setIcon(selfIcon, selfIcon.getWidth() / 2, selfIcon.getHeight() / 2);
-        selfMarker.setLabel("SELF");
-        markers.put("self", selfMarker);
-        markersDirty = true;
         WatchUi.requestUpdate();
     }
 
@@ -69,13 +70,73 @@ class StandaloneMapView extends WatchUi.MapView {
         takClient = client;
     }
 
+    function setApplication(app as StandaloneApp) as Void {
+        application = app;
+    }
+
+    function evaluateBloodhoundProximity() as Void {
+        if (application == null || !isBloodhoundActive()) {
+            bloodhoundProximityNotified = false;
+            return;
+        }
+        var rangeMeters = getBloodhoundRangeMeters();
+        if (rangeMeters > application.getBloodhoundProximityRadius()) {
+            bloodhoundProximityNotified = false;
+            return;
+        }
+        if (bloodhoundProximityNotified) {
+            return;
+        }
+        bloodhoundProximityNotified = true;
+        if (application.isBloodhoundProximityVibrationEnabled()) {
+            vibrateForProximity(application.getBloodhoundProximityIntensity());
+        }
+        WatchUi.showToast(application.text(:proximity), null);
+    }
+
+    function vibrateForProximity(intensity as String) as Void {
+        if (intensity.equals("Triple Burst")) {
+            Attention.vibrate([
+                new Attention.VibeProfile(80, 250),
+                new Attention.VibeProfile(0, 150),
+                new Attention.VibeProfile(80, 250),
+                new Attention.VibeProfile(0, 150),
+                new Attention.VibeProfile(80, 250)
+            ]);
+        } else if (intensity.equals("Until In Position")) {
+            Attention.vibrate([new Attention.VibeProfile(80, 1000)]);
+        } else {
+            Attention.vibrate([new Attention.VibeProfile(80, 400)]);
+        }
+    }
+
     function showPointTypeMenu(pointId) as Void {
-        var menu = new WatchUi.Menu2({:title => "2525D Point"});
-        menu.addItem(new WatchUi.MenuItem("Set Title", getPointText(pointId, "title"), :title, null));
-        menu.addItem(new WatchUi.MenuItem("Set Remark", getPointText(pointId, "remark"), :remark, null));
-        menu.addItem(new WatchUi.MenuItem("Set Type", getPointTypeLabel(pointId), :type, null));
-        menu.addItem(new WatchUi.MenuItem("Delete", null, :delete, null));
+        var menu = new WatchUi.Menu2({:title => application.text(:pointTitle)});
+        menu.addItem(new WatchUi.MenuItem(bloodhoundPointId != null && bloodhoundPointId.equals(pointId) ? application.text(:stopBloodhound) : application.text(:bloodhound), null, :bloodhound, null));
+        var location = pointLocations.get(pointId);
+        menu.addItem(new WatchUi.MenuItem(application.text(:latLon), latLonLabel(location), :coordinates, null));
+        menu.addItem(new WatchUi.MenuItem(application.text(:mgrs), mgrsLabel(location), :coordinates, null));
+        menu.addItem(new WatchUi.MenuItem(application.text(:setTitle), getPointText(pointId, "title"), :title, null));
+        menu.addItem(new WatchUi.MenuItem(application.text(:setRemark), getPointText(pointId, "remark"), :remark, null));
+        menu.addItem(new WatchUi.MenuItem(application.text(:setType), getPointTypeLabel(pointId), :type, null));
+        menu.addItem(new WatchUi.MenuItem(application.text(:delete), null, :delete, null));
         WatchUi.pushView(menu, new PointMenuDelegate(self, pointId), WatchUi.SLIDE_UP);
+    }
+
+    function showSelfMenu() as Void {
+        if (currentPosition != null) {
+            showCoordinateMenu(application.text(:self), currentPosition);
+        }
+    }
+
+    function toggleBloodhound(pointId) as Void {
+        if (bloodhoundPointId != null && bloodhoundPointId.equals(pointId)) {
+            bloodhoundPointId = null;
+        } else {
+            bloodhoundPointId = pointId;
+        }
+        bloodhoundProximityNotified = false;
+        WatchUi.requestUpdate();
     }
 
     function updateIncomingCot(uid as String, latitude, longitude, cotType as String) as Void {
@@ -131,6 +192,203 @@ class StandaloneMapView extends WatchUi.MapView {
         drawCenterControl(dc, controlMargin, top + controlSize + controlGap);
         drawControl(dc, controlMargin, top + (controlSize + controlGap) * 2, "-");
         drawBackControl(dc, screenWidth - controlSize - controlMargin, (screenHeight - controlSize) / 2);
+        drawBloodhound(dc);
+    }
+
+    function drawBloodhound(dc) as Void {
+        if (bloodhoundPointId == null || currentPosition == null || pointLocations.hasKey(bloodhoundPointId) == false) {
+            return;
+        }
+        var target = pointLocations.get(bloodhoundPointId);
+        var rangeMeters = distanceMeters(currentPosition, target).toNumber();
+        var bearing = bearingDegrees(currentPosition, target).toNumber();
+        var title = getPointText(bloodhoundPointId, "title");
+        if (title.equals("")) {
+            title = "Bloodhound";
+        }
+        var panelHeight = 58;
+        var panelTop = screenHeight - panelHeight - 4;
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(4, panelTop, screenWidth - 8, panelHeight);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawRectangle(4, panelTop, screenWidth - 8, panelHeight);
+        dc.drawText(screenWidth / 2, panelTop + 4, Graphics.FONT_XTINY, title, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(screenWidth / 2, panelTop + 22, Graphics.FONT_XTINY, "Range " + rangeMeters.toString() + " m", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(screenWidth / 2, panelTop + 40, Graphics.FONT_XTINY, "Bearing " + bearing.toString() + " deg", Graphics.TEXT_JUSTIFY_CENTER);
+    }
+
+    function isBloodhoundPanelAt(x, y) as Boolean {
+        return isBloodhoundActive() && y >= screenHeight - 62 && y < screenHeight - 4 && x >= 4 && x < screenWidth - 4;
+    }
+
+    function showBloodhoundCancelMenu() as Void {
+        var menu = new WatchUi.Menu2({:title => application.text(:bloodhoundCompass)});
+        menu.addItem(new WatchUi.MenuItem(application.text(:cancelBloodhound), null, :cancelBloodhound, null));
+        WatchUi.pushView(menu, new BloodhoundCancelDelegate(self), WatchUi.SLIDE_UP);
+    }
+
+    function distanceMeters(fromLocation, toLocation) {
+        var fromDegrees = fromLocation.toDegrees();
+        var toDegrees = toLocation.toDegrees();
+        var fromLat = Math.toRadians(fromDegrees[0]);
+        var toLat = Math.toRadians(toDegrees[0]);
+        var deltaLat = Math.toRadians(toDegrees[0] - fromDegrees[0]);
+        var deltaLon = Math.toRadians(toDegrees[1] - fromDegrees[1]);
+        var sinHalfLat = Math.sin(deltaLat / 2);
+        var sinHalfLon = Math.sin(deltaLon / 2);
+        var a = sinHalfLat * sinHalfLat + Math.cos(fromLat) * Math.cos(toLat) * sinHalfLon * sinHalfLon;
+        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return 6371000 * c;
+    }
+
+    function bearingDegrees(fromLocation, toLocation) {
+        var fromDegrees = fromLocation.toDegrees();
+        var toDegrees = toLocation.toDegrees();
+        var fromLat = Math.toRadians(fromDegrees[0]);
+        var toLat = Math.toRadians(toDegrees[0]);
+        var deltaLon = Math.toRadians(toDegrees[1] - fromDegrees[1]);
+        var y = Math.sin(deltaLon) * Math.cos(toLat);
+        var x = Math.cos(fromLat) * Math.sin(toLat) - Math.sin(fromLat) * Math.cos(toLat) * Math.cos(deltaLon);
+        var bearing = Math.toDegrees(Math.atan2(y, x));
+        while (bearing < 0) {
+            bearing += 360;
+        }
+        while (bearing >= 360) {
+            bearing -= 360;
+        }
+        return bearing;
+    }
+
+    function isBloodhoundActive() as Boolean {
+        return bloodhoundPointId != null && currentPosition != null && pointLocations.hasKey(bloodhoundPointId);
+    }
+
+    function getBloodhoundTitle() as String {
+        if (bloodhoundPointId == null || pointDetails.hasKey(bloodhoundPointId) == false) {
+            return "Bloodhound";
+        }
+        var title = getPointText(bloodhoundPointId, "title");
+        return title.equals("") ? "Bloodhound" : title;
+    }
+
+    function getBloodhoundRangeMeters() as Number {
+        if (!isBloodhoundActive()) {
+            return 0;
+        }
+        return distanceMeters(currentPosition, pointLocations.get(bloodhoundPointId)).toNumber();
+    }
+
+    function getBloodhoundBearingDegrees() as Number {
+        if (!isBloodhoundActive()) {
+            return 0;
+        }
+        return bearingDegrees(currentPosition, pointLocations.get(bloodhoundPointId)).toNumber();
+    }
+
+    function showCoordinateMenu(title as String, location) as Void {
+        var menu = new WatchUi.Menu2({:title => title});
+        menu.addItem(new WatchUi.MenuItem("Lat/Lon", latLonLabel(location), :coordinates, null));
+        menu.addItem(new WatchUi.MenuItem("MGRS", mgrsLabel(location), :coordinates, null));
+        WatchUi.pushView(menu, new CoordinateMenuDelegate(), WatchUi.SLIDE_UP);
+    }
+
+    function latLonLabel(location) as String {
+        var degrees = location.toDegrees();
+        return degrees[0].format("%.5f") + ", " + degrees[1].format("%.5f");
+    }
+
+    function mgrsLabel(location) as String {
+        var degrees = location.toDegrees();
+        return mgrsFromLatLon(degrees[0], degrees[1]);
+    }
+
+    function mgrsFromLatLon(latitude, longitude) as String {
+        if (latitude < -80 || latitude > 84) {
+            return "MGRS unavailable";
+        }
+        var zone = Math.floor((longitude + 180) / 6).toNumber() + 1;
+        if (latitude >= 56 && latitude < 64 && longitude >= 3 && longitude < 12) {
+            zone = 32;
+        }
+        if (latitude >= 72 && latitude < 84) {
+            if (longitude >= 0 && longitude < 9) {
+                zone = 31;
+            } else if (longitude >= 9 && longitude < 21) {
+                zone = 33;
+            } else if (longitude >= 21 && longitude < 33) {
+                zone = 35;
+            } else if (longitude >= 33 && longitude < 42) {
+                zone = 37;
+            }
+        }
+        var band = latitudeBand(latitude);
+        var utm = utmFromLatLon(latitude, longitude, zone);
+        var easting = utm[0];
+        var northing = utm[1];
+        var column = clamp(Math.floor(easting / 100000).toNumber(), 1, 8);
+        var northingBlock = Math.floor(northing / 100000).toNumber();
+        var row = northingBlock - (Math.floor(northingBlock / 20).toNumber() * 20);
+        var eastingRemainder = Math.floor(easting - (Math.floor(easting / 100000).toNumber() * 100000)).toNumber();
+        var northingRemainder = Math.floor(northing - (Math.floor(northing / 100000).toNumber() * 100000)).toNumber();
+        return zone.toString() + band + " " + eastingLetter(zone, column) + northingLetter(zone, row) + " " + pad5(eastingRemainder) + " " + pad5(northingRemainder);
+    }
+
+    function utmFromLatLon(latitude, longitude, zone) as Array {
+        var a = 6378137.0;
+        var eccSquared = 0.00669438;
+        var k0 = 0.9996;
+        var latRad = Math.toRadians(latitude);
+        var lonRad = Math.toRadians(longitude);
+        var lonOrigin = (zone - 1) * 6 - 180 + 3;
+        var lonOriginRad = Math.toRadians(lonOrigin);
+        var eccPrimeSquared = eccSquared / (1 - eccSquared);
+        var n = a / Math.sqrt(1 - eccSquared * Math.sin(latRad) * Math.sin(latRad));
+        var t = Math.tan(latRad) * Math.tan(latRad);
+        var c = eccPrimeSquared * Math.cos(latRad) * Math.cos(latRad);
+        var aa = Math.cos(latRad) * (lonRad - lonOriginRad);
+        var m = a * ((1 - eccSquared / 4 - 3 * Math.pow(eccSquared, 2) / 64 - 5 * Math.pow(eccSquared, 3) / 256) * latRad
+            - (3 * eccSquared / 8 + 3 * Math.pow(eccSquared, 2) / 32 + 45 * Math.pow(eccSquared, 3) / 1024) * Math.sin(2 * latRad)
+            + (15 * Math.pow(eccSquared, 2) / 256 + 45 * Math.pow(eccSquared, 3) / 1024) * Math.sin(4 * latRad)
+            - (35 * Math.pow(eccSquared, 3) / 3072) * Math.sin(6 * latRad));
+        var easting = k0 * n * (aa + (1 - t + c) * Math.pow(aa, 3) / 6 + (5 - 18 * t + t * t + 72 * c - 58 * eccPrimeSquared) * Math.pow(aa, 5) / 120) + 500000;
+        var northing = k0 * (m + n * Math.tan(latRad) * (aa * aa / 2 + (5 - t + 9 * c + 4 * c * c) * Math.pow(aa, 4) / 24 + (61 - 58 * t + t * t + 600 * c - 330 * eccPrimeSquared) * Math.pow(aa, 6) / 720));
+        if (latitude < 0) {
+            northing += 10000000;
+        }
+        return [easting, northing];
+    }
+
+    function latitudeBand(latitude) as String {
+        var index = clamp(Math.floor((latitude + 80) / 8).toNumber(), 0, 19);
+        return "CDEFGHJKLMNPQRSTUVWX".substring(index, index + 1);
+    }
+
+    function eastingLetter(zone as Number, column as Number) as String {
+        var set = (zone - 1) % 3;
+        var letters = set == 0 ? "ABCDEFGH" : set == 1 ? "JKLMNPQR" : "STUVWXYZ";
+        return letters.substring(column - 1, column);
+    }
+
+    function northingLetter(zone as Number, row as Number) as String {
+        var letters = (zone % 2) == 1 ? "ABCDEFGHJKLMNPQRSTUV" : "FGHJKLMNPQRSTUVABCDE";
+        return letters.substring(row, row + 1);
+    }
+
+    function pad5(value as Number) as String {
+        var text = value.toString();
+        while (text.length() < 5) {
+            text = "0" + text;
+        }
+        return text;
+    }
+
+    function clamp(value as Number, minimum as Number, maximum as Number) as Number {
+        if (value < minimum) {
+            return minimum;
+        } else if (value > maximum) {
+            return maximum;
+        }
+        return value;
     }
 
     function drawControl(dc, x, y, label) {
@@ -164,11 +422,13 @@ class StandaloneMapView extends WatchUi.MapView {
         dc.drawLine(centerX - 8, centerY, centerX + 10, centerY + 12);
     }
 
-    function dropAtCurrentLocation() {
+    function dropAtCurrentLocation() as Boolean {
         var info = Position.getInfo();
         if (info != null && info.position != null) {
             addPoint(info.position, :unknown, "Unknown 2525D point");
+            return true;
         }
+        return false;
     }
 
     function snapToSelf() {
@@ -193,7 +453,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var latitude = topLeft[0] + (bottomRight[0] - topLeft[0]) * yRatio;
         var longitude = topLeft[1] + (bottomRight[1] - topLeft[1]) * xRatio;
         addPoint(new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees}), :unknown, "Unknown 2525D point");
-        WatchUi.showToast("Point dropped", null);
+        WatchUi.showToast(application != null ? application.text(:pointDropped) : "2525D point dropped", null);
         WatchUi.requestUpdate();
     }
 
@@ -274,6 +534,20 @@ class StandaloneMapView extends WatchUi.MapView {
             }
         }
         return null;
+    }
+
+    function isSelfAtScreen(x, y) as Boolean {
+        if (currentPosition == null) {
+            return false;
+        }
+        var topLeft = mapTopLeft.toDegrees();
+        var bottomRight = mapBottomRight.toDegrees();
+        var location = currentPosition.toDegrees();
+        var markerX = (location[1] - topLeft[1]) / (bottomRight[1] - topLeft[1]) * screenWidth;
+        var markerY = (topLeft[0] - location[0]) / (topLeft[0] - bottomRight[0]) * screenHeight;
+        var dx = markerX - x;
+        var dy = markerY - y;
+        return dx * dx + dy * dy <= 14 * 14;
     }
 
     function changePointType(id, type, label) {
@@ -362,6 +636,9 @@ class StandaloneMapView extends WatchUi.MapView {
         if (pointLocations.hasKey(id) == false) {
             return;
         }
+        if (bloodhoundPointId != null && bloodhoundPointId.equals(id)) {
+            bloodhoundPointId = null;
+        }
         markers.remove(id);
         pointLocations.remove(id);
         pointDetails.remove(id);
@@ -382,6 +659,8 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         pointLocations = {};
         pointDetails = {};
+        bloodhoundPointId = null;
+        bloodhoundProximityNotified = false;
         markersDirty = true;
 
         var waypoints = PersistedContent.getAppWaypoints();
@@ -509,6 +788,10 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
             return true;
         }
         var coordinates = evt.getCoordinates();
+        if (view.isBloodhoundPanelAt(coordinates[0], coordinates[1])) {
+            view.showBloodhoundCancelMenu();
+            return true;
+        }
         if (view.isControlAt(coordinates[0], coordinates[1])) {
             if (view.isZoomInControlAt(coordinates[0], coordinates[1])) {
                 view.zoom(0.5);
@@ -524,6 +807,10 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
         var pointId = view.pointAtScreen(coordinates[0], coordinates[1]);
         if (pointId != null) {
             view.showPointTypeMenu(pointId);
+            return true;
+        }
+        if (view.isSelfAtScreen(coordinates[0], coordinates[1])) {
+            view.showSelfMenu();
             return true;
         }
         return true;
@@ -593,6 +880,10 @@ class PointMenuDelegate extends WatchUi.Menu2InputDelegate {
         if (id == :title) {
             WatchUi.pushView(new WatchUi.TextPicker(view.getPointText(pointId, "title")), new PointTextPickerDelegate(view, pointId, "title"), WatchUi.SLIDE_UP);
             return;
+        } else if (id == :bloodhound) {
+            view.toggleBloodhound(pointId);
+        } else if (id == :coordinates) {
+            return;
         } else if (id == :remark) {
             WatchUi.pushView(new WatchUi.TextPicker(view.getPointText(pointId, "remark")), new PointTextPickerDelegate(view, pointId, "remark"), WatchUi.SLIDE_UP);
             return;
@@ -606,6 +897,39 @@ class PointMenuDelegate extends WatchUi.Menu2InputDelegate {
             return;
         } else if (id == :delete) {
             view.deletePoint(pointId);
+        }
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+    }
+
+    function onBack() as Void {
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+    }
+}
+
+class CoordinateMenuDelegate extends WatchUi.Menu2InputDelegate {
+    function initialize() {
+        Menu2InputDelegate.initialize();
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+    }
+
+    function onBack() as Void {
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+    }
+}
+
+class BloodhoundCancelDelegate extends WatchUi.Menu2InputDelegate {
+    var view;
+
+    function initialize(mapView) {
+        Menu2InputDelegate.initialize();
+        view = mapView;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        if (item.getId() == :cancelBloodhound) {
+            view.toggleBloodhound(null);
         }
         WatchUi.popView(WatchUi.SLIDE_DOWN);
     }

@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Mapa</string>
+    <string id="MenuItemSettings">Nastaveni</string>
+    <string id="MenuTitleSettings">Nastaveni</string>
+    <string id="MenuTitleDevicePreferences">Predvolby zarizeni</string>
+    <string id="MenuTitleNetworkPreferences">Predvolby site</string>
+    <string id="MenuTitleAlertingPreferences">Predvolby upozorneni</string>
+    <string id="MenuTitleToolPreferences">Predvolby nastroju</string>
+    <string id="MenuItemLocationServices">Polohove sluzby</string>
+    <string id="LocationServicesEnabled">Zapnuto</string>
+    <string id="LocationServicesDisabled">Vypnuto</string>
+    <string id="MenuItemChat">Chat</string>
+    <string id="MenuItemSos">Rucni upozorneni</string>
+    <string id="MenuItemTakServer">Pripojeni ATAK</string>
+    <string id="MenuItemClearPoints">Vymazat 2525D</string>
+    <string id="ConfirmClearPointsTitle">Vymazat body?</string>
+    <string id="LabelClearPoints">Vymazat body</string>
+
+    <string id="MenuTitleChat">Chat</string>
+    <string id="MenuTitleQuickReply">Rychla odpoved</string>
+    <string id="MenuTitleSos">Rucni upozorneni</string>
+    <string id="ChatEmpty">Zadne zpravy</string>
+    <string id="ChatUnknownSender">Neznamy</string>
+
+    <string id="MenuTitleTakServer">Pripojeni ATAK</string>
+    <string id="LabelServerName">Nazev hodinek</string>
+    <string id="LabelTeam">Tym</string>
+    <string id="LabelRole">Role</string>
+    <string id="LabelUsername">Uzivatelske jmeno</string>
+    <string id="LabelPassword">Heslo</string>
+    <string id="LabelPort">Port</string>
+    <string id="LabelTrackingMode">Rezim sledovani</string>
+    <string id="TrackingModeDynamic">Dynamicky</string>
+    <string id="TrackingModeStatic">Staticky</string>
+    <string id="LabelAlertInterval">Sekundy upozorneni</string>
+    <string id="LabelMovingInterval">Sekundy pohybu</string>
+    <string id="LabelStationaryInterval">Sekundy stani</string>
+    <string id="LabelStaticInterval">Staticke sekundy</string>
+    <string id="LabelIncomingCotPath">Prichozi cesta CoT</string>
+    <string id="LabelIncomingCotInterval">Prichozi sekundy</string>
+    <string id="LabelHealthTelemetry">Zdravotni telemetrie</string>
+    <string id="LabelEnabled">Povoleno</string>
+    <string id="LabelDisabled">Zakazano</string>
+    <string id="LabelSosControl">Rucni upozorneni</string>
+    <string id="LabelSendSos">Odeslat SOS</string>
+    <string id="LabelClearSos">Vymazat SOS</string>
+    <string id="LabelCancel">Zrusit</string>
+    <string id="ConfirmSosTitle">Odeslat SOS?</string>
+    <string id="LabelConnect">Spustit relay</string>
+    <string id="LabelDisconnect">Zastavit relay</string>
+    <string id="LabelNotSet">Nenastaveno</string>
+    <string id="StatusIdle">Relay zastaven</string>
+    <string id="StatusConnecting">Pripojovani...</string>
+    <string id="StatusRetrying">Opakovani</string>
+    <string id="StatusConnected">Relay aktivni</string>
+    <string id="StatusFailed">Selhalo</string>
+</resources>

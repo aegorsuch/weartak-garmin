@@ -1,0 +1,61 @@
+<resources>
+    <string id="AppName">WearTAK</string>
+    <string id="version">1.0</string>
+
+    <string id="MenuTitleMain">WearTAK</string>
+    <string id="MenuItemMap">Peta</string>
+    <string id="MenuItemSettings">Pengaturan</string>
+    <string id="MenuTitleSettings">Pengaturan</string>
+    <string id="MenuTitleDevicePreferences">Preferensi perangkat</string>
+    <string id="MenuTitleNetworkPreferences">Preferensi jaringan</string>
+    <string id="MenuTitleAlertingPreferences">Preferensi peringatan</string>
+    <string id="MenuTitleToolPreferences">Preferensi alat</string>
+    <string id="MenuItemLocationServices">Layanan lokasi</string>
+    <string id="LocationServicesEnabled">Aktif</string>
+    <string id="LocationServicesDisabled">Nonaktif</string>
+    <string id="MenuItemChat">Chat</string>
+    <string id="MenuItemSos">Peringatan manual</string>
+    <string id="MenuItemTakServer">Koneksi ATAK</string>
+    <string id="MenuItemClearPoints">Hapus 2525D</string>
+    <string id="ConfirmClearPointsTitle">Hapus titik?</string>
+    <string id="LabelClearPoints">Hapus titik</string>
+
+    <string id="MenuTitleChat">Chat</string>
+    <string id="MenuTitleQuickReply">Balasan cepat</string>
+    <string id="MenuTitleSos">Peringatan manual</string>
+    <string id="ChatEmpty">Tidak ada pesan</string>
+    <string id="ChatUnknownSender">Tidak dikenal</string>
+
+    <string id="MenuTitleTakServer">Koneksi ATAK</string>
+    <string id="LabelServerName">Nama jam</string>
+    <string id="LabelTeam">Tim</string>
+    <string id="LabelRole">Peran</string>
+    <string id="LabelUsername">Nama pengguna</string>
+    <string id="LabelPassword">Kata sandi</string>
+    <string id="LabelPort">Port</string>
+    <string id="LabelTrackingMode">Mode pelacakan</string>
+    <string id="TrackingModeDynamic">Dinamis</string>
+    <string id="TrackingModeStatic">Statis</string>
+    <string id="LabelAlertInterval">Detik peringatan</string>
+    <string id="LabelMovingInterval">Detik bergerak</string>
+    <string id="LabelStationaryInterval">Detik diam</string>
+    <string id="LabelStaticInterval">Detik statis</string>
+    <string id="LabelIncomingCotPath">Jalur CoT masuk</string>
+    <string id="LabelIncomingCotInterval">Detik masuk</string>
+    <string id="LabelHealthTelemetry">Telemetri kesehatan</string>
+    <string id="LabelEnabled">Diaktifkan</string>
+    <string id="LabelDisabled">Dinonaktifkan</string>
+    <string id="LabelSosControl">Peringatan manual</string>
+    <string id="LabelSendSos">Kirim SOS</string>
+    <string id="LabelClearSos">Hapus SOS</string>
+    <string id="LabelCancel">Batal</string>
+    <string id="ConfirmSosTitle">Kirim SOS?</string>
+    <string id="LabelConnect">Mulai relay</string>
+    <string id="LabelDisconnect">Hentikan relay</string>
+    <string id="LabelNotSet">Belum diatur</string>
+    <string id="StatusIdle">Relay berhenti</string>
+    <string id="StatusConnecting">Menghubungkan...</string>
+    <string id="StatusRetrying">Mencoba lagi</string>
+    <string id="StatusConnected">Relay aktif</string>
+    <string id="StatusFailed">Gagal</string>
+</resources>
