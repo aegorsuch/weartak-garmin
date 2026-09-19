@@ -12,16 +12,19 @@ fēnix 8 class, and fenix 6X Pro / Tactix Delta class devices.
 
 ## Installation
 
-1. Download `WearTAK-Garmin.iq` from the latest GitHub release.
+1. Download the `.prg` matching your watch from the latest GitHub release.
 2. Connect the watch to your computer with its USB cable and wait for it to
 	appear as a removable drive.
 3. Open the watch drive and navigate to `GARMIN/Apps`.
-4. Drag `WearTAK-Garmin.iq` into the `GARMIN/Apps` folder.
+4. Drag only the matching `.prg` into the `GARMIN/Apps` folder. For a fēnix
+	7X, use `WearTAK-Garmin-fenix7x.prg`.
 5. Safely eject the watch, disconnect the USB cable, and launch WearTAK from
 	the watch's app list.
 
-The `.iq` package supports all listed watch targets. Garmin uses the watch's
-system language for localized app text.
+Do not copy the `.prg.debug.xml`, other device builds, or the `.iq` package to
+the watch. The `.iq` package is the release bundle for Garmin's supported
+distribution workflow; direct USB sideloading uses the device-specific `.prg`.
+Garmin uses the watch's system language for localized app text.
 
 The app uses Garmin Connect IQ phone messages to relay watch input to the
 WearTAK ATAK companion. ATAK owns TAK server connectivity, mTLS credentials,
