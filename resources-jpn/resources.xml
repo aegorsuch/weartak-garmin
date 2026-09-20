@@ -59,4 +59,27 @@
     <string id="StatusConnected">リレー有効</string>
     <string id="StatusFailed">失敗</string>
 <string id="TextActive">アクティブ</string><string id="TextAlertDuration">アラート時間</string><string id="TextAlertLength">アラート時間</string><string id="TextAlertThreshold">アラートしきい値</string><string id="TextAlertingPreferences">アラート設定</string><string id="TextAltitude">高度</string><string id="TextAtmPressureAlerts">気圧アラート</string><string id="TextBatteryAlerts">バッテリーアラート</string><string id="TextBearing">方位</string><string id="TextBloodhound">目標追跡</string><string id="TextBloodhoundCompass">ナビゲーション</string><string id="TextCancel">キャンセル</string><string id="TextChat">チャット</string><string id="TextClear2525d">2525Dを消去</string><string id="TextClearManualAlert">手動アラートを消去</string><string id="TextClearPointsMain">2525Dポイントを消去</string><string id="TextClearPointsPrompt">アプリのポイントを消去しますか？</string><string id="TextCoordinates">座標</string><string id="TextDelete">削除</string><string id="TextDevicePreferences">デバイス設定</string><string id="TextDropPoint">2525Dポイントを配置</string><string id="TextEnvironment">環境</string><string id="TextEnvironmentalAlerts">環境アラート</string><string id="TextExertion">運動負荷</string><string id="TextExertionAlerts">運動負荷アラート</string><string id="TextExit">終了</string><string id="TextFriendlyPoint">友軍2525Dポイント</string><string id="TextGateRunner">ゲートランナー</string><string id="TextGunshot">銃声</string><string id="TextGunshotInjury">銃創</string><string id="TextHeartRate">心拍数</string><string id="TextHeartRateThreshold">心拍数しきい値</string><string id="TextHighHrThreshold">高心拍しきい値</string><string id="TextHighPressureAlert">高圧アラート</string><string id="TextHighRestingHeartRate">高安静時心拍</string><string id="TextHostilePoint">敵軍2525Dポイント</string><string id="TextImmersionAlerts">浸水アラート</string><string id="TextInjury">負傷</string><string id="TextLocationServices">位置情報サービス</string><string id="TextLocationUnavailable">位置情報を利用できません</string><string id="TextLowHrThreshold">低心拍しきい値</string><string id="TextLowPressureAlert">低圧アラート</string><string id="TextLowRestingHeartRate">低安静時心拍</string><string id="TextManualAlert">手動アラート</string><string id="TextMap">地図</string><string id="TextNetworkPreferences">ネットワーク設定</string><string id="TextNoBloodhoundTarget">追跡対象なし</string><string id="TextObstaclePoint">障害物2525Dポイント</string><string id="TextOff">オフ</string><string id="TextOldPointsCleared">古いポイントを消去しました</string><string id="TextOn">オン</string><string id="TextPhysiologicalAlerts">生理アラート</string><string id="TextPhysiology">生理</string><string id="TextPhysiologyView">生理</string><string id="TextPointDropped">2525Dポイントを配置しました</string><string id="TextPointTitle">2525Dポイント</string><string id="TextPressure">気圧</string><string id="TextPressureThreshold">圧力しきい値</string><string id="TextProximity">目標接近</string><string id="TextRange">距離</string><string id="TextRestingHeartRateAlerts">安静時心拍アラート</string><string id="TextSelected">選択済み</string><string id="TextSelf">自分</string><string id="TextSetRemark">備考設定</string><string id="TextSetTitle">タイトル設定</string><string id="TextSetType">種類設定</string><string id="TextSettings">設定</string><string id="TextStopBloodhound">目標追跡停止</string><string id="TextTapMapPoint">地図のポイントをタップして開始</string><string id="TextTemperature">温度</string><string id="TextToolPreferences">ツール設定</string><string id="TextUas">UAS</string><string id="TextUnavailable">利用不可</string><string id="TextUnknownPoint">不明な2525Dポイント</string><string id="TextUserMetrics">ユーザー指標</string><string id="TextVehicle">車両</string><string id="TextWaitingForLocation">位置情報を待機中</string><string id="TextWarningLength">警告時間</string><string id="TextWarningThreshold">警告しきい値</string>
+    <string id="LabelTakPlaceholder">Placeholder - not yet functional</string>
+    <string id="TextAllergies">Allergies</string>
+    <string id="TextAllergyDisabled">Disabled</string>
+    <string id="TextAllergyEnabled">Enabled</string>
+    <string id="TextBirthYear">Birth Year</string>
+    <string id="TextBloodType">Blood Type</string>
+    <string id="TextGaitTracking">Gait Tracking</string>
+    <string id="TextHeight">Height</string>
+    <string id="TextLatLon">Lat/Lon</string>
+    <string id="TextLoadoutWeight">Loadout Weight</string>
+    <string id="TextMedicalProfile">Medical Profile (BATDOK)</string>
+    <string id="TextMgrs">MGRS</string>
+    <string id="TextMyUserMetrics">My User Metrics</string>
+    <string id="TextProximityIntensity">Bloodhound Proximity Intensity</string>
+    <string id="TextProximityRadius">Bloodhound Proximity Radius</string>
+    <string id="TextProximityVibration">Bloodhound Proximity Vibration</string>
+    <string id="TextSex">Sex</string>
+    <string id="TextStrideLength">Stride Length</string>
+    <string id="TextTakConnect">ATAK Connect</string>
+    <string id="TextUniformPantsLength">Uniform Pants Length</string>
+    <string id="TextUniformWaistSize">Uniform Waist Size</string>
+    <string id="TextUserType">User Type</string>
+    <string id="TextWeight">Weight</string>
 </resources>

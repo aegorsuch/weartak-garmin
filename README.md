@@ -107,6 +107,28 @@ Garmin localized resources are selected automatically by the watch's system
 locale via Connect IQ's built-in `Rez.Strings` mechanism; there is no in-app
 language override.
 
+### Maintaining translations
+
+The English resource file at `resources/resources.xml` is the canonical string
+key set. Each `resources-*/resources.xml` file should contain the same string
+IDs. Run the localization check from the project root after adding or changing
+resource keys:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Validate-Localization.ps1
+```
+
+The check reports missing or unexpected IDs and returns a non-zero exit code
+until every locale has complete key coverage. A missing translation should be
+replaced in the locale file rather than removing the key from the English
+source. To add missing keys as temporary English fallbacks, run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Sync-LocalizationFallbacks.ps1
+```
+
+Review and translate those fallback values before release.
+
 Treat location and saved waypoints as sensitive data. Configure ATAK's TAK
 connection according to the deployment's operational policy.
 

@@ -59,4 +59,27 @@
     <string id="StatusConnected">릴레이 활성</string>
     <string id="StatusFailed">실패</string>
 <string id="TextActive">활성</string><string id="TextAlertDuration">알림 기간</string><string id="TextAlertLength">알림 시간</string><string id="TextAlertThreshold">알림 임계값</string><string id="TextAlertingPreferences">알림 설정</string><string id="TextAltitude">고도</string><string id="TextAtmPressureAlerts">기압 알림</string><string id="TextBatteryAlerts">배터리 알림</string><string id="TextBearing">방위</string><string id="TextBloodhound">목표 추적</string><string id="TextBloodhoundCompass">내비게이션</string><string id="TextCancel">취소</string><string id="TextChat">채팅</string><string id="TextClear2525d">2525D 지우기</string><string id="TextClearManualAlert">수동 알림 지우기</string><string id="TextClearPointsMain">2525D 포인트 지우기</string><string id="TextClearPointsPrompt">앱 포인트를 지울까요?</string><string id="TextCoordinates">좌표</string><string id="TextDelete">삭제</string><string id="TextDevicePreferences">장치 설정</string><string id="TextDropPoint">2525D 포인트 놓기</string><string id="TextEnvironment">환경</string><string id="TextEnvironmentalAlerts">환경 알림</string><string id="TextExertion">운동 강도</string><string id="TextExertionAlerts">운동 강도 알림</string><string id="TextExit">종료</string><string id="TextFriendlyPoint">아군 2525D 포인트</string><string id="TextGateRunner">게이트 러너</string><string id="TextGunshot">총성</string><string id="TextGunshotInjury">총상</string><string id="TextHeartRate">심박수</string><string id="TextHeartRateThreshold">심박수 임계값</string><string id="TextHighHrThreshold">높은 심박 임계값</string><string id="TextHighPressureAlert">고압 알림</string><string id="TextHighRestingHeartRate">높은 휴식 심박</string><string id="TextHostilePoint">적군 2525D 포인트</string><string id="TextImmersionAlerts">침수 알림</string><string id="TextInjury">부상</string><string id="TextLocationServices">위치 서비스</string><string id="TextLocationUnavailable">위치를 사용할 수 없음</string><string id="TextLowHrThreshold">낮은 심박 임계값</string><string id="TextLowPressureAlert">저압 알림</string><string id="TextLowRestingHeartRate">낮은 휴식 심박</string><string id="TextManualAlert">수동 알림</string><string id="TextMap">지도</string><string id="TextNetworkPreferences">네트워크 설정</string><string id="TextNoBloodhoundTarget">추적 대상 없음</string><string id="TextObstaclePoint">장애물 2525D 포인트</string><string id="TextOff">꺼짐</string><string id="TextOldPointsCleared">이전 포인트 삭제됨</string><string id="TextOn">켜짐</string><string id="TextPhysiologicalAlerts">생리 알림</string><string id="TextPhysiology">생리</string><string id="TextPhysiologyView">생리</string><string id="TextPointDropped">2525D 포인트가 놓였습니다</string><string id="TextPointTitle">2525D 포인트</string><string id="TextPressure">기압</string><string id="TextPressureThreshold">압력 임계값</string><string id="TextProximity">목표 근접</string><string id="TextRange">거리</string><string id="TextRestingHeartRateAlerts">휴식 심박 알림</string><string id="TextSelected">선택됨</string><string id="TextSelf">자기 위치</string><string id="TextSetRemark">비고 설정</string><string id="TextSetTitle">제목 설정</string><string id="TextSetType">유형 설정</string><string id="TextSettings">설정</string><string id="TextStopBloodhound">목표 추적 중지</string><string id="TextTapMapPoint">지도 지점을 눌러 시작</string><string id="TextTemperature">온도</string><string id="TextToolPreferences">도구 설정</string><string id="TextUas">UAS</string><string id="TextUnavailable">사용할 수 없음</string><string id="TextUnknownPoint">알 수 없는 2525D 포인트</string><string id="TextUserMetrics">사용자 지표</string><string id="TextVehicle">차량</string><string id="TextWaitingForLocation">위치 대기 중</string><string id="TextWarningLength">경고 시간</string><string id="TextWarningThreshold">경고 임계값</string>
+    <string id="LabelTakPlaceholder">Placeholder - not yet functional</string>
+    <string id="TextAllergies">Allergies</string>
+    <string id="TextAllergyDisabled">Disabled</string>
+    <string id="TextAllergyEnabled">Enabled</string>
+    <string id="TextBirthYear">Birth Year</string>
+    <string id="TextBloodType">Blood Type</string>
+    <string id="TextGaitTracking">Gait Tracking</string>
+    <string id="TextHeight">Height</string>
+    <string id="TextLatLon">Lat/Lon</string>
+    <string id="TextLoadoutWeight">Loadout Weight</string>
+    <string id="TextMedicalProfile">Medical Profile (BATDOK)</string>
+    <string id="TextMgrs">MGRS</string>
+    <string id="TextMyUserMetrics">My User Metrics</string>
+    <string id="TextProximityIntensity">Bloodhound Proximity Intensity</string>
+    <string id="TextProximityRadius">Bloodhound Proximity Radius</string>
+    <string id="TextProximityVibration">Bloodhound Proximity Vibration</string>
+    <string id="TextSex">Sex</string>
+    <string id="TextStrideLength">Stride Length</string>
+    <string id="TextTakConnect">ATAK Connect</string>
+    <string id="TextUniformPantsLength">Uniform Pants Length</string>
+    <string id="TextUniformWaistSize">Uniform Waist Size</string>
+    <string id="TextUserType">User Type</string>
+    <string id="TextWeight">Weight</string>
 </resources>
