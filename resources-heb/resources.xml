@@ -59,4 +59,27 @@
     <string id="StatusConnected">הממסר פעיל</string>
     <string id="StatusFailed">נכשל</string>
 <string id="TextActive">פעיל</string><string id="TextAlertDuration">משך התראה</string><string id="TextAlertLength">משך התראה</string><string id="TextAlertThreshold">סף התראה</string><string id="TextAlertingPreferences">העדפות התראות</string><string id="TextAltitude">גובה</string><string id="TextAtmPressureAlerts">התראות לחץ אוויר</string><string id="TextBatteryAlerts">התראות סוללה</string><string id="TextBearing">כיוון</string><string id="TextBloodhound">מעקב יעד</string><string id="TextBloodhoundCompass">ניווט</string><string id="TextCancel">ביטול</string><string id="TextChat">צ'אט</string><string id="TextClear2525d">נקה 2525D</string><string id="TextClearManualAlert">נקה התראה ידנית</string><string id="TextClearPointsMain">נקה נקודות 2525D</string><string id="TextClearPointsPrompt">לנקות נקודות אפליקציה?</string><string id="TextCoordinates">קואורדינטות</string><string id="TextDelete">מחק</string><string id="TextDevicePreferences">העדפות מכשיר</string><string id="TextDropPoint">הנח נקודת 2525D</string><string id="TextEnvironment">סביבה</string><string id="TextEnvironmentalAlerts">התראות סביבה</string><string id="TextExertion">מאמץ</string><string id="TextExertionAlerts">התראות מאמץ</string><string id="TextExit">יציאה</string><string id="TextFriendlyPoint">נקודת 2525D ידידותית</string><string id="TextGateRunner">רץ שער</string><string id="TextGunshot">יריה</string><string id="TextGunshotInjury">פציעת ירי</string><string id="TextHeartRate">דופק</string><string id="TextHeartRateThreshold">סף דופק</string><string id="TextHighHrThreshold">סף דופק גבוה</string><string id="TextHighPressureAlert">התראת לחץ גבוה</string><string id="TextHighRestingHeartRate">דופק מנוחה גבוה</string><string id="TextHostilePoint">נקודת 2525D עוינת</string><string id="TextImmersionAlerts">התראות טבילה</string><string id="TextInjury">פציעה</string><string id="TextLocationServices">שירותי מיקום</string><string id="TextLocationUnavailable">המיקום אינו זמין</string><string id="TextLowHrThreshold">סף דופק נמוך</string><string id="TextLowPressureAlert">התראת לחץ נמוך</string><string id="TextLowRestingHeartRate">דופק מנוחה נמוך</string><string id="TextManualAlert">התראה ידנית</string><string id="TextMap">מפה</string><string id="TextNetworkPreferences">העדפות רשת</string><string id="TextNoBloodhoundTarget">אין יעד מעקב</string><string id="TextObstaclePoint">נקודת 2525D מכשול</string><string id="TextOff">כבוי</string><string id="TextOldPointsCleared">נקודות ישנות נוקו</string><string id="TextOn">פועל</string><string id="TextPhysiologicalAlerts">התראות פיזיולוגיות</string><string id="TextPhysiology">פיזיולוגיה</string><string id="TextPhysiologyView">פיזיולוגיה</string><string id="TextPointDropped">נקודת 2525D הונחה</string><string id="TextPointTitle">נקודת 2525D</string><string id="TextPressure">לחץ</string><string id="TextPressureThreshold">סף לחץ</string><string id="TextProximity">קרבה ליעד</string><string id="TextRange">טווח</string><string id="TextRestingHeartRateAlerts">התראות דופק מנוחה</string><string id="TextSelected">נבחר</string><string id="TextSelf">עצמי</string><string id="TextSetRemark">הגדר הערה</string><string id="TextSetTitle">הגדר כותרת</string><string id="TextSetType">הגדר סוג</string><string id="TextSettings">הגדרות</string><string id="TextStopBloodhound">עצור מעקב</string><string id="TextTapMapPoint">הקש על נקודה כדי להתחיל</string><string id="TextTemperature">טמפרטורה</string><string id="TextToolPreferences">העדפות כלים</string><string id="TextUas">כלי טיס בלתי מאויש</string><string id="TextUnavailable">לא זמין</string><string id="TextUnknownPoint">נקודת 2525D לא ידועה</string><string id="TextUserMetrics">מדדי משתמש</string><string id="TextVehicle">רכב</string><string id="TextWaitingForLocation">ממתין למיקום</string><string id="TextWarningLength">משך אזהרה</string><string id="TextWarningThreshold">סף אזהרה</string>
+    <string id="LabelTakPlaceholder">Placeholder - not yet functional</string>
+    <string id="TextAllergies">Allergies</string>
+    <string id="TextAllergyDisabled">Disabled</string>
+    <string id="TextAllergyEnabled">Enabled</string>
+    <string id="TextBirthYear">Birth Year</string>
+    <string id="TextBloodType">Blood Type</string>
+    <string id="TextGaitTracking">Gait Tracking</string>
+    <string id="TextHeight">Height</string>
+    <string id="TextLatLon">Lat/Lon</string>
+    <string id="TextLoadoutWeight">Loadout Weight</string>
+    <string id="TextMedicalProfile">Medical Profile (BATDOK)</string>
+    <string id="TextMgrs">MGRS</string>
+    <string id="TextMyUserMetrics">My User Metrics</string>
+    <string id="TextProximityIntensity">Bloodhound Proximity Intensity</string>
+    <string id="TextProximityRadius">Bloodhound Proximity Radius</string>
+    <string id="TextProximityVibration">Bloodhound Proximity Vibration</string>
+    <string id="TextSex">Sex</string>
+    <string id="TextStrideLength">Stride Length</string>
+    <string id="TextTakConnect">ATAK Connect</string>
+    <string id="TextUniformPantsLength">Uniform Pants Length</string>
+    <string id="TextUniformWaistSize">Uniform Waist Size</string>
+    <string id="TextUserType">User Type</string>
+    <string id="TextWeight">Weight</string>
 </resources>
