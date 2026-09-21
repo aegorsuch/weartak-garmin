@@ -438,6 +438,14 @@ class StandaloneMapView extends WatchUi.MapView {
         return false;
     }
 
+    function hasPoints() as Boolean {
+        if (pointLocations == null) {
+            return false;
+        }
+        var ids = pointLocations.keys();
+        return ids != null && ids.size() > 0;
+    }
+
     function snapToSelf() {
         var info = Position.getInfo();
         if (info != null && info.position != null) {
@@ -490,6 +498,9 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function addPoint(location, type, label) {
+        if (location == null) {
+            return;
+        }
         var id = "point-" + nextPointNumber.toString();
         nextPointNumber += 1;
         var marker = new StandaloneMapMarker(location);
@@ -640,7 +651,7 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function deletePoint(id) {
-        if (pointLocations.hasKey(id) == false) {
+        if (id == null || pointLocations == null || pointLocations.hasKey(id) == false) {
             return;
         }
         if (bloodhoundPointId != null && bloodhoundPointId.equals(id)) {
@@ -657,6 +668,9 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function clearDroppedPoints() {
+        if (!hasPoints()) {
+            return;
+        }
         var pointIds = pointLocations.keys();
         for (var i = 0; i < pointIds.size(); i++) {
             markers.remove(pointIds[i]);
