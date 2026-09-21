@@ -300,6 +300,88 @@ class StandaloneApp extends Application.AppBase {
         loadoutWeight = storedNumber("loadoutWeight", loadoutWeight);
         devModeEnabled = storedBoolean("devModeEnabled", devModeEnabled);
         verboseLoggingEnabled = storedBoolean("verboseLoggingEnabled", verboseLoggingEnabled);
+        ensureValidAlertRange();
+        ensureValidUserMetrics();
+    }
+
+    function ensureValidAlertRange() as Void {
+        if (lowPressureThreshold < 800) {
+            lowPressureThreshold = 950;
+        } else if (lowPressureThreshold > 1100) {
+            lowPressureThreshold = 1100;
+        }
+        if (highPressureThreshold < 1000) {
+            highPressureThreshold = 2000;
+        } else if (highPressureThreshold > 2200) {
+            highPressureThreshold = 2200;
+        }
+        if (highPressureThreshold < lowPressureThreshold) {
+            highPressureThreshold = lowPressureThreshold + 25;
+        }
+
+        if (highRestingHeartRate < 80) {
+            highRestingHeartRate = 120;
+        } else if (highRestingHeartRate > 220) {
+            highRestingHeartRate = 220;
+        }
+        if (lowRestingHeartRate < 25) {
+            lowRestingHeartRate = 40;
+        } else if (lowRestingHeartRate > 110) {
+            lowRestingHeartRate = 110;
+        }
+        if (highRestingHeartRate <= lowRestingHeartRate) {
+            highRestingHeartRate = lowRestingHeartRate + 20;
+        }
+
+        if (exertionWarningThreshold < 50) {
+            exertionWarningThreshold = 80;
+        } else if (exertionWarningThreshold > 100) {
+            exertionWarningThreshold = 100;
+        }
+        if (exertionAlertThreshold < 50) {
+            exertionAlertThreshold = 90;
+        } else if (exertionAlertThreshold > 100) {
+            exertionAlertThreshold = 100;
+        }
+        if (exertionAlertThreshold < exertionWarningThreshold) {
+            exertionAlertThreshold = exertionWarningThreshold + 5;
+        }
+    }
+
+    function ensureValidUserMetrics() as Void {
+        if (birthYear < 1920 || birthYear > 2026) {
+            birthYear = 1990;
+        }
+        if (height < 48 || height > 84) {
+            height = 68;
+        }
+        if (weight < 80 || weight > 320) {
+            weight = 155;
+        }
+        if (sex == null || sex.equals("")) {
+            sex = "Not Set";
+        }
+        if (bloodType == null || bloodType.equals("")) {
+            bloodType = "Unknown";
+        }
+        if (userType == null || userType.equals("")) {
+            userType = "N/A";
+        }
+        if (allergies == null || allergies.size() == 0) {
+            allergies = ["N/A"];
+        }
+        if (uniformWaistSize < 24 || uniformWaistSize > 60) {
+            uniformWaistSize = 32;
+        }
+        if (strideLength < 20 || strideLength > 45) {
+            strideLength = 30;
+        }
+        if (uniformPantsLength < 24 || uniformPantsLength > 60) {
+            uniformPantsLength = 32;
+        }
+        if (loadoutWeight < 10 || loadoutWeight > 150) {
+            loadoutWeight = 72;
+        }
     }
 
     function storedNumber(key as String, fallback as Number) as Number {
