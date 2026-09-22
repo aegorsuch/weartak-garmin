@@ -312,8 +312,8 @@ class StandaloneApp extends Application.AppBase {
         }
         if (highPressureThreshold < 1000) {
             highPressureThreshold = 2000;
-        } else if (highPressureThreshold > 2200) {
-            highPressureThreshold = 2200;
+        } else if (highPressureThreshold > 3000) {
+            highPressureThreshold = 3000;
         }
         if (highPressureThreshold < lowPressureThreshold) {
             highPressureThreshold = lowPressureThreshold + 25;
@@ -345,6 +345,9 @@ class StandaloneApp extends Application.AppBase {
         }
         if (exertionAlertThreshold < exertionWarningThreshold) {
             exertionAlertThreshold = exertionWarningThreshold + 5;
+            if (exertionAlertThreshold > 100) {
+                exertionAlertThreshold = 100;
+            }
         }
     }
 

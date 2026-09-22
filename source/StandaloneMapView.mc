@@ -668,21 +668,20 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function clearDroppedPoints() {
-        if (!hasPoints()) {
-            return;
-        }
-        var pointIds = pointLocations.keys();
-        for (var i = 0; i < pointIds.size(); i++) {
-            markers.remove(pointIds[i]);
-            if (takClient != null) {
-                takClient.deleteMarker(pointIds[i]);
+        if (hasPoints()) {
+            var pointIds = pointLocations.keys();
+            for (var i = 0; i < pointIds.size(); i++) {
+                markers.remove(pointIds[i]);
+                if (takClient != null) {
+                    takClient.deleteMarker(pointIds[i]);
+                }
             }
+            pointLocations = {};
+            pointDetails = {};
+            bloodhoundPointId = null;
+            bloodhoundProximityNotified = false;
+            markersDirty = true;
         }
-        pointLocations = {};
-        pointDetails = {};
-        bloodhoundPointId = null;
-        bloodhoundProximityNotified = false;
-        markersDirty = true;
 
         var waypoints = PersistedContent.getAppWaypoints();
         var waypoint = waypoints.next();
