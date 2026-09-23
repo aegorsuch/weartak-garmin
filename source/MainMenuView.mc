@@ -203,7 +203,16 @@ function alertSettingLabel(setting as Symbol, value as Number) as String {
 }
 
 function buildAlertValueMenu(app as StandaloneApp, setting as Symbol, parentItem as WatchUi.MenuItem) as WatchUi.Menu2 {
-    var title = setting == :highThreshold || setting == :lowThreshold ? app.text(:heartRateThreshold) : app.text(:alertDuration);
+    var title;
+    if (setting == :highThreshold || setting == :lowThreshold) {
+        title = app.text(:heartRateThreshold);
+    } else if (setting == :exertionWarningThreshold) {
+        title = app.text(:warningThreshold);
+    } else if (setting == :exertionAlertThreshold) {
+        title = app.text(:alertThreshold);
+    } else {
+        title = app.text(:alertDuration);
+    }
     var menu = new WatchUi.Menu2({:title => title});
     if (setting == :highThreshold) {
         addAlertValues(menu, 80, 200, 5);
