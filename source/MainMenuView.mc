@@ -560,7 +560,7 @@ function buildPressureValueMenu(app as StandaloneApp, setting as Symbol) as Watc
     if (setting == :lowPressureThreshold) {
         addAlertValues(menu, 800, 1100, 5);
     } else {
-        addAlertValues(menu, 1000, 3000, 5);
+        addAlertValues(menu, 1000, 3000, 100);
     }
     return menu;
 }
