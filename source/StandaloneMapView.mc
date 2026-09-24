@@ -1,3 +1,4 @@
+import Toybox.Application;
 import Toybox.Graphics;
 import Toybox.Attention;
 import Toybox.Lang;
@@ -54,6 +55,76 @@ class StandaloneMapView extends WatchUi.MapView {
         mapAreaDirty = false;
         entityPruneTimer = new Timer.Timer();
         entityPruneTimer.start(method(:pruneIncomingEntitiesOnTimer), 60000, true);
+        loadPoints();
+    }
+
+    function typeToString(type as Symbol) as String {
+        if (type == :friendly) {
+            return "friendly";
+        } else if (type == :hostile) {
+            return "hostile";
+        } else if (type == :obstacle) {
+            return "obstacle";
+        }
+        return "unknown";
+    }
+
+    function typeFromString(type as String) as Symbol {
+        if (type.equals("friendly")) {
+            return :friendly;
+        } else if (type.equals("hostile")) {
+            return :hostile;
+        } else if (type.equals("obstacle")) {
+            return :obstacle;
+        }
+        return :unknown;
+    }
+
+    function savePoints() as Void {
+        var saved = [];
+        var ids = pointLocations.keys();
+        for (var i = 0; i < ids.size(); i++) {
+            var id = ids[i];
+            var details = pointDetails.get(id) as Dictionary;
+            var degrees = pointLocations.get(id).toDegrees();
+            saved.add({
+                "id" => id,
+                "lat" => degrees[0],
+                "lon" => degrees[1],
+                "type" => typeToString(details.get("type") as Symbol),
+                "title" => safeDetailString(details, "title", ""),
+                "remark" => safeDetailString(details, "remark", "")
+            });
+        }
+        Application.Storage.setValue("droppedPoints", saved);
+        Application.Storage.setValue("nextPointNumber", nextPointNumber);
+    }
+
+    function loadPoints() as Void {
+        var saved = Application.Storage.getValue("droppedPoints");
+        if (saved == null) {
+            return;
+        }
+        var savedArray = saved as Array;
+        for (var i = 0; i < savedArray.size(); i++) {
+            var entry = savedArray[i] as Dictionary;
+            var id = entry.get("id") as String;
+            var location = new Position.Location({:latitude => entry.get("lat") as Double, :longitude => entry.get("lon") as Double, :format => :degrees});
+            var type = typeFromString(entry.get("type") as String);
+            var title = entry.get("title") as String;
+            var marker = new StandaloneMapMarker(location);
+            var icon = iconForType(type);
+            marker.setIcon(icon, icon.getWidth() / 2, icon.getHeight() / 2);
+            marker.setLabel(title);
+            markers.put(id, marker);
+            pointLocations.put(id, location);
+            pointDetails.put(id, {"type" => type, "title" => title, "remark" => entry.get("remark") as String});
+        }
+        var storedNextPointNumber = Application.Storage.getValue("nextPointNumber");
+        if (storedNextPointNumber != null) {
+            nextPointNumber = storedNextPointNumber as Number;
+        }
+        markersDirty = true;
     }
 
     function updatePosition(info) {
@@ -514,6 +585,7 @@ class StandaloneMapView extends WatchUi.MapView {
         if (takClient != null) {
             takClient.sendMarker(id, location, type, label, "");
         }
+        savePoints();
         WatchUi.requestUpdate();
     }
 
@@ -647,6 +719,7 @@ class StandaloneMapView extends WatchUi.MapView {
         if (takClient != null) {
             takClient.sendMarker(id, location, type, title, remark);
         }
+        savePoints();
         WatchUi.requestUpdate();
     }
 
@@ -664,6 +737,7 @@ class StandaloneMapView extends WatchUi.MapView {
             takClient.deleteMarker(id);
         }
         markersDirty = true;
+        savePoints();
         WatchUi.requestUpdate();
     }
 
@@ -681,6 +755,7 @@ class StandaloneMapView extends WatchUi.MapView {
             bloodhoundPointId = null;
             bloodhoundProximityNotified = false;
             markersDirty = true;
+            savePoints();
         }
 
         var waypoints = PersistedContent.getAppWaypoints();

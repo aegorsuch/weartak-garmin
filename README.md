@@ -107,6 +107,16 @@ Garmin localized resources are selected automatically by the watch's system
 locale via Connect IQ's built-in `Rez.Strings` mechanism; there is no in-app
 language override.
 
+### Supported languages
+
+The app text is localized into the languages declared in `manifest.xml`:
+
+Arabic, Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish,
+French, German, Greek, Hebrew, Hungarian, Indonesian, Italian, Japanese,
+Korean, Latvian, Lithuanian, Norwegian Bokmal, Polish, Portuguese, Romanian,
+Russian, Slovak, Slovenian, Spanish, Swedish, Thai, Turkish, Ukrainian, and
+Vietnamese.
+
 ### Maintaining translations
 
 The English resource file at `resources/resources.xml` is the canonical string
