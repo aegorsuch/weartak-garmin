@@ -148,8 +148,8 @@ This project is intentionally scoped to the currently working features above.
 Everything else is planned work and should be considered future capability,
 not a present guarantee.
 
-1. **Map + point editing** - active: open the map, drop points, rename them,
-	change point type, and delete them.
+1. **Map + point editing** - implemented: open the map, drop points, rename
+	them, change point type, and delete them.
 2. **ATAK relay plumbing** - planned: expand the watch-to-phone integration
 	beyond the current local point workflow.
 3. **Chat and messaging** - planned: support incoming and outgoing ATAK chat

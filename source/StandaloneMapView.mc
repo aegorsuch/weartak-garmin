@@ -208,8 +208,13 @@ class StandaloneMapView extends WatchUi.MapView {
             bloodhoundPointId = null;
         } else {
             bloodhoundPointId = pointId;
+            var currentInfo = Position.getInfo();
+            if (currentInfo != null && currentInfo.position != null) {
+                currentPosition = currentInfo.position;
+            }
         }
         bloodhoundProximityNotified = false;
+        evaluateBloodhoundProximity();
         WatchUi.requestUpdate();
     }
 
@@ -244,7 +249,12 @@ class StandaloneMapView extends WatchUi.MapView {
         var span = 0.05;
         mapTopLeft = new Position.Location({:latitude => center[0] + span, :longitude => center[1] - span, :format => :degrees});
         mapBottomRight = new Position.Location({:latitude => center[0] - span, :longitude => center[1] + span, :format => :degrees});
-        mapAreaDirty = true;
+        applyMapVisibleArea();
+    }
+
+    function applyMapVisibleArea() as Void {
+        setMapVisibleArea(mapTopLeft, mapBottomRight);
+        mapAreaDirty = false;
     }
 
     function onUpdate(dc) {
@@ -802,7 +812,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var halfLon = (bottomRight[1] - topLeft[1]) * scale / 2;
         mapTopLeft = new Position.Location({:latitude => centerLat + halfLat, :longitude => centerLon - halfLon, :format => :degrees});
         mapBottomRight = new Position.Location({:latitude => centerLat - halfLat, :longitude => centerLon + halfLon, :format => :degrees});
-        mapAreaDirty = true;
+        applyMapVisibleArea();
         WatchUi.requestUpdate();
     }
 
@@ -824,7 +834,7 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         mapTopLeft = new Position.Location({:latitude => topLeft[0] + latOffset, :longitude => topLeft[1] + lonOffset, :format => :degrees});
         mapBottomRight = new Position.Location({:latitude => bottomRight[0] + latOffset, :longitude => bottomRight[1] + lonOffset, :format => :degrees});
-        mapAreaDirty = true;
+        applyMapVisibleArea();
         WatchUi.requestUpdate();
     }
 
@@ -847,7 +857,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var lonOffset = -(bottomRight[1] - topLeft[1]) * deltaX / screenWidth;
         mapTopLeft = new Position.Location({:latitude => topLeft[0] + latOffset, :longitude => topLeft[1] + lonOffset, :format => :degrees});
         mapBottomRight = new Position.Location({:latitude => bottomRight[0] + latOffset, :longitude => bottomRight[1] + lonOffset, :format => :degrees});
-        mapAreaDirty = true;
+        applyMapVisibleArea();
         WatchUi.requestUpdate();
     }
 }
