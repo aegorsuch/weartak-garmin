@@ -2,8 +2,8 @@
 
 WearTAK-Garmin is a standalone Garmin Connect IQ watch application for basic
 Team Awareness Kit (TAK) operational awareness. It is designed for Garmin
-watches with maps and GPS, currently targeting the fenix 7X, Tactix 8 class,
-fēnix 8 class, and fenix 6X Pro / Tactix Delta class devices.
+watches with maps and GPS, currently supporting the fenix 6, fenix 6S, fenix 6X
+Pro, fenix 7X, fenix 8 47 mm, and fenix 8 51 mm variants.
 
 ## Project links
 
@@ -202,9 +202,10 @@ the private `developer_key.der` file.
 ## Releasing
 
 Releases are built and published manually; there is no CI automation. The
-`.iq` bundle covers all five supported products (fenix7x, fenix847mm,
-fenix8solar47mm, fenix8solar51mm, fenix6xpro) in a single file, so it is the
-only artifact attached to a release.
+`.iq` bundle covers all nine supported products (fenix6, fenix6pro, fenix6s,
+fenix6spro, fenix6xpro, fenix7x, fenix847mm, fenix8solar47mm, and
+fenix8solar51mm) in a single file, so it is the only artifact attached to a
+release.
 
 1. Bump `APP_VERSION` in `source/StandaloneApp.mc` to the new version and
    commit it (consistent with the government repo being canonical, merge this
