@@ -26,10 +26,21 @@ the watch. The `.iq` package is the release bundle for Garmin's supported
 distribution workflow; direct USB sideloading uses the device-specific `.prg`.
 Garmin uses the watch's system language for localized app text.
 
-The app uses Garmin Connect IQ phone messages to relay watch input to the
-WearTAK ATAK companion. ATAK owns TAK server connectivity, mTLS credentials,
-identity, and the authoritative phone location for PLI; the watch provides a
-secondary display and input surface.
+The app uses Garmin Connect IQ phone messages (`Communications.transmit`/
+`registerForPhoneAppMessages`) to relay watch input to the WearTAK ATAK
+companion. ATAK owns TAK server connectivity, mTLS credentials, identity, and
+the authoritative phone location for PLI; the watch provides a secondary
+display and input surface.
+
+This channel is routed through Garmin Connect Mobile and the Connect IQ Mobile
+SDK on the phone side; it is unrelated to the direct BLE GATT link the ATAK
+plugin already uses for Samsung/Wear OS watches. Garmin Connect Mobile is only
+a runtime requirement for users pairing a Garmin watch specifically — it has
+no effect on Samsung/Wear OS users of the same plugin. Connect IQ apps cannot
+act as a BLE peripheral/GATT server, so the watch cannot use the plugin's
+existing direct-BLE transport; the phone-side plugin needs a second,
+Garmin-specific transport using the Connect IQ Mobile SDK to receive these
+messages (tracked separately, not part of this repo).
 
 > Important: there is no live ATAK connection yet. The ATAK plugin connection is
 > not integrated in this build. This build is currently a local map-and-point
@@ -73,6 +84,10 @@ this build:
 - full shared TAK mission/overlay behaviors
 - broader map-layer, team, or operational features beyond point creation and
 	editing
+- relaying physiological, environmental, and manual alerts to ATAK as regular
+	(non-SOS) alerts, matching how the Samsung/Wear OS companion already handles
+	this via the ATAK plugin; exact wire schema is TBD pending plugin-side
+	confirmation
 
 ## Using the app
 
@@ -157,6 +172,12 @@ not a present guarantee.
 4. **SOS and emergency actions** - planned: full confirmed emergency flows.
 5. **Operational overlays and entity sync** - planned: broader map data,
 	mission-aware entity integration, and multi-user workflow support.
+6. **Regular (non-SOS) alert relay** - planned: relay physiological,
+	environmental, and manual alerts to ATAK as regular alerts rather than the
+	SOS/emergency CoT path, matching the existing Samsung/Wear OS companion
+	behavior via the ATAK plugin as closely as possible. `StandaloneApp.mc`'s
+	`queueTakAlert()` is the placeholder hook for this; wiring it up depends on
+	confirming the plugin-side schema first.
 
 ## Development
 
