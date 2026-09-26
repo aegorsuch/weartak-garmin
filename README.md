@@ -40,18 +40,20 @@ no effect on Samsung/Wear OS users of the same plugin. Connect IQ apps cannot
 act as a BLE peripheral/GATT server, so the watch cannot use the plugin's
 existing direct-BLE transport; the phone-side plugin needs a second,
 Garmin-specific transport using the Connect IQ Mobile SDK to receive these
-messages (tracked separately, not part of this repo).
+messages. That transport is being implemented in the ATAK companion's
+`garmin-connect-iq-integration` branch (a separate repository).
 
-> Important: there is no live ATAK connection yet. The ATAK plugin connection is
-> not integrated in this build. This build is currently a local map-and-point
-> editing workflow; it does not yet establish a connected, operational TAK/ATAK
-> session with a remote server.
+> Important: the watch-side relay and the ATAK companion's Garmin Connect IQ
+> integration are still under development. Using both builds is required for
+> Garmin messages to reach ATAK; a watch-side relay toggle alone does not
+> establish a TAK server connection.
 
 ## Current capabilities
 
 The app is currently focused on a lightweight, local map-and-point workflow.
-There is no live ATAK connection yet, and these are the features working right
-now:
+The Garmin-to-ATAK relay is being integrated in the companion's
+`garmin-connect-iq-integration` branch. These are the watch features working
+right now:
 
 - Open and navigate the map.
 - Drop an Unknown 2525D point from the main menu or map.
@@ -78,7 +80,7 @@ The following are still planned capabilities and are not the current scope of
 this build:
 
 - full ATAK chat integration and quick replies
-- WearTAK ATAK plugin connection and relay integration
+- completing and validating the WearTAK ATAK plugin connection and relay integration
 - SOS and emergency alert workflows
 - incoming entity or entities syncing beyond the current local map groundwork
 - full shared TAK mission/overlay behaviors
@@ -91,20 +93,24 @@ this build:
 
 ## Using the app
 
-1. Open **Device Preferences** to maintain user metrics. App text follows the
+1. In the ATAK companion, enable **Garmin Connect IQ**. On the watch, select
+	**Settings**, select **Network Preferences**, then toggle **ATAK Relay** on.
+	Toggle it off there to stop the watch-side relay. Garmin Connect Mobile must
+	be paired with the watch; ATAK manages the TAK server connection.
+2. Open **Device Preferences** to maintain user metrics. App text follows the
 	watch's system language.
-2. Open **Alerting Preferences** to opt in to local watch alerts. Warning
+3. Open **Alerting Preferences** to opt in to local watch alerts. Warning
 	settings notify the watch user locally; full alert routing across TAK is held
 	for the future ATAK-device connection.
-3. Use **Drop 2525D Point** to add an Unknown point at the current location,
+4. Use **Drop 2525D Point** to add an Unknown point at the current location,
 	then open **Map** to edit points, view coordinates, or start Bloodhound.
-4. Select **SOS** from the main menu for a confirmed emergency action, or
+5. Select **SOS** from the main menu for a confirmed emergency action, or
 	select **Clear SOS** after an alert is active.
 
-ATAK companion message envelopes are reserved for the planned plugin connection;
-they are not an integrated operational workflow in this build. **Send SOS**
+ATAK companion message envelopes are used by the in-progress Garmin plugin
+integration; end-to-end operation still needs device validation. **Send SOS**
 opens a separate confirmation before transmitting through the currently available
-relay plumbing; full ATAK integration remains future work.
+relay plumbing; full emergency handling remains future work.
 
 Marker create and update operations use the `marker` envelope when relay plumbing
 is available. Deletion uses a `marker_delete` envelope with the Garmin marker UID,
