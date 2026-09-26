@@ -72,7 +72,8 @@ function buildDevicePreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function buildNetworkPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => app.text(:networkPreferences)});
-    addMenuEntry(menu, app.text(:takConnect), null, :takServer);
+    var client = app.getTakClient();
+    addToggleEntry(menu, app.text(:takConnect), client.status == :connecting || client.isConnected(), :atakRelayToggle);
     return menu;
 }
 
@@ -365,9 +366,6 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :sos) {
             var sosMenu = buildSosMenu(app);
             WatchUi.pushView(sosMenu, new SosMenuDelegate(app, true), WatchUi.SLIDE_LEFT);
-        } else if (id == :takServer) {
-            var takMenu = buildTakServerMenu();
-            WatchUi.pushView(takMenu, new TakServerMenuDelegate(app, takMenu), WatchUi.SLIDE_LEFT);
         } else if (id == :settings) {
             WatchUi.pushView(buildSettingsMenu(app), new SettingsMenuDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :exit) {
@@ -476,9 +474,24 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function onSelect(item as WatchUi.MenuItem) as Void {
-        if (item.getId() == :takServer) {
-            var takMenu = buildTakServerMenu();
-            WatchUi.pushView(takMenu, new TakServerMenuDelegate(app, takMenu), WatchUi.SLIDE_LEFT);
+        if (item.getId() == :atakRelayToggle) {
+            var client = app.getTakClient();
+            client.statusCallback = method(:onClientStatusChanged);
+            if (client.status == :connecting || client.isConnected()) {
+                client.disconnect();
+            } else {
+                client.connect();
+            }
+            onClientStatusChanged();
+        }
+    }
+
+    function onClientStatusChanged() as Void {
+        var client = app.getTakClient();
+        var item = menu.getItem(menu.findItemById(:atakRelayToggle));
+        if (item != null) {
+            item.setSubLabel(toolToggleLabel(client.status == :connecting || client.isConnected()));
+            WatchUi.requestUpdate();
         }
     }
 }
