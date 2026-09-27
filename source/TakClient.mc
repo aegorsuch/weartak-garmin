@@ -2,6 +2,7 @@ import Toybox.Communications;
 import Toybox.Lang;
 import Toybox.Position;
 import Toybox.System;
+import Toybox.Timer;
 import Toybox.Time;
 import Toybox.WatchUi;
 
@@ -25,6 +26,8 @@ class PhoneRelayListener extends Communications.ConnectionListener {
 
 // Relays watch input to ATAK; server connectivity, credentials, identity, and PLI stay on the phone.
 class TakClient {
+    const PROTOCOL_VERSION = 1;
+    const HANDSHAKE_TIMEOUT_MS = 15000;
     var status as Symbol = :idle;
     var lastResponseCode as Number?  = null;
     var lastPosition as Position.Info?  = null;
@@ -37,8 +40,10 @@ class TakClient {
     var verboseLoggingEnabled as Boolean = false;
     var lastRelayMessageType as String? = null;
     var lastRelayMessageTime as Time.Moment? = null;
+    var handshakeTimer as Timer.Timer;
 
     function initialize() {
+        handshakeTimer = new Timer.Timer();
         Communications.registerForPhoneAppMessages(method(:onPhoneMessage));
     }
 
@@ -80,28 +85,35 @@ class TakClient {
             return;
         }
         status = :connecting;
-        transmit("relay_hello", {"watchLabel" => "Garmin watch", "protocolVersion" => 1});
+        handshakeTimer.start(method(:onHandshakeTimeout), HANDSHAKE_TIMEOUT_MS, false);
+        transmit("relay_hello", {"watchLabel" => "Garmin watch", "protocolVersion" => PROTOCOL_VERSION});
         notifyStatusChanged();
     }
 
     function disconnect() as Void {
+        handshakeTimer.stop();
         alerting = false;
         status = :idle;
         notifyStatusChanged();
     }
 
     function onRelayTransmitComplete() as Void {
-        if (status != :connecting) {
-            return;
-        }
-        status = :connected;
-        transmit("entity_sync_request", {"limit" => 50, "protocolVersion" => 1});
-        flushMarkerOperations();
-        notifyStatusChanged();
+        // Transmission completion confirms delivery to Garmin Connect Mobile,
+        // not that the ATAK companion accepted the handshake.
     }
 
     function onRelayTransmitError() as Void {
         if (status == :idle) {
+            return;
+        }
+        handshakeTimer.stop();
+        alerting = false;
+        status = :failed;
+        notifyStatusChanged();
+    }
+
+    function onHandshakeTimeout() as Void {
+        if (status != :connecting) {
             return;
         }
         alerting = false;
@@ -208,6 +220,10 @@ class TakClient {
         if (verboseLoggingEnabled) {
             System.println("TAK relay in: " + msgType.toString());
         }
+        if (msgType == "relay_hello_ack") {
+            onRelayHelloAck(payload as Dictionary);
+            return;
+        }
         if (msgType == "chat" && incomingChatCallback != null) {
             incomingChatCallback.invoke(payload as Dictionary);
             return;
@@ -227,6 +243,17 @@ class TakClient {
                 }
             }
         }
+    }
+
+    function onRelayHelloAck(payload as Dictionary) as Void {
+        if (status != :connecting || payload.get("protocolVersion") != PROTOCOL_VERSION) {
+            return;
+        }
+        handshakeTimer.stop();
+        status = :connected;
+        transmit("entity_sync_request", {"limit" => 50, "protocolVersion" => PROTOCOL_VERSION});
+        flushMarkerOperations();
+        notifyStatusChanged();
     }
 
     function forwardEntity(entity as Dictionary) as Void {

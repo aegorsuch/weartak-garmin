@@ -48,6 +48,13 @@ messages. That transport is being implemented in the ATAK companion's
 > Garmin messages to reach ATAK; a watch-side relay toggle alone does not
 > establish a TAK server connection.
 
+The watch now treats `relay_hello` transmission and companion connection as
+separate steps. It remains in `Connecting` until the companion returns a
+`relay_hello_ack` containing the same `protocolVersion`; if no acknowledgement
+arrives within 15 seconds, the watch reports a failed connection. The
+companion integration must implement this acknowledgement before the relay can
+show `Connected`.
+
 ## Current capabilities
 
 The app is currently focused on a lightweight, local map-and-point workflow.
