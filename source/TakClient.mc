@@ -137,7 +137,7 @@ class TakClient {
 
     function transmitMarker(id as String, location as Position.Location, type as Symbol, label as String, remark as String) as Void {
         var degrees = location.toDegrees();
-        var markerType = type == :hostile ? "a-h-G-E-S" : type == :friendly ? "a-f-G-E-S" : type == :obstacle ? "a-o-G-E-S" : "a-u-G-E-S";
+        var markerType = type == :hostile ? "a-h-G-T" : type == :friendly ? "a-f-G-T" : type == :neutral ? "a-n-G-T" : "a-u-G-T";
         transmit("marker", {
             "uid" => "garmin-marker-" + id,
             "lat" => degrees[0], "lon" => degrees[1], "type" => markerType,

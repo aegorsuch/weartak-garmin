@@ -63,8 +63,8 @@ class StandaloneMapView extends WatchUi.MapView {
             return "friendly";
         } else if (type == :hostile) {
             return "hostile";
-        } else if (type == :obstacle) {
-            return "obstacle";
+        } else if (type == :neutral) {
+            return "neutral";
         }
         return "unknown";
     }
@@ -74,8 +74,8 @@ class StandaloneMapView extends WatchUi.MapView {
             return :friendly;
         } else if (type.equals("hostile")) {
             return :hostile;
-        } else if (type.equals("obstacle")) {
-            return :obstacle;
+        } else if (type.equals("neutral") || type.equals("obstacle")) {
+            return :neutral;
         }
         return :unknown;
     }
@@ -604,7 +604,7 @@ class StandaloneMapView extends WatchUi.MapView {
             return WatchUi.loadResource(Rez.Drawables.FriendlyIcon);
         } else if (type == :hostile) {
             return WatchUi.loadResource(Rez.Drawables.HostileIcon);
-        } else if (type == :obstacle) {
+        } else if (type == :neutral) {
             return WatchUi.loadResource(Rez.Drawables.ObstacleIcon);
         }
         return WatchUi.loadResource(Rez.Drawables.UnknownIcon);
@@ -669,8 +669,8 @@ class StandaloneMapView extends WatchUi.MapView {
             return application.text(:friendlyPoint);
         } else if (type == :hostile) {
             return application.text(:hostilePoint);
-        } else if (type == :obstacle) {
-            return application.text(:obstaclePoint);
+        } else if (type == :neutral) {
+            return application.text(:neutralPoint);
         }
         return application.text(:unknownPoint);
     }
@@ -997,7 +997,7 @@ class PointMenuDelegate extends WatchUi.Menu2InputDelegate {
             typeMenu.addItem(new WatchUi.MenuItem(view.application.text(:friendly), null, :friendly, null));
             typeMenu.addItem(new WatchUi.MenuItem(view.application.text(:unknownPoint), null, :unknown, null));
             typeMenu.addItem(new WatchUi.MenuItem(view.application.text(:hostile), null, :hostile, null));
-            typeMenu.addItem(new WatchUi.MenuItem(view.application.text(:obstacle), null, :obstacle, null));
+            typeMenu.addItem(new WatchUi.MenuItem(view.application.text(:neutral), null, :neutral, null));
             WatchUi.pushView(typeMenu, new PointTypeMenuDelegate(view, pointId), WatchUi.SLIDE_LEFT);
             return;
         } else if (id == :delete) {
@@ -1060,8 +1060,8 @@ class PointTypeMenuDelegate extends WatchUi.Menu2InputDelegate {
             view.changePointType(pointId, :friendly, "Friendly 2525D point");
         } else if (id == :hostile) {
             view.changePointType(pointId, :hostile, "Hostile 2525D point");
-        } else if (id == :obstacle) {
-            view.changePointType(pointId, :obstacle, "Obstacle 2525D point");
+        } else if (id == :neutral) {
+            view.changePointType(pointId, :neutral, "Neutral 2525D point");
         } else {
             view.changePointType(pointId, :unknown, view.application.text(:unknownPoint));
         }
