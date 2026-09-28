@@ -10,6 +10,20 @@ Pro, fenix 7X, fenix 8 47 mm, and fenix 8 51 mm variants.
 - Personal GitHub: https://github.com/aegorsuch/weartak-garmin
 - Government repo: https://git.tak.gov/core/weartak-core/weartak-garmin
 
+## Rights and contacts
+
+### Rights
+
+Unlimited rights granted to TAK Product Center.
+
+### Point of contact
+
+Alex Gorsuch on chat.tak.gov or Signal.
+
+### Repositories
+
+The TAK Forge repository is canonical. GitHub is a secondary repository.
+
 ## Installation
 
 1. Download the `.prg` matching your watch from the latest GitHub release.
