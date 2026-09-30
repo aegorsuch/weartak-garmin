@@ -1,4 +1,5 @@
 import Toybox.Application;
+import Toybox.ActivityMonitor;
 import Toybox.Attention;
 import Toybox.Lang;
 import Toybox.Position;
@@ -18,6 +19,12 @@ class StandaloneApp extends Application.AppBase {
     private var chatMessages = [];
     private var sensorInfo;
     private var exertionPercent as Number = 0;
+    private var lastStepCount as Number? = null;
+    private var lastStepSampleTime as Number? = null;
+    private var lastStepTime as Number? = null;
+    private var lastGpsMovementTime as Number? = null;
+    private var lastGpsFixTime as Number? = null;
+    private var lastHeartRateSampleTime as Number? = null;
     private var locationServices as Boolean = true;
     private var physiologicalAlertsEnabled as Boolean = false;
     private var batteryAlertsEnabled as Boolean = false;
@@ -41,14 +48,26 @@ class StandaloneApp extends Application.AppBase {
     private var highRestingAlertActive as Boolean = false;
     private var lowRestingWarningActive as Boolean = false;
     private var lowRestingAlertActive as Boolean = false;
+    private var highRestingSince as Number? = null;
+    private var lowRestingSince as Number? = null;
     private var lowPressureAlertActive as Boolean = false;
     private var highPressureAlertActive as Boolean = false;
+    private var pressureSamples = [];
+    private var lastPressureSampleTime as Number? = null;
+    private var lowPressureSince as Number? = null;
+    private var highPressureSince as Number? = null;
+    private var immersionBaseline as Number? = null;
+    private var immersionSamples as Number = 0;
+    private var immersionSince as Number? = null;
+    private var lastImmersionSampleTime as Number? = null;
     private var exertionWarningThreshold as Number = 80;
     private var exertionWarningLength as Number = 120;
     private var exertionAlertThreshold as Number = 90;
     private var exertionAlertLength as Number = 120;
     private var exertionWarningActive as Boolean = false;
     private var exertionAlertActive as Boolean = false;
+    private var exertionWarningSince as Number? = null;
+    private var exertionAlertSince as Number? = null;
     private var birthYear as Number = 1990;
     private var height as Number = 68;
     private var weight as Number = 155;
@@ -668,6 +687,12 @@ class StandaloneApp extends Application.AppBase {
             return;
         }
         takClient.updatePosition(info);
+        if (info.position != null && info.speed != null) {
+            lastGpsFixTime = Time.now().value();
+            if (info.speed > 0.8) {
+                lastGpsMovementTime = lastGpsFixTime;
+            }
+        }
         if (view != null) {
             view.updatePosition(info);
         }
@@ -675,70 +700,231 @@ class StandaloneApp extends Application.AppBase {
 
     function onSensor(info as Sensor.Info) as Void {
         sensorInfo = info;
+        var now = Time.now().value();
+        var activityInfo = ActivityMonitor.getInfo();
+        if (activityInfo != null && activityInfo.steps != null) {
+            if (lastStepCount != null && activityInfo.steps > lastStepCount) {
+                lastStepTime = now;
+            }
+            lastStepCount = activityInfo.steps;
+            lastStepSampleTime = now;
+        }
+        if (lastHeartRateSampleTime != null && now - lastHeartRateSampleTime > 60) {
+            highRestingSince = null;
+            lowRestingSince = null;
+            exertionWarningSince = null;
+            exertionAlertSince = null;
+            takClient.clearAutomatedAlert("High resting heart rate");
+            takClient.clearAutomatedAlert("Low resting heart rate");
+            takClient.clearAutomatedAlert("High exertion");
+        }
+        lastHeartRateSampleTime = now;
         exertionPercent = calculateExertionPercent(info.heartRate);
         evaluateExertionAlerts();
         evaluateRestingHeartRateAlerts();
         evaluatePressureAlerts();
+        evaluateImmersionAlerts();
         WatchUi.requestUpdate();
     }
 
+    function isMoving() as Boolean {
+        var now = Time.now().value();
+        return (lastStepTime != null && now - lastStepTime <= 60)
+            || (lastGpsMovementTime != null && lastGpsFixTime != null
+                && now - lastGpsMovementTime <= 60 && now - lastGpsFixTime <= 60);
+    }
+
+    function hasMotionInfo() as Boolean {
+        var now = Time.now().value();
+        return (lastStepSampleTime != null && now - lastStepSampleTime <= 60)
+            || (lastGpsFixTime != null && now - lastGpsFixTime <= 60);
+    }
+
     function evaluateRestingHeartRateAlerts() as Void {
-        if (!physiologicalAlertsEnabled || sensorInfo.heartRate == null) {
+        if (!physiologicalAlertsEnabled || sensorInfo.heartRate == null || !hasMotionInfo() || isMoving()) {
+            highRestingSince = null;
+            lowRestingSince = null;
+            highRestingWarningActive = false;
+            lowRestingWarningActive = false;
+            highRestingAlertActive = false;
+            lowRestingAlertActive = false;
+            takClient.clearAutomatedAlert("High resting heart rate");
+            takClient.clearAutomatedAlert("Low resting heart rate");
             return;
         }
         var heartRate = sensorInfo.heartRate;
+        var now = Time.now().value();
         if (heartRate >= highRestingHeartRate) {
+            lowRestingSince = null;
             lowRestingWarningActive = false;
             lowRestingAlertActive = false;
-            if (!highRestingWarningActive) {
+            takClient.clearAutomatedAlert("Low resting heart rate");
+            if (highRestingSince == null) {
+                highRestingSince = now;
+            }
+            var highElapsed = now - highRestingSince;
+            if (!highRestingWarningActive && highElapsed >= highRestingWarningLength * 60) {
                 highRestingWarningActive = true;
                 notifySensorAlert("High HR warning", highRestingWarningLength, 50);
             }
-            if (!highRestingAlertActive) {
-                highRestingAlertActive = true;
-                queueTakAlert("High resting heart rate", heartRate);
+            if (highElapsed >= highRestingAlertLength * 60) {
+                if (!highRestingAlertActive) {
+                    highRestingAlertActive = true;
+                    notifySensorAlert("High HR alert", highRestingAlertLength, 100);
+                }
+                takClient.sendAutomatedAlert("High resting heart rate", "High resting heart rate: " + heartRate.toString() + " bpm");
             }
         } else if (heartRate <= lowRestingHeartRate) {
+            highRestingSince = null;
             highRestingWarningActive = false;
             highRestingAlertActive = false;
-            if (!lowRestingWarningActive) {
+            takClient.clearAutomatedAlert("High resting heart rate");
+            if (lowRestingSince == null) {
+                lowRestingSince = now;
+            }
+            var lowElapsed = now - lowRestingSince;
+            if (!lowRestingWarningActive && lowElapsed >= lowRestingWarningLength * 60) {
                 lowRestingWarningActive = true;
                 notifySensorAlert("Low HR warning", lowRestingWarningLength, 50);
             }
-            if (!lowRestingAlertActive) {
-                lowRestingAlertActive = true;
-                queueTakAlert("Low resting heart rate", heartRate);
+            if (lowElapsed >= lowRestingAlertLength * 60) {
+                if (!lowRestingAlertActive) {
+                    lowRestingAlertActive = true;
+                    notifySensorAlert("Low HR alert", lowRestingAlertLength, 100);
+                }
+                takClient.sendAutomatedAlert("Low resting heart rate", "Low resting heart rate: " + heartRate.toString() + " bpm");
             }
         } else {
+            highRestingSince = null;
+            lowRestingSince = null;
             highRestingWarningActive = false;
             highRestingAlertActive = false;
             lowRestingWarningActive = false;
             lowRestingAlertActive = false;
+            takClient.clearAutomatedAlert("High resting heart rate");
+            takClient.clearAutomatedAlert("Low resting heart rate");
         }
     }
 
     function evaluatePressureAlerts() as Void {
         if (sensorInfo.pressure == null) {
+            pressureSamples = [];
+            lastPressureSampleTime = null;
+            lowPressureSince = null;
+            highPressureSince = null;
+            lowPressureAlertActive = false;
+            highPressureAlertActive = false;
+            takClient.clearAutomatedAlert("Low atmospheric pressure");
+            takClient.clearAutomatedAlert("High atmospheric pressure");
             return;
         }
+        var now = Time.now().value();
         var pressureHpa = sensorInfo.pressure / 100;
-        if (lowPressureAlertsEnabled && pressureHpa <= lowPressureThreshold) {
+        if (lastPressureSampleTime != null && now - lastPressureSampleTime > 30) {
+            pressureSamples = [];
+            lowPressureSince = null;
+            highPressureSince = null;
+            lowPressureAlertActive = false;
             highPressureAlertActive = false;
+            takClient.clearAutomatedAlert("Low atmospheric pressure");
+            takClient.clearAutomatedAlert("High atmospheric pressure");
+        }
+        if (lastPressureSampleTime == null || now != lastPressureSampleTime) {
+            pressureSamples.add(pressureHpa);
+            if (pressureSamples.size() > 5) {
+                pressureSamples.remove(0);
+            }
+            lastPressureSampleTime = now;
+        }
+        if (pressureSamples.size() < 5) {
+            return;
+        }
+        var meanPressure = 0;
+        for (var index = 0; index < pressureSamples.size(); index++) {
+            meanPressure += pressureSamples[index];
+        }
+        meanPressure /= pressureSamples.size();
+        if (lowPressureAlertsEnabled && meanPressure <= lowPressureThreshold) {
+            highPressureSince = null;
+            highPressureAlertActive = false;
+            takClient.clearAutomatedAlert("High atmospheric pressure");
+            if (lowPressureSince == null) {
+                lowPressureSince = now;
+            }
             if (!lowPressureAlertActive) {
                 lowPressureAlertActive = true;
                 notifySensorAlert("Low pressure warning", 1, 50);
-                queueTakAlert("Low atmospheric pressure", pressureHpa);
             }
-        } else if (highPressureAlertsEnabled && pressureHpa >= highPressureThreshold) {
+            if (now - lowPressureSince >= 10) {
+                queueTakAlert("Low atmospheric pressure", meanPressure);
+            }
+        } else if (highPressureAlertsEnabled && meanPressure >= highPressureThreshold) {
+            lowPressureSince = null;
             lowPressureAlertActive = false;
+            takClient.clearAutomatedAlert("Low atmospheric pressure");
+            if (highPressureSince == null) {
+                highPressureSince = now;
+            }
             if (!highPressureAlertActive) {
                 highPressureAlertActive = true;
                 notifySensorAlert("High pressure warning", 1, 50);
-                queueTakAlert("High atmospheric pressure", pressureHpa);
+            }
+            if (now - highPressureSince >= 10) {
+                queueTakAlert("High atmospheric pressure", meanPressure);
             }
         } else {
+            lowPressureSince = null;
+            highPressureSince = null;
             lowPressureAlertActive = false;
             highPressureAlertActive = false;
+            takClient.clearAutomatedAlert("Low atmospheric pressure");
+            takClient.clearAutomatedAlert("High atmospheric pressure");
+        }
+    }
+
+    function evaluateImmersionAlerts() as Void {
+        if (!immersionAlertsEnabled || sensorInfo.pressure == null) {
+            immersionBaseline = null;
+            immersionSamples = 0;
+            immersionSince = null;
+            lastImmersionSampleTime = null;
+            takClient.clearAutomatedAlert("CAT_IMMERSION_ALERT");
+            return;
+        }
+        var now = Time.now().value();
+        if (lastImmersionSampleTime != null && now == lastImmersionSampleTime) {
+            return;
+        }
+        if (lastImmersionSampleTime != null && now - lastImmersionSampleTime > 30) {
+            immersionBaseline = null;
+            immersionSamples = 0;
+            immersionSince = null;
+            takClient.clearAutomatedAlert("CAT_IMMERSION_ALERT");
+        }
+        lastImmersionSampleTime = now;
+        var pressureHpa = sensorInfo.pressure / 100;
+        if (immersionBaseline == null) {
+            immersionBaseline = pressureHpa;
+            immersionSamples = 1;
+            return;
+        }
+        if (immersionSamples < 10) {
+            immersionBaseline = (immersionBaseline * immersionSamples + pressureHpa) / (immersionSamples + 1);
+            immersionSamples += 1;
+            return;
+        }
+        var rise = pressureHpa - immersionBaseline;
+        if (rise >= 5) {
+            if (immersionSince == null) {
+                immersionSince = now;
+            }
+            if (now - immersionSince >= 60) {
+                takClient.sendAutomatedAlert("CAT_IMMERSION_ALERT", "Probable sustained immersion: pressure rose " + rise.format("%.1f") + " hPa");
+            }
+        } else if (rise < 2) {
+            immersionSince = null;
+            takClient.clearAutomatedAlert("CAT_IMMERSION_ALERT");
+            immersionBaseline = (immersionBaseline * 9 + pressureHpa) / 10;
         }
     }
 
@@ -754,28 +940,51 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function queueTakAlert(label as String, value as Number) as Void {
-        // Full alert relay will be connected when the ATAK device channel is available.
+        takClient.sendAutomatedAlert(label, label + ": " + value.toString() + " hPa");
     }
 
     function evaluateExertionAlerts() as Void {
-        if (!physiologicalAlertsEnabled) {
+        if (!physiologicalAlertsEnabled || sensorInfo.heartRate == null || !isMoving()) {
+            exertionWarningSince = null;
+            exertionAlertSince = null;
+            exertionWarningActive = false;
+            exertionAlertActive = false;
+            takClient.clearAutomatedAlert("High exertion");
             return;
         }
+        var now = Time.now().value();
+        if (exertionPercent >= exertionWarningThreshold && exertionWarningSince == null) {
+            exertionWarningSince = now;
+        }
         if (exertionPercent >= exertionAlertThreshold) {
-            if (!exertionAlertActive) {
-                exertionAlertActive = true;
+            if (exertionAlertSince == null) {
+                exertionAlertSince = now;
+            }
+            if (!exertionWarningActive && now - exertionWarningSince >= exertionWarningLength) {
                 exertionWarningActive = true;
-                notifyExertion("Exertion alert", exertionAlertLength, 100);
+                notifyExertion("Exertion warning", exertionWarningLength, 50);
+            }
+            if (now - exertionAlertSince >= exertionAlertLength) {
+                if (!exertionAlertActive) {
+                    exertionAlertActive = true;
+                    notifyExertion("Exertion alert", exertionAlertLength, 100);
+                }
+                takClient.sendAutomatedAlert("High exertion", "High exertion: " + exertionPercent.toNumber().toString() + "%");
             }
         } else if (exertionPercent >= exertionWarningThreshold) {
+            exertionAlertSince = null;
             exertionAlertActive = false;
-            if (!exertionWarningActive) {
+            takClient.clearAutomatedAlert("High exertion");
+            if (!exertionWarningActive && now - exertionWarningSince >= exertionWarningLength) {
                 exertionWarningActive = true;
                 notifyExertion("Exertion warning", exertionWarningLength, 50);
             }
         } else {
+            exertionWarningSince = null;
+            exertionAlertSince = null;
             exertionWarningActive = false;
             exertionAlertActive = false;
+            takClient.clearAutomatedAlert("High exertion");
         }
     }
 
