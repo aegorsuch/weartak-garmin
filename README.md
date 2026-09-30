@@ -80,8 +80,8 @@ right now:
 - Track a selected point with Bloodhound range, true bearing, proximity radius,
 	vibration, and cancel controls.
 - Send and clear categorized manual alerts through the Garmin relay when the
-	relay is active and a watch position is available. The companion's Garmin
-	Connect IQ integration is required to turn these messages into ATAK alerts.
+	relay is active. The companion's Garmin Connect IQ integration uses the
+	phone's ATAK location to create the alert, so the watch does not need a GPS fix.
 - Show sensor readings for environment and physiology.
 - Show the current watch position internally for mapping, coordinates, and
 	Bloodhound calculations.
@@ -126,12 +126,12 @@ this build:
 	cancellation.
 
 Manual alerts use the `emergency` message envelope with an `ALERT` or `CANCEL`
-state, the selected alert type, and the watch position. The companion's
-`garmin-connect-iq-integration` branch adapts that message into ATAK emergency
-CoT. The watch refuses to activate an alert when the relay is stopped or the
-watch position is unavailable. A successful watch-side transmit is not an
-end-to-end delivery acknowledgement; validate alert and cancellation handling
-with the companion integration on physical devices.
+state and the selected alert type. The companion's Garmin Connect IQ integration
+uses ATAK's phone location for both alert and cancellation, so the watch does
+not need its own GPS fix. The watch still requires the relay to be active and
+the phone must have a valid location fix. A successful watch-side transmit is
+not an end-to-end delivery acknowledgement; validate alert and cancellation
+handling with the companion integration on physical devices.
 
 Marker create and update operations use the `marker` envelope when relay plumbing
 is available. Deletion uses a `marker_delete` envelope with the Garmin marker UID,
