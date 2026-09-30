@@ -66,7 +66,7 @@ class TakClient {
     }
 
     function activateManualAlert(type as String) as Boolean {
-        if (!isConnected() || lastPosition == null || lastPosition.position == null) {
+        if (!isConnected()) {
             return false;
         }
         alertType = type;
@@ -168,14 +168,12 @@ class TakClient {
     }
 
     function sendEmergency(state as Symbol) as Boolean {
-        if (!isConnected() || lastPosition == null || lastPosition.position == null) {
+        if (!isConnected()) {
             return false;
         }
-        var degrees = lastPosition.position.toDegrees();
         transmit("emergency", {
             "uid" => "garmin-sos", "state" => state == :ALERT ? "ALERT" : "CANCEL",
             "alertType" => alertType,
-            "lat" => degrees[0], "lon" => degrees[1], "hae" => lastPosition.altitude,
             "tStart" => cotTimestamp(Time.now()),
             "tStale" => cotTimestamp(Time.now().add(new Time.Duration(3600)))
         });
