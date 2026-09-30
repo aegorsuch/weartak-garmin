@@ -79,6 +79,9 @@ right now:
 - Pan, zoom, and recenter the map.
 - Track a selected point with Bloodhound range, true bearing, proximity radius,
 	vibration, and cancel controls.
+- Send and clear categorized manual alerts through the Garmin relay when the
+	relay is active and a watch position is available. The companion's Garmin
+	Connect IQ integration is required to turn these messages into ATAK alerts.
 - Show sensor readings for environment and physiology.
 - Show the current watch position internally for mapping, coordinates, and
 	Bloodhound calculations.
@@ -118,13 +121,17 @@ this build:
 	for the future ATAK-device connection.
 4. Use **Drop 2525D Point** to add an Unknown point at the current location,
 	then open **Map** to edit points, view coordinates, or start Bloodhound.
-5. Select **SOS** from the main menu for a confirmed emergency action, or
-	select **Clear SOS** after an alert is active.
+5. Select **Manual Alert** from the main menu and choose an alert type to send
+	it through the active Garmin relay. Select **Clear Manual Alert** to send a
+	cancellation.
 
-ATAK companion message envelopes are used by the in-progress Garmin plugin
-integration; end-to-end operation still needs device validation. **Send SOS**
-opens a separate confirmation before transmitting through the currently available
-relay plumbing; full emergency handling remains future work.
+Manual alerts use the `emergency` message envelope with an `ALERT` or `CANCEL`
+state, the selected alert type, and the watch position. The companion's
+`garmin-connect-iq-integration` branch adapts that message into ATAK emergency
+CoT. The watch refuses to activate an alert when the relay is stopped or the
+watch position is unavailable. A successful watch-side transmit is not an
+end-to-end delivery acknowledgement; validate alert and cancellation handling
+with the companion integration on physical devices.
 
 Marker create and update operations use the `marker` envelope when relay plumbing
 is available. Deletion uses a `marker_delete` envelope with the Garmin marker UID,
@@ -242,22 +249,23 @@ the private `developer_key.der` file.
 
 ## Releasing
 
-Releases are built and published manually; there is no CI automation. The
-`.iq` bundle covers all nine supported products (fenix6, fenix6pro, fenix6s,
+Releases are built and published manually; there is no CI automation. Publish
+the nine device-specific `.prg` files for direct USB installation. The `.iq`
+bundle covers all nine supported products (fenix6, fenix6pro, fenix6s,
 fenix6spro, fenix6xpro, fenix7x, fenix847mm, fenix8solar47mm, and
-fenix8solar51mm) in a single file, so it is the only artifact attached to a
-release.
+fenix8solar51mm) for Garmin's distribution workflow.
 
 1. Bump `APP_VERSION` in `source/StandaloneApp.mc` to the new version and
    commit it (consistent with the government repo being canonical, merge this
    into `develop` first as described above).
-2. Build `WearTAK-Garmin.iq` locally with the Garmin Connect IQ SDK (the VS
-   Code Monkey C extension's build/export flow uses `monkey.jungle` and the
-   local `developer_key.der` already configured in `.vscode/settings.json`).
+2. Build each device-specific `.prg` with the Garmin Connect IQ SDK, selecting
+	its product with `-d` (for example, `-d fenix6`). Build
+	`WearTAK-Garmin.iq` as well when preparing the Garmin distribution package.
 3. Tag the release commit `vX.Y.Z.Z.Z`, matching `APP_VERSION` exactly.
 4. Push the tag and create a release from it on `origin`
-   (git.tak.gov/core/weartak-core/weartak-garmin), attaching the built `.iq`.
+	(git.tak.gov/core/weartak-core/weartak-garmin), attaching the nine `.prg`
+	files and the `.iq` package when needed.
 5. Mirror the same release to `github`
-   (https://github.com/aegorsuch/weartak-garmin): push the tag there and
-   create a release attaching the same `.iq` file.
+	(https://github.com/aegorsuch/weartak-garmin): push the tag there and
+	create a release attaching the same build artifacts.
 

@@ -33,7 +33,11 @@ class SosMenuDelegate extends WatchUi.Menu2InputDelegate {
         if (id == :clear) {
             app.getTakClient().setAlerting(false);
         } else if (id != :cancel) {
-            app.getTakClient().activateManualAlert(alertTypeFor(id));
+            var client = app.getTakClient();
+            if (!client.activateManualAlert(alertTypeFor(id))) {
+                var message = client.isConnected() ? app.text(:locationUnavailable) : client.statusText();
+                WatchUi.showToast(message, null);
+            }
         }
         if (returnToMain) {
             WatchUi.switchToView(buildMainMenu(app), new MainMenuDelegate(app), WatchUi.SLIDE_RIGHT);
