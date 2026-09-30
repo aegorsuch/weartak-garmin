@@ -65,10 +65,14 @@ class TakClient {
         return alertType;
     }
 
-    function activateManualAlert(type as String) as Void {
+    function activateManualAlert(type as String) as Boolean {
+        if (!isConnected() || lastPosition == null || lastPosition.position == null) {
+            return false;
+        }
         alertType = type;
         alerting = true;
         sendEmergency(:ALERT);
+        return true;
     }
 
     function isConnected() as Boolean {
@@ -163,9 +167,9 @@ class TakClient {
         activateManualAlert("Manual Alert");
     }
 
-    function sendEmergency(state as Symbol) as Void {
+    function sendEmergency(state as Symbol) as Boolean {
         if (!isConnected() || lastPosition == null || lastPosition.position == null) {
-            return;
+            return false;
         }
         var degrees = lastPosition.position.toDegrees();
         transmit("emergency", {
@@ -175,6 +179,7 @@ class TakClient {
             "tStart" => cotTimestamp(Time.now()),
             "tStale" => cotTimestamp(Time.now().add(new Time.Duration(3600)))
         });
+        return true;
     }
 
     function sendChatReply(replyTo as String, text as String) as Void {
