@@ -30,6 +30,9 @@ class TakClient {
     var lastPosition as Position.Info?  = null;
     var alerting as Boolean = false;
     var alertType as String = "Manual Alert";
+    var automatedAlertUids = {};
+    var automatedAlertSentAt = {};
+    var automatedAlertSequence as Number = 0;
     var statusCallback as Method?  = null;
     var incomingCotCallback as Method? = null;
     var incomingChatCallback as Method? = null;
@@ -90,6 +93,8 @@ class TakClient {
 
     function disconnect() as Void {
         alerting = false;
+        automatedAlertUids = {};
+        automatedAlertSentAt = {};
         status = :idle;
         notifyStatusChanged();
     }
@@ -109,6 +114,8 @@ class TakClient {
             return;
         }
         alerting = false;
+        automatedAlertUids = {};
+        automatedAlertSentAt = {};
         status = :failed;
         notifyStatusChanged();
     }
@@ -178,6 +185,44 @@ class TakClient {
             "tStale" => cotTimestamp(Time.now().add(new Time.Duration(3600)))
         });
         return true;
+    }
+
+    function sendAutomatedAlert(category as String, description as String) as Boolean {
+        if (!isConnected()) {
+            return false;
+        }
+        var now = Time.now();
+        var uid = automatedAlertUids.get(category);
+        if (uid == null) {
+            automatedAlertSequence += 1;
+            uid = "garmin-auto-" + now.value().toString() + "-" + automatedAlertSequence.toString();
+            automatedAlertUids.put(category, uid);
+        } else if (now.value() - automatedAlertSentAt.get(category) < 240) {
+            return true;
+        }
+        automatedAlertSentAt.put(category, now.value());
+        transmit("emergency", {
+            "uid" => uid, "state" => "ALERT", "catg" => category, "desc" => description,
+            "tStart" => cotTimestamp(now),
+            "tStale" => cotTimestamp(now.add(new Time.Duration(300)))
+        });
+        return true;
+    }
+
+    function clearAutomatedAlert(category as String) as Void {
+        var uid = automatedAlertUids.get(category);
+        if (uid == null) {
+            return;
+        }
+        if (isConnected()) {
+            transmit("emergency", {
+                "uid" => uid, "state" => "CANCEL",
+                "tStart" => cotTimestamp(Time.now()),
+                "tStale" => cotTimestamp(Time.now().add(new Time.Duration(300)))
+            });
+        }
+        automatedAlertUids.remove(category);
+        automatedAlertSentAt.remove(category);
     }
 
     function sendChatReply(replyTo as String, text as String) as Void {

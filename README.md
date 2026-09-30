@@ -88,6 +88,10 @@ right now:
 - Configure physiological, exertion, environmental, pressure, and battery alerts
 	plus a BATDOK medical profile. Alert families default to off until the user
 	enables them.
+- Relay sustained resting-heart-rate and exertion alerts, atmospheric-pressure
+	threshold alerts, and sustained pressure-rise immersion alerts through the
+	companion when their preferences and the ATAK relay are enabled. The companion
+	uses the phone location; end-to-end automated alerts still need device testing.
 - Use localized app text based on the watch's system language. The manifest
 	declares the supported languages for Garmin store/device metadata.
 - Configure Chat and Navigation tools, including proximity vibration, radius,
@@ -103,10 +107,8 @@ this build:
 - full shared TAK mission/overlay behaviors
 - broader map-layer, team, or operational features beyond point creation and
 	editing
-- relaying physiological, environmental, and manual alerts to ATAK as regular
-	(non-SOS) alerts, matching how the Samsung/Wear OS companion already handles
-	this via the ATAK plugin; exact wire schema is TBD pending plugin-side
-	confirmation
+- end-to-end acknowledgement, delivery retries, and validation of automated
+	alert/cancellation behavior on physical devices
 
 ## Using the app
 
@@ -116,9 +118,9 @@ this build:
 	be paired with the watch; ATAK manages the TAK server connection.
 2. Open **Device Preferences** to maintain user metrics. App text follows the
 	watch's system language.
-3. Open **Alerting Preferences** to opt in to local watch alerts. Warning
-	settings notify the watch user locally; full alert routing across TAK is held
-	for the future ATAK-device connection.
+3. Open **Alerting Preferences** to opt in to alerts. Warnings remain local to
+	the watch; qualifying automated alerts use the same companion emergency CoT
+	path as Samsung/Wear OS and require an active ATAK relay and a valid phone fix.
 4. Use **Drop 2525D Point** to add an Unknown point at the current location,
 	then open **Map** to edit points, view coordinates, or start Bloodhound.
 5. Select **Manual Alert** from the main menu and choose an alert type to send
@@ -199,12 +201,18 @@ not a present guarantee.
 4. **SOS and emergency actions** - planned: full confirmed emergency flows.
 5. **Operational overlays and entity sync** - planned: broader map data,
 	mission-aware entity integration, and multi-user workflow support.
-6. **Regular (non-SOS) alert relay** - planned: relay physiological,
-	environmental, and manual alerts to ATAK as regular alerts rather than the
-	SOS/emergency CoT path, matching the existing Samsung/Wear OS companion
-	behavior via the ATAK plugin as closely as possible. `StandaloneApp.mc`'s
-	`queueTakAlert()` is the placeholder hook for this; wiring it up depends on
-	confirming the plugin-side schema first.
+6. **Automated alert relay** - watch-side implemented: resting heart rate while
+	stationary and exertion while moving use the configured warning/alert hold
+	durations; atmospheric-pressure alerts require the five-sample mean to stay
+	across an enabled threshold for 10 seconds. Suspected immersion requires an
+	opt-in 5 hPa rise above a barometric baseline held for 60 seconds.
+	The watch sends `emergency` envelopes with distinct UIDs, `catg`/`desc`, and
+	`ALERT`/`CANCEL` states; the existing Garmin companion handler places them at
+	ATAK's phone location as emergency CoT. Alerts refresh during sustained
+	conditions. This works only while the watch app is running and sensor events
+	are available. Movement is inferred from recent steps or valid GPS speed;
+	immersion requires available pressure readings. Physical watch-to-ATAK
+	validation, including cancellations and false-positive checks, is pending.
 
 ## Development
 
