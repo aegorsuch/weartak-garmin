@@ -28,7 +28,6 @@ function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
         {:label => app.text(:clearPointsMain), :subLabel => null, :id => :clearPoints},
         {:label => app.text(:dropPoint), :subLabel => null, :id => :dropPoint},
         {:label => app.text(:environment), :subLabel => null, :id => :environment},
-        {:label => app.text(:exit), :subLabel => null, :id => :exit},
         {:label => manualAlertMenuLabel(app), :subLabel => null, :id => :sos},
         {:label => app.text(:map), :subLabel => null, :id => :map},
         {:label => app.text(:physiology), :subLabel => null, :id => :physiology},
