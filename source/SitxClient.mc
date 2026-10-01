@@ -38,7 +38,7 @@ class SitxClient {
 
     function setApiHost(value as String) as Void {
         var normalizedHost = normalizeHost(value);
-        if (apiHost != normalizedHost) {
+        if (!apiHost.equals(normalizedHost)) {
             clearAuthorizationState();
         }
         apiHost = normalizedHost;
@@ -53,7 +53,7 @@ class SitxClient {
 
     function connect() as Void {
         failureStatus = "";
-        if (apiHost.length() < 8 || apiHost.substring(0, 8) != "https://") {
+        if (apiHost.length() < 8 || !apiHost.substring(0, 8).equals("https://")) {
             failureStatus = apiHost.length() == 0 ? "Enter Sit(x) API host" : "Bad host: " + apiHost;
             status = :needsConfiguration;
             notifyStatusChanged();
@@ -248,9 +248,9 @@ class SitxClient {
         if (host.length() == 0) {
             return "";
         }
-        if (host.length() >= 7 && host.substring(0, 7) == "http://") {
+        if (host.length() >= 7 && host.substring(0, 7).equals("http://")) {
             host = "https://" + host.substring(7, host.length());
-        } else if (host.length() < 8 || host.substring(0, 8) != "https://") {
+        } else if (host.length() < 8 || !host.substring(0, 8).equals("https://")) {
             host = "https://" + host;
         }
         return trimTrailingSlashes(host);
@@ -267,11 +267,11 @@ class SitxClient {
     }
 
     function isWhitespace(value as String) as Boolean {
-        return value == " " || value == "\t" || value == "\r" || value == "\n";
+        return value.equals(" ") || value.equals("\t") || value.equals("\r") || value.equals("\n");
     }
 
     function trimTrailingSlashes(value as String) as String {
-        while (value.length() > 0 && value.substring(value.length() - 1, value.length()) == "/") {
+        while (value.length() > 0 && value.substring(value.length() - 1, value.length()).equals("/")) {
             value = value.substring(0, value.length() - 1);
         }
         return value;
