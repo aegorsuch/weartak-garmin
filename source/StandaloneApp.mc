@@ -9,10 +9,11 @@ import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
 
 class StandaloneApp extends Application.AppBase {
-    const APP_VERSION = "5.8.0.2.1";
+    const APP_VERSION = "5.8.0.2.2";
 
     private var view;
     private var takClient;
+    private var sitxClient;
     private var versionTapCount as Number = 0;
     private var devModeEnabled as Boolean = false;
     private var verboseLoggingEnabled as Boolean = false;
@@ -83,6 +84,7 @@ class StandaloneApp extends Application.AppBase {
     function initialize() {
         Application.AppBase.initialize();
         takClient = new TakClient();
+        sitxClient = new SitxClient();
         takClient.incomingCotCallback = method(:onIncomingCot);
         takClient.incomingChatCallback = method(:onIncomingChat);
         var storedLocationServices = Application.Storage.getValue("locationServices");
@@ -98,6 +100,10 @@ class StandaloneApp extends Application.AppBase {
 
     function getAppVersion() as String {
         return APP_VERSION;
+    }
+
+    function getSitxClient() as SitxClient {
+        return sitxClient;
     }
 
     // Returns true the moment the 7th consecutive tap unlocks dev mode.

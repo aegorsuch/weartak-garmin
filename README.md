@@ -96,6 +96,10 @@ right now:
 	declares the supported languages for Garmin store/device metadata.
 - Configure Chat and Navigation tools, including proximity vibration, radius,
 	and intensity preferences.
+- Pair a user account with the Sit(x) Device API using OAuth device authorization
+	from Network Preferences. Pairing, token refresh, and an authenticated profile
+	request are implemented; mission, GeoChat, SOS, and other resource operations
+	are not yet connected.
 
 The following are still planned capabilities and are not the current scope of
 this build:
@@ -109,6 +113,7 @@ this build:
 	editing
 - end-to-end acknowledgement, delivery retries, and validation of automated
 	alert/cancellation behavior on physical devices
+- Sit(x) Device API integration for missions, GeoChat, SOS, and other resources
 
 ## Using the app
 
@@ -126,6 +131,11 @@ this build:
 5. Select **Manual Alert** from the main menu and choose an alert type to send
 	it through the active Garmin relay. Select **Clear Manual Alert** to send a
 	cancellation.
+6. To pair Sit(x), open **Settings** > **Network Preferences** > **Sit(x) Device
+	API**, set the organization's HTTPS API host and the registered OAuth client ID,
+	then select **Connect / Pair**. Enter the displayed authorization code on the
+	verification page. A paired phone or watch-supported internet connection is
+	required; pairing does not yet enable Sit(x) mission, chat, or SOS actions.
 
 Manual alerts use the `emergency` message envelope with an `ALERT` or `CANCEL`
 state and the selected alert type. The companion's Garmin Connect IQ integration
@@ -144,8 +154,13 @@ for example `garmin-marker-point-1`; full ATAK handling remains future work.
 
 Connect IQ is not Wear OS. This application cannot use Android foreground
 services, Compose, Tiles, MDM managed configuration, Android plugins, Samsung
-Health APIs, or APK tooling. It sends only dictionary messages through Garmin
-Connect; all TAK network transport and mTLS remain on ATAK.
+Health APIs, or APK tooling. The ATAK companion relay still uses dictionary
+messages through Garmin Connect. The Sit(x) Device API uses HTTPS requests through
+Connect IQ networking and is currently limited to account pairing and token
+refresh plus an authenticated `/myinfo` check. It does not provide raw CoT
+streaming. The manifest currently targets
+Fenix 6, 7, and 8 products and requires Connect IQ 3.3.0; Fenix 3 HD is not
+supported by this build.
 
 Garmin localized resources are selected automatically by the watch's system
 locale via Connect IQ's built-in `Rez.Strings` mechanism; there is no in-app
