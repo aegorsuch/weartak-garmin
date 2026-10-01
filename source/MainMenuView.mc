@@ -74,7 +74,7 @@ function buildNetworkPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => app.text(:networkPreferences)});
     var client = app.getTakClient();
     addToggleEntry(menu, app.text(:takConnect), client.status == :connecting || client.isConnected(), :atakRelayToggle);
-    addMenuEntry(menu, "Sit(x) Device API", null, :sitxDeviceApi);
+    addMenuEntry(menu, "Sit(x)", app.getSitxClient().networkStatusLabel(), :sitxDeviceApi);
     return menu;
 }
 
@@ -486,7 +486,7 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         if (item.getId() == :sitxDeviceApi) {
             var sitxMenu = buildSitxDeviceApiMenu(app);
-            WatchUi.pushView(sitxMenu, new SitxDeviceApiDelegate(app, sitxMenu), WatchUi.SLIDE_LEFT);
+            WatchUi.pushView(sitxMenu, new SitxDeviceApiDelegate(app, sitxMenu, menu), WatchUi.SLIDE_LEFT);
         } else if (item.getId() == :atakRelayToggle) {
             var client = app.getTakClient();
             client.statusCallback = method(:onClientStatusChanged);
@@ -512,11 +512,13 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
 class SitxDeviceApiDelegate extends WatchUi.Menu2InputDelegate {
     var app as StandaloneApp;
     var menu as WatchUi.Menu2;
+    var networkMenu as WatchUi.Menu2;
 
-    function initialize(application as StandaloneApp, sitxMenu as WatchUi.Menu2) {
+    function initialize(application as StandaloneApp, sitxMenu as WatchUi.Menu2, parentMenu as WatchUi.Menu2) {
         Menu2InputDelegate.initialize();
         app = application;
         menu = sitxMenu;
+        networkMenu = parentMenu;
         app.getSitxClient().statusCallback = method(:updateMenu);
     }
 
@@ -538,6 +540,10 @@ class SitxDeviceApiDelegate extends WatchUi.Menu2InputDelegate {
         setMenuSubLabel(:sitxApiHost, client.getApiHost());
         setMenuSubLabel(:sitxAuthCode, client.getUserCode());
         setMenuSubLabel(:sitxStatus, client.statusText());
+        var parentStatus = networkMenu.getItem(networkMenu.findItemById(:sitxDeviceApi));
+        if (parentStatus != null) {
+            parentStatus.setSubLabel(client.networkStatusLabel());
+        }
         WatchUi.requestUpdate();
     }
 

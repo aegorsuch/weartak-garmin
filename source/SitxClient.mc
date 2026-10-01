@@ -217,6 +217,16 @@ class SitxClient {
         notifyStatusChanged();
     }
 
+    function networkStatusLabel() as String {
+        if (status == :failed || status == :needsConfiguration) {
+            return "Error";
+        }
+        if (accessToken != null || refreshToken != null) {
+            return "Enabled";
+        }
+        return "Disabled";
+    }
+
     function clearAuthorizationState() as Void {
         stopPolling();
         Application.Storage.deleteValue("sitxAccessToken");
