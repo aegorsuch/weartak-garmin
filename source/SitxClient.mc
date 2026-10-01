@@ -21,7 +21,11 @@ class SitxClient {
     var pollTimer as Timer.Timer? = null;
 
     function initialize() {
-        apiHost = storedString("sitxApiHost", "");
+        var storedHost = storedString("sitxApiHost", "");
+        apiHost = normalizeHost(storedHost);
+        if (apiHost != storedHost) {
+            Application.Storage.setValue("sitxApiHost", apiHost);
+        }
         accessToken = storedNullableString("sitxAccessToken");
         refreshToken = storedNullableString("sitxRefreshToken");
         if (accessToken != null || refreshToken != null) {
@@ -51,6 +55,7 @@ class SitxClient {
     function connect() as Void {
         failureStatus = "";
         if (apiHost.length() < 8 || apiHost.substring(0, 8) != "https://") {
+            failureStatus = apiHost.length() == 0 ? "Enter Sit(x) API host" : "Bad host: " + apiHost;
             status = :needsConfiguration;
             notifyStatusChanged();
             return;
@@ -222,7 +227,7 @@ class SitxClient {
     }
 
     function statusText() as String {
-        if (status == :needsConfiguration) { return "Set Sit(x) API host"; }
+        if (status == :needsConfiguration) { return failureStatus.length() > 0 ? failureStatus : "Enter Sit(x) API host"; }
         if (status == :requestingCode) { return "Requesting device code"; }
         if (status == :awaitingAuthorization) { return "Waiting for authorization"; }
         if (status == :refreshing) { return "Refreshing token"; }
@@ -253,14 +258,30 @@ class SitxClient {
     }
 
     function normalizeHost(value as String) as String {
-        var host = value;
+        var host = trimWhitespace(value).toLower();
         if (host.length() == 0) {
             return "";
         }
-        if (host.substring(0, 7) != "http://" && (host.length() < 8 || host.substring(0, 8) != "https://")) {
+        if (host.length() >= 7 && host.substring(0, 7) == "http://") {
+            host = "https://" + host.substring(7, host.length());
+        } else if (host.length() < 8 || host.substring(0, 8) != "https://") {
             host = "https://" + host;
         }
         return trimTrailingSlashes(host);
+    }
+
+    function trimWhitespace(value as String) as String {
+        while (value.length() > 0 && isWhitespace(value.substring(0, 1))) {
+            value = value.substring(1, value.length());
+        }
+        while (value.length() > 0 && isWhitespace(value.substring(value.length() - 1, value.length()))) {
+            value = value.substring(0, value.length() - 1);
+        }
+        return value;
+    }
+
+    function isWhitespace(value as String) as Boolean {
+        return value == " " || value == "\t" || value == "\r" || value == "\n";
     }
 
     function trimTrailingSlashes(value as String) as String {
