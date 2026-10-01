@@ -93,7 +93,6 @@ function buildAlertingPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => app.text(:alertingPreferences)});
     addMenuEntry(menu, app.text(:physiologicalAlerts), null, :physiologicalAlerts);
     addMenuEntry(menu, app.text(:environmentalAlerts), null, :environmentalAlerts);
-    addMenuEntry(menu, "----------------", null, :alertSeparator);
     addMenuEntry(menu, app.text(:batteryAlerts), batteryAlertsLabel(app), :batteryAlertsToggle);
     return menu;
 }
