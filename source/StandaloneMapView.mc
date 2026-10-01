@@ -513,7 +513,7 @@ class StandaloneMapView extends WatchUi.MapView {
     function dropAtCurrentLocation() as Boolean {
         var info = Position.getInfo();
         if (info != null && info.position != null) {
-            addPoint(info.position, :unknown, application.text(:unknownPoint));
+            addPoint(info.position, :unknown, newPointTitle());
             return true;
         }
         return false;
@@ -548,7 +548,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var yRatio = y.toFloat() / screenHeight.toFloat();
         var latitude = topLeft[0] + (bottomRight[0] - topLeft[0]) * yRatio;
         var longitude = topLeft[1] + (bottomRight[1] - topLeft[1]) * xRatio;
-        addPoint(new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees}), :unknown, application.text(:unknownPoint));
+        addPoint(new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees}), :unknown, newPointTitle());
         WatchUi.showToast(application != null ? application.text(:pointDropped) : "2525D point dropped", null);
         WatchUi.requestUpdate();
     }
@@ -597,6 +597,12 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         savePoints();
         WatchUi.requestUpdate();
+    }
+
+    function newPointTitle() as String {
+        var timeInfo = Time.Gregorian.utcInfo(Time.now(), Time.FORMAT_SHORT);
+        var timestamp = timeInfo.hour.format("%02d") + timeInfo.min.format("%02d") + timeInfo.sec.format("%02d") + "Z";
+        return application.getCallsign() + "_" + timestamp;
     }
 
     function iconForType(type) {

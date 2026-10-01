@@ -43,7 +43,7 @@ function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
 function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => app.text(:settings)});
     var entries = [
-        {:label => app.text(:devicePreferences), :subLabel => null, :id => :devicePreferences},
+        {:label => "Callsign and Device Preferences", :subLabel => null, :id => :devicePreferences},
         {:label => app.text(:networkPreferences), :subLabel => null, :id => :networkPreferences},
         {:label => app.text(:alertingPreferences), :subLabel => null, :id => :alertingPreferences},
         {:label => app.text(:toolPreferences), :subLabel => null, :id => :toolPreferences},
@@ -64,7 +64,8 @@ function buildDeveloperOptionsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 }
 
 function buildDevicePreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:devicePreferences)});
+    var menu = new WatchUi.Menu2({:title => "Callsign and Device Preferences"});
+    addMenuEntry(menu, "Callsign", app.getCallsign(), :callsign);
     addMenuEntry(menu, app.text(:userMetrics), null, :userMetrics);
     return menu;
 }
@@ -466,9 +467,35 @@ class DevicePreferencesDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function onSelect(item as WatchUi.MenuItem) as Void {
-        if (item.getId() == :userMetrics) {
+        if (item.getId() == :callsign) {
+            WatchUi.pushView(new WatchUi.TextPicker(app.getCallsign()), new CallsignTextPickerDelegate(app, menu), WatchUi.SLIDE_UP);
+        } else if (item.getId() == :userMetrics) {
             WatchUi.pushView(buildUserMetricsMenu(app), new UserMetricsDelegate(app), WatchUi.SLIDE_LEFT);
         }
+    }
+}
+
+class CallsignTextPickerDelegate extends WatchUi.TextPickerDelegate {
+    var app as StandaloneApp;
+    var menu as WatchUi.Menu2;
+
+    function initialize(application as StandaloneApp, preferencesMenu as WatchUi.Menu2) {
+        TextPickerDelegate.initialize();
+        app = application;
+        menu = preferencesMenu;
+    }
+
+    function onTextEntered(value as String, changed as Boolean) as Boolean {
+        if (changed && value.length() > 0) {
+            app.setCallsign(value);
+            menu.getItem(menu.findItemById(:callsign)).setSubLabel(app.getCallsign());
+        }
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+        return true;
+    }
+
+    function onCancel() as Boolean {
+        return true;
     }
 }
 

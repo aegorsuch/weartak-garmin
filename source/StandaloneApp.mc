@@ -73,6 +73,7 @@ class StandaloneApp extends Application.AppBase {
     private var height as Number = 68;
     private var weight as Number = 155;
     private var sex as String = "Not Set";
+    private var callsign as String = "GARMIN";
     private var bloodType as String = "Unknown";
     private var userType as String = "N/A";
     private var allergies as Array = ["N/A"];
@@ -100,6 +101,18 @@ class StandaloneApp extends Application.AppBase {
 
     function getAppVersion() as String {
         return APP_VERSION;
+    }
+
+    function getCallsign() as String {
+        return callsign;
+    }
+
+    function setCallsign(value as String) as Void {
+        if (value.length() == 0) {
+            return;
+        }
+        callsign = value;
+        Application.Storage.setValue("callsign", callsign);
     }
 
     function getSitxClient() as SitxClient {
@@ -284,6 +297,7 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function loadAlertSettings() as Void {
+        callsign = storedString("callsign", callsign);
         var storedValue = Application.Storage.getValue("physiologicalAlertsEnabled");
         if (storedValue != null) {
             physiologicalAlertsEnabled = storedValue as Boolean;
