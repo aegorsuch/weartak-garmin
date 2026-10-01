@@ -133,10 +133,11 @@ this build:
 	cancellation.
 6. To pair Sit(x), open **Settings** > **Network Preferences** > **Sit(x) Device
 	API**, enter the organization's host (for example, `weartak.sitx.io`), then
-	select **Connect / Pair**. Open Sit(x)'s device authorization page on your
-	phone or computer and enter the displayed authorization code. A paired phone
-	or watch-supported internet connection is required; pairing does not yet
-	enable Sit(x) mission, chat, or SOS actions.
+	select **Auth Code** to request a code. Open Sit(x)'s device authorization page
+	on your phone or computer and enter the displayed code. Select **Auth Code**
+	again to request a fresh code. A paired phone or watch-supported internet
+	connection is required; pairing does not yet enable Sit(x) mission, chat, or
+	SOS actions. Select **Clear Sit(x)** to remove saved authorization.
 
 Manual alerts use the `emergency` message envelope with an `ALERT` or `CANCEL`
 state and the selected alert type. The companion's Garmin Connect IQ integration

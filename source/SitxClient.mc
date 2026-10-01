@@ -66,6 +66,21 @@ class SitxClient {
         }
     }
 
+    function refreshAuthCode() as Void {
+        failureStatus = "";
+        if (apiHost.length() < 8 || !apiHost.substring(0, 8).equals("https://")) {
+            failureStatus = apiHost.length() == 0 ? "Enter Sit(x) API host" : "Bad host: " + apiHost;
+            status = :needsConfiguration;
+            notifyStatusChanged();
+            return;
+        }
+        stopPolling();
+        deviceCode = null;
+        userCode = "";
+        expiresAt = null;
+        requestDeviceCode();
+    }
+
     function requestDeviceCode() as Void {
         status = :requestingCode;
         notifyStatusChanged();

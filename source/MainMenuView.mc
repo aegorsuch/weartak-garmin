@@ -81,11 +81,10 @@ function buildNetworkPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
 function buildSitxDeviceApiMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var client = app.getSitxClient();
     var menu = new WatchUi.Menu2({:title => "Sit(x) Device API"});
-    addMenuEntry(menu, "API Host", client.getApiHost(), :sitxApiHost);
-    addMenuEntry(menu, "Connect / Pair", null, :sitxConnect);
-    addMenuEntry(menu, "Authorization code", client.getUserCode(), :sitxUserCode);
-    addMenuEntry(menu, "Forget authorization", null, :sitxForget);
+    addMenuEntry(menu, "Sit(x) Host", client.getApiHost(), :sitxApiHost);
+    addMenuEntry(menu, "Auth Code", client.getUserCode(), :sitxAuthCode);
     addMenuEntry(menu, "Status", client.statusText(), :sitxStatus);
+    addMenuEntry(menu, "Clear Sit(x)", null, :sitxClear);
     return menu;
 }
 
@@ -526,9 +525,9 @@ class SitxDeviceApiDelegate extends WatchUi.Menu2InputDelegate {
         var client = app.getSitxClient();
         if (id == :sitxApiHost) {
             WatchUi.pushView(new WatchUi.TextPicker(client.getApiHost()), new SitxSettingsTextPickerDelegate(app, menu), WatchUi.SLIDE_UP);
-        } else if (id == :sitxConnect) {
-            client.connect();
-        } else if (id == :sitxForget) {
+        } else if (id == :sitxAuthCode) {
+            client.refreshAuthCode();
+        } else if (id == :sitxClear) {
             client.forgetAuthorization();
         }
         updateMenu();
@@ -537,7 +536,7 @@ class SitxDeviceApiDelegate extends WatchUi.Menu2InputDelegate {
     function updateMenu() as Void {
         var client = app.getSitxClient();
         setMenuSubLabel(:sitxApiHost, client.getApiHost());
-        setMenuSubLabel(:sitxUserCode, client.getUserCode());
+        setMenuSubLabel(:sitxAuthCode, client.getUserCode());
         setMenuSubLabel(:sitxStatus, client.statusText());
         WatchUi.requestUpdate();
     }
