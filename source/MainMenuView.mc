@@ -81,8 +81,7 @@ function buildNetworkPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
 function buildSitxDeviceApiMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var client = app.getSitxClient();
     var menu = new WatchUi.Menu2({:title => "Sit(x) Device API"});
-    addMenuEntry(menu, "API Host (HTTPS)", client.getApiHost(), :sitxApiHost);
-    addMenuEntry(menu, "OAuth Client ID", client.getClientId(), :sitxClientId);
+    addMenuEntry(menu, "API Host", client.getApiHost(), :sitxApiHost);
     addMenuEntry(menu, "Connect / Pair", null, :sitxConnect);
     addMenuEntry(menu, "Authorization code", client.getUserCode(), :sitxUserCode);
     addMenuEntry(menu, "Open verification page", null, :sitxOpenVerification);
@@ -527,9 +526,8 @@ class SitxDeviceApiDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
         var client = app.getSitxClient();
-        if (id == :sitxApiHost || id == :sitxClientId) {
-            var value = id == :sitxApiHost ? client.getApiHost() : client.getClientId();
-            WatchUi.pushView(new WatchUi.TextPicker(value), new SitxSettingsTextPickerDelegate(app, menu, id as Symbol), WatchUi.SLIDE_UP);
+        if (id == :sitxApiHost) {
+            WatchUi.pushView(new WatchUi.TextPicker(client.getApiHost()), new SitxSettingsTextPickerDelegate(app, menu), WatchUi.SLIDE_UP);
         } else if (id == :sitxConnect) {
             client.connect();
         } else if (id == :sitxOpenVerification) {
@@ -543,7 +541,6 @@ class SitxDeviceApiDelegate extends WatchUi.Menu2InputDelegate {
     function updateMenu() as Void {
         var client = app.getSitxClient();
         setMenuSubLabel(:sitxApiHost, client.getApiHost());
-        setMenuSubLabel(:sitxClientId, client.getClientId());
         setMenuSubLabel(:sitxUserCode, client.getUserCode());
         setMenuSubLabel(:sitxStatus, client.statusText());
         WatchUi.requestUpdate();
@@ -560,25 +557,17 @@ class SitxDeviceApiDelegate extends WatchUi.Menu2InputDelegate {
 class SitxSettingsTextPickerDelegate extends WatchUi.TextPickerDelegate {
     var app as StandaloneApp;
     var menu as WatchUi.Menu2;
-    var setting as Symbol;
 
-    function initialize(application as StandaloneApp, sitxMenu as WatchUi.Menu2, settingId as Symbol) {
+    function initialize(application as StandaloneApp, sitxMenu as WatchUi.Menu2) {
         TextPickerDelegate.initialize();
         app = application;
         menu = sitxMenu;
-        setting = settingId;
     }
 
     function onTextEntered(value as String, changed as Boolean) as Boolean {
         if (changed) {
-            var client = app.getSitxClient();
-            if (setting == :sitxApiHost) {
-                client.setApiHost(value);
-            } else {
-                client.setClientId(value);
-            }
-            menu.getItem(menu.findItemById(:sitxApiHost)).setSubLabel(client.getApiHost());
-            menu.getItem(menu.findItemById(:sitxClientId)).setSubLabel(client.getClientId());
+            app.getSitxClient().setApiHost(value);
+            menu.getItem(menu.findItemById(:sitxApiHost)).setSubLabel(app.getSitxClient().getApiHost());
         }
         WatchUi.popView(WatchUi.SLIDE_DOWN);
         return true;

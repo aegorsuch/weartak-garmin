@@ -1,12 +1,13 @@
 import Toybox.Application;
 import Toybox.Communications;
 import Toybox.Lang;
+import Toybox.System;
 import Toybox.Time;
 import Toybox.Timer;
 
 class SitxClient {
+    const CLIENT_ID = "D4RTE81TJjccxlc8LPD7QQ";
     var apiHost as String = "";
-    var clientId as String = "";
     var accessToken as String? = null;
     var refreshToken as String? = null;
     var deviceCode as String? = null;
@@ -20,7 +21,6 @@ class SitxClient {
 
     function initialize() {
         apiHost = storedString("sitxApiHost", "");
-        clientId = storedString("sitxClientId", "");
         accessToken = storedNullableString("sitxAccessToken");
         refreshToken = storedNullableString("sitxRefreshToken");
         if (accessToken != null || refreshToken != null) {
@@ -33,7 +33,7 @@ class SitxClient {
     }
 
     function setApiHost(value as String) as Void {
-        var normalizedHost = trimTrailingSlashes(value);
+        var normalizedHost = normalizeHost(value);
         if (apiHost != normalizedHost) {
             clearAuthorizationState();
         }
@@ -43,26 +43,12 @@ class SitxClient {
         notifyStatusChanged();
     }
 
-    function getClientId() as String {
-        return clientId;
-    }
-
-    function setClientId(value as String) as Void {
-        if (clientId != value) {
-            clearAuthorizationState();
-        }
-        clientId = value;
-        Application.Storage.setValue("sitxClientId", clientId);
-        status = :unconfigured;
-        notifyStatusChanged();
-    }
-
     function getUserCode() as String {
         return userCode;
     }
 
     function connect() as Void {
-        if (apiHost.length() < 8 || apiHost.substring(0, 8) != "https://" || clientId.length() == 0) {
+        if (apiHost.length() < 8 || apiHost.substring(0, 8) != "https://") {
             status = :needsConfiguration;
             notifyStatusChanged();
             return;
@@ -77,7 +63,20 @@ class SitxClient {
     function requestDeviceCode() as Void {
         status = :requestingCode;
         notifyStatusChanged();
-        post("/api/v1/device/authorization/code", {"client_id" => clientId}, method(:onDeviceCodeResponse));
+        var settings = System.getDeviceSettings();
+        var deviceId = settings.uniqueIdentifier;
+        if (deviceId == null) {
+            deviceId = settings.partNumber;
+        }
+        var callsign = "GARMIN";
+        if (deviceId.length() > 8) {
+            callsign += "-" + deviceId.substring(0, 8);
+        }
+        var scope = "role:org_user callsign:" + callsign + " device_name:" + deviceId + " device_id:" + deviceId;
+        postJson("/api/v1/device/authorization/code", {
+            "scope" => scope,
+            "client_id" => CLIENT_ID
+        }, method(:onDeviceCodeResponse));
     }
 
     function onDeviceCodeResponse(responseCode as Number, data as Dictionary?) as Void {
@@ -111,7 +110,7 @@ class SitxClient {
             return;
         }
         post("/api/v1/device/authorization/token", {
-            "client_id" => clientId,
+            "client_id" => CLIENT_ID,
             "device_code" => deviceCode,
             "grant_type" => "urn:ietf:params:oauth:grant-type:device_code"
         }, method(:onDeviceTokenResponse));
@@ -135,7 +134,7 @@ class SitxClient {
         status = :refreshing;
         notifyStatusChanged();
         post("/api/v1/refresh/token", {
-            "client_id" => clientId,
+            "client_id" => CLIENT_ID,
             "refresh_token" => refreshToken,
             "grant_type" => "refresh_token"
         }, method(:onRefreshResponse));
@@ -209,7 +208,7 @@ class SitxClient {
     }
 
     function statusText() as String {
-        if (status == :needsConfiguration) { return "Set API host and client ID"; }
+        if (status == :needsConfiguration) { return "Set Sit(x) API host"; }
         if (status == :requestingCode) { return "Requesting device code"; }
         if (status == :awaitingAuthorization) { return "Waiting for authorization"; }
         if (status == :refreshing) { return "Refreshing token"; }
@@ -228,6 +227,26 @@ class SitxClient {
             :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON
         };
         Communications.makeWebRequest(apiHost + path, parameters, options, callback);
+    }
+
+    function postJson(path as String, parameters as Dictionary, callback as Method) as Void {
+        var options = {
+            :method => Communications.HTTP_REQUEST_METHOD_POST,
+            :headers => {"Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON},
+            :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON
+        };
+        Communications.makeWebRequest(apiHost + path, parameters, options, callback);
+    }
+
+    function normalizeHost(value as String) as String {
+        var host = value;
+        if (host.length() == 0) {
+            return "";
+        }
+        if (host.substring(0, 7) != "http://" && (host.length() < 8 || host.substring(0, 8) != "https://")) {
+            host = "https://" + host;
+        }
+        return trimTrailingSlashes(host);
     }
 
     function trimTrailingSlashes(value as String) as String {

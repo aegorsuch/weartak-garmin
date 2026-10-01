@@ -98,8 +98,8 @@ right now:
 	and intensity preferences.
 - Pair a user account with the Sit(x) Device API using OAuth device authorization
 	from Network Preferences. Pairing, token refresh, and an authenticated profile
-	request are implemented; mission, GeoChat, SOS, and other resource operations
-	are not yet connected.
+	request are implemented using the shared WearTAK public OAuth client; mission,
+	GeoChat, SOS, and other resource operations are not yet connected.
 
 The following are still planned capabilities and are not the current scope of
 this build:
@@ -132,8 +132,8 @@ this build:
 	it through the active Garmin relay. Select **Clear Manual Alert** to send a
 	cancellation.
 6. To pair Sit(x), open **Settings** > **Network Preferences** > **Sit(x) Device
-	API**, set the organization's HTTPS API host and the registered OAuth client ID,
-	then select **Connect / Pair**. Enter the displayed authorization code on the
+	API**, enter the organization's host (for example, `weartak.sitx.io`), then
+	select **Connect / Pair**. Enter the displayed authorization code on the
 	verification page. A paired phone or watch-supported internet connection is
 	required; pairing does not yet enable Sit(x) mission, chat, or SOS actions.
 
