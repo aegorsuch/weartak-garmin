@@ -16,6 +16,7 @@ class SitxClient {
     var pollInterval as Number = 5;
     var expiresAt as Number? = null;
     var status as Symbol = :unconfigured;
+    var failureStatus as String = "";
     var statusCallback as Method? = null;
     var pollTimer as Timer.Timer? = null;
 
@@ -48,6 +49,7 @@ class SitxClient {
     }
 
     function connect() as Void {
+        failureStatus = "";
         if (apiHost.length() < 8 || apiHost.substring(0, 8) != "https://") {
             status = :needsConfiguration;
             notifyStatusChanged();
@@ -80,7 +82,14 @@ class SitxClient {
     }
 
     function onDeviceCodeResponse(responseCode as Number, data as Dictionary?) as Void {
-        if (responseCode != 200 || data == null || data.get("device_code") == null || data.get("user_code") == null) {
+        if (responseCode < 200 || responseCode >= 300) {
+            failureStatus = "Device auth HTTP " + responseCode.toString();
+            status = :failed;
+            notifyStatusChanged();
+            return;
+        }
+        if (data == null || data.get("device_code") == null || data.get("user_code") == null) {
+            failureStatus = "Invalid device auth response";
             status = :failed;
             notifyStatusChanged();
             return;
@@ -180,7 +189,12 @@ class SitxClient {
     }
 
     function onConnectionResponse(responseCode as Number, data as Dictionary?) as Void {
-        status = responseCode == 200 ? :connected : :failed;
+        if (responseCode >= 200 && responseCode < 300) {
+            status = :connected;
+        } else {
+            failureStatus = "Profile HTTP " + responseCode.toString();
+            status = :failed;
+        }
         notifyStatusChanged();
     }
 
@@ -216,7 +230,7 @@ class SitxClient {
         if (status == :checkingConnection) { return "Checking account"; }
         if (status == :connected) { return "Connected"; }
         if (status == :expired) { return "Code expired; retry"; }
-        if (status == :failed) { return "Request failed"; }
+        if (status == :failed) { return failureStatus.length() > 0 ? failureStatus : "Request failed"; }
         return "Not connected";
     }
 
