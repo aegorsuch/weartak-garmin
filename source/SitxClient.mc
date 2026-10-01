@@ -12,7 +12,6 @@ class SitxClient {
     var refreshToken as String? = null;
     var deviceCode as String? = null;
     var userCode as String = "";
-    var verificationUri as String? = null;
     var pollInterval as Number = 5;
     var expiresAt as Number? = null;
     var status as Symbol = :unconfigured;
@@ -101,11 +100,6 @@ class SitxClient {
         }
         deviceCode = data.get("device_code").toString();
         userCode = data.get("user_code").toString();
-        if (data.get("verification_uri_complete") != null) {
-            verificationUri = data.get("verification_uri_complete").toString();
-        } else if (data.get("verification_uri") != null) {
-            verificationUri = data.get("verification_uri").toString();
-        }
         var intervalValue = data.get("interval");
         pollInterval = intervalValue instanceof Number ? intervalValue as Number : 5;
         var expiryValue = data.get("expires_in");
@@ -178,7 +172,6 @@ class SitxClient {
         }
         deviceCode = null;
         userCode = "";
-        verificationUri = null;
         verifyConnection();
     }
 
@@ -203,12 +196,6 @@ class SitxClient {
         notifyStatusChanged();
     }
 
-    function openVerificationPage() as Void {
-        if (verificationUri != null) {
-            Communications.openWebPage(verificationUri, null, null);
-        }
-    }
-
     function forgetAuthorization() as Void {
         clearAuthorizationState();
         status = :unconfigured;
@@ -223,7 +210,6 @@ class SitxClient {
         refreshToken = null;
         deviceCode = null;
         userCode = "";
-        verificationUri = null;
     }
 
     function statusText() as String {

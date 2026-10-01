@@ -84,7 +84,6 @@ function buildSitxDeviceApiMenu(app as StandaloneApp) as WatchUi.Menu2 {
     addMenuEntry(menu, "API Host", client.getApiHost(), :sitxApiHost);
     addMenuEntry(menu, "Connect / Pair", null, :sitxConnect);
     addMenuEntry(menu, "Authorization code", client.getUserCode(), :sitxUserCode);
-    addMenuEntry(menu, "Open verification page", null, :sitxOpenVerification);
     addMenuEntry(menu, "Forget authorization", null, :sitxForget);
     addMenuEntry(menu, "Status", client.statusText(), :sitxStatus);
     return menu;
@@ -530,8 +529,6 @@ class SitxDeviceApiDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.pushView(new WatchUi.TextPicker(client.getApiHost()), new SitxSettingsTextPickerDelegate(app, menu), WatchUi.SLIDE_UP);
         } else if (id == :sitxConnect) {
             client.connect();
-        } else if (id == :sitxOpenVerification) {
-            client.openVerificationPage();
         } else if (id == :sitxForget) {
             client.forgetAuthorization();
         }
