@@ -31,7 +31,8 @@ The TAK Forge repository is canonical. GitHub is a secondary repository.
 	appear as a removable drive.
 3. Open the watch drive and navigate to `GARMIN/Apps`.
 4. Drag only the matching `.prg` into the `GARMIN/Apps` folder. For a fēnix
-	7X, use `WearTAK-Garmin-fenix7x.prg`.
+	7X running version `5.8.0.3-c545fb2`, use
+	`WearTAK-Garmin-fenix7x-5.8.0.3-c545fb2.prg`.
 5. Safely eject the watch, disconnect the USB cable, and launch WearTAK from
 	the watch's app list.
 
@@ -280,13 +281,15 @@ bundle covers all nine supported products (fenix6, fenix6pro, fenix6s,
 fenix6spro, fenix6xpro, fenix7x, fenix847mm, fenix8solar47mm, and
 fenix8solar51mm) for Garmin's distribution workflow.
 
-1. Bump `APP_VERSION` in `source/StandaloneApp.mc` to the new version and
+1. Bump `APP_VERSION` in `source/StandaloneApp.mc` to the new version, including
+   the short source commit hash (for example, `5.8.0.3-c545fb2`), and
    commit it (consistent with the government repo being canonical, merge this
    into `develop` first as described above).
 2. Build each device-specific `.prg` with the Garmin Connect IQ SDK, selecting
-	its product with `-d` (for example, `-d fenix6`). Build
+	its product with `-d` (for example, `-d fenix6`) and name the output
+	`WearTAK-Garmin-{product}-{APP_VERSION}.prg`. Build
 	`WearTAK-Garmin.iq` as well when preparing the Garmin distribution package.
-3. Tag the release commit `vX.Y.Z.Z.Z`, matching `APP_VERSION` exactly.
+3. Tag the release commit `v{APP_VERSION}`, matching `APP_VERSION` exactly.
 4. Push the tag and create a release from it on `origin`
 	(git.tak.gov/core/weartak-core/weartak-garmin), attaching the nine `.prg`
 	files and the `.iq` package when needed.
