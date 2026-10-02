@@ -24,6 +24,7 @@ class StandaloneMapView extends WatchUi.MapView {
     var markers = {};
     var pointLocations = {};
     var pointDetails = {};
+    var defaultPointType as Symbol = :unknown;
     var incomingIds = [];
     var incomingLastSeen = {};
     var nextPointNumber = 1;
@@ -102,6 +103,10 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function loadPoints() as Void {
+        var storedDefaultType = Application.Storage.getValue("defaultPointType");
+        if (storedDefaultType instanceof String) {
+            defaultPointType = typeFromString(storedDefaultType as String);
+        }
         var saved = Application.Storage.getValue("droppedPoints");
         if (saved == null) {
             return;
@@ -549,7 +554,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var info = Position.getInfo();
         if (info != null && info.position != null) {
             var droppedAt = utcTimeLabel(Time.now());
-            addPoint(info.position, :unknown, newPointTitle(droppedAt), droppedAt);
+            addPoint(info.position, defaultPointType, newPointTitle(droppedAt), droppedAt);
             return true;
         }
         return false;
@@ -585,7 +590,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var latitude = topLeft[0] + (bottomRight[0] - topLeft[0]) * yRatio;
         var longitude = topLeft[1] + (bottomRight[1] - topLeft[1]) * xRatio;
         var droppedAt = utcTimeLabel(Time.now());
-        addPoint(new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees}), :unknown, newPointTitle(droppedAt), droppedAt);
+        addPoint(new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees}), defaultPointType, newPointTitle(droppedAt), droppedAt);
         WatchUi.showToast(application != null ? application.text(:pointDropped) : "2525D point dropped", null);
         WatchUi.requestUpdate();
     }
@@ -697,6 +702,8 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function changePointType(id, type, label) {
+        defaultPointType = type;
+        Application.Storage.setValue("defaultPointType", typeToString(type));
         if (pointLocations.hasKey(id) == false || pointDetails.hasKey(id) == false) {
             return;
         }

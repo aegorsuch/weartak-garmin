@@ -31,8 +31,8 @@ The TAK Forge repository is canonical. GitHub is a secondary repository.
 	appear as a removable drive.
 3. Open the watch drive and navigate to `GARMIN/Apps`.
 4. Drag only the matching `.prg` into the `GARMIN/Apps` folder. For a fēnix
-	7X running version `5.8.0.3-091cc3b`, use
-	`WearTAK-Garmin-fenix7x-5.8.0.3-091cc3b.prg`.
+	7X running version `5.8.0.3-d80163e-dirty`, use
+	`WearTAK-Garmin-fenix7x-5.8.0.3-d80163e-dirty.prg`.
 5. Safely eject the watch, disconnect the USB cable, and launch WearTAK from
 	the watch's app list.
 
@@ -73,6 +73,8 @@ right now:
 - Open and navigate the map.
 - Drop a 2525D point from the main menu or map; new point titles use the
 	configured callsign and UTC time in `CALLSIGN_HHMMSSZ` format.
+- Hold on the map to drop a point. The first drop defaults to Unknown; after a
+	marker type is selected or changed, held drops default to that last-used type.
 - Set a callsign, choose one of 14 My Team colors, and select a MIL or LEO role
 	with its subrole under Callsign and Device Preferences. The team color is used
 	for the self marker and Bloodhound direction arrow; tracked point icons remain
