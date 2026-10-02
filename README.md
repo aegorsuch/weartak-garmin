@@ -80,6 +80,13 @@ right now:
 - Configure a callsign, MIL/LEO role, and My Team color under Callsign and
 	Device Preferences. The selected team color marks the watch's self position
 	and Bloodhound direction arrow without changing target marker icons.
+- Configure Dynamic or Constant Reporting intervals, Wi-Fi battery-saving
+	preferences, and Physiological Monitoring under Reporting Strategy. These
+	settings are intended for standalone Sit(x) use when no phone is connected.
+	Physiological Monitoring controls heart-rate sampling; reporting intervals
+	and Wi-Fi preferences are currently stored only and do not change transmitted
+	PLI because direct Sit(x) PLI transport and active Wi-Fi SSID detection are
+	not implemented on Garmin.
 - Clear all 2525D points from the main menu.
 - Rename a point.
 - Change a point's type.
@@ -96,6 +103,8 @@ right now:
 	relay is active. The companion's Garmin Connect IQ integration uses the
 	phone's ATAK location to create the alert, so the watch does not need a GPS fix.
 - Show sensor readings for environment and physiology.
+- Enable or disable heart-rate sampling with the Physiological Monitoring
+	setting; disabling it clears active heart-rate and exertion alerts.
 - Show the current watch position internally for mapping, coordinates, and
 	Bloodhound calculations.
 - Configure physiological, exertion, environmental, pressure, and battery alerts
@@ -171,11 +180,16 @@ Connect IQ is not Wear OS. This application cannot use Android foreground
 services, Compose, Tiles, MDM managed configuration, Android plugins, Samsung
 Health APIs, or APK tooling. The ATAK companion relay still uses dictionary
 messages through Garmin Connect. The Sit(x) Device API uses HTTPS requests through
-Connect IQ networking and is currently limited to account pairing and token
-refresh plus an authenticated `/myinfo` check. It does not provide raw CoT
-streaming. The manifest currently targets
-Fenix 6, 7, and 8 products and requires Connect IQ 3.3.0; Fenix 3 HD is not
-supported by this build.
+Connect IQ networking. Account authorization, group discovery, and group-token
+provisioning do not establish a TAK data connection: Connect IQ exposes no
+authenticated WebSocket or raw socket API, so this watch build cannot send or
+receive Sit(x) CoT.
+
+Connect IQ storage is not an OS Keychain; credentials persisted by this app are
+not protected by an equivalent secure-token store.
+
+The manifest currently targets Fenix 6, 7, and 8 products and requires Connect
+IQ 3.3.0; Fenix 3 HD is not supported by this build.
 
 Garmin localized resources are selected automatically by the watch's system
 locale via Connect IQ's built-in `Rez.Strings` mechanism; there is no in-app

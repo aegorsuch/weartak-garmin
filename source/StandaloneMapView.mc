@@ -187,8 +187,8 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function showPointTypeMenu(pointId) as Void {
-        var detailsView = new PointDetailsView(self, pointId);
-        WatchUi.pushView(detailsView, new PointDetailsDelegate(self, pointId, detailsView), WatchUi.SLIDE_UP);
+        var menu = buildPointDetailsMenu(self, pointId);
+        WatchUi.pushView(menu, new PointDetailsMenuDelegate(self, pointId, menu), WatchUi.SLIDE_LEFT);
     }
 
     function showSelfMenu() as Void {
@@ -1090,239 +1090,79 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
     }
 }
 
-class PointDetailsView extends WatchUi.View {
-    var mapView as StandaloneMapView;
-    var pointId as String;
-    var selectedAction as Number = 0;
-    var firstVisibleAction as Number = 0;
-    var displayHeight as Number = 0;
-    var actionTop as Number = 103;
-    var actionHeight as Number = 22;
-    var actionCount as Number = 7;
-
-    function initialize(map as StandaloneMapView, id as String) {
-        View.initialize();
-        mapView = map;
-        pointId = id;
-    }
-
-    function onUpdate(dc) as Void {
-        var width = dc.getWidth();
-        displayHeight = dc.getHeight();
-        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
-        dc.fillRectangle(0, 0, width, displayHeight);
-
-        var title = mapView.getPointText(pointId, "title");
-        var titleFont = title.length() > 24 ? Graphics.FONT_XTINY : Graphics.FONT_SMALL;
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(width / 2, 2, titleFont, title, Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(width / 2, 19, Graphics.FONT_XTINY, mapView.getPointTypeShortLabel(pointId) + " | " + mapView.getPointDropTime(pointId), Graphics.TEXT_JUSTIFY_CENTER);
-        var sectionTop = 32;
-        var remark = mapView.getPointText(pointId, "remark");
-        if (!remark.equals("")) {
-            dc.drawText(5, sectionTop, Graphics.FONT_XTINY, "Remark: " + remark, Graphics.TEXT_JUSTIFY_LEFT);
-            sectionTop += 13;
-        }
-        if (mapView.isBloodhoundTarget(pointId)) {
-            dc.drawText(width / 2, sectionTop, Graphics.FONT_XTINY, "Bloodhounding", Graphics.TEXT_JUSTIFY_CENTER);
-            sectionTop += 13;
-        }
-        dc.drawLine(5, sectionTop, width - 5, sectionTop);
-
-        var dataTop = sectionTop + 3;
-        var leftCenterX = width / 4;
-        var directionCenterY = dataTop + 25;
-        drawBearingArrow(dc, leftCenterX, directionCenterY, mapView.getPointBearingDegrees(pointId));
-        var bearing = mapView.getPointBearingDegrees(pointId);
-        dc.drawText(leftCenterX, dataTop + 48, Graphics.FONT_XTINY, bearing.format("%03d") + " deg " + mapView.getPointCardinalDirection(pointId), Graphics.TEXT_JUSTIFY_CENTER);
-
-        var rightX = width * 0.42;
-        dc.drawText(rightX, dataTop, Graphics.FONT_MEDIUM, mapView.getPointDistanceLabel(pointId), Graphics.TEXT_JUSTIFY_LEFT);
-        dc.drawText(rightX, dataTop + 18, Graphics.FONT_XTINY, mapView.getPointLatitudeLabel(pointId), Graphics.TEXT_JUSTIFY_LEFT);
-        dc.drawText(rightX, dataTop + 31, Graphics.FONT_XTINY, mapView.getPointLongitudeLabel(pointId), Graphics.TEXT_JUSTIFY_LEFT);
-        dc.drawText(rightX, dataTop + 44, Graphics.FONT_XTINY, mapView.getPointMGRSLabel(pointId), Graphics.TEXT_JUSTIFY_LEFT);
-        actionTop = dataTop + 64;
-        dc.drawLine(5, actionTop - 3, width - 5, actionTop - 3);
-
-        drawActionButtons(dc, width);
-    }
-
-    function drawBearingArrow(dc, centerX as Number, centerY as Number, bearing as Number) as Void {
-        var radius = 21;
-        dc.drawCircle(centerX, centerY, radius);
-        var angle = Math.toRadians(bearing);
-        var directionX = Math.sin(angle);
-        var directionY = -Math.cos(angle);
-        var tipX = (centerX + directionX * 16).toNumber();
-        var tipY = (centerY + directionY * 16).toNumber();
-        var baseX = tipX - directionX * 7;
-        var baseY = tipY - directionY * 7;
-        var sideX = -directionY * 4;
-        var sideY = directionX * 4;
-        dc.drawLine(centerX, centerY, tipX, tipY);
-        dc.drawLine(tipX, tipY, (baseX + sideX).toNumber(), (baseY + sideY).toNumber());
-        dc.drawLine(tipX, tipY, (baseX - sideX).toNumber(), (baseY - sideY).toNumber());
-        dc.drawText(centerX, centerY - radius - 11, Graphics.FONT_XTINY, "N", Graphics.TEXT_JUSTIFY_CENTER);
-    }
-
-    function visibleActionCount() as Number {
-        var count = Math.floor((displayHeight - actionTop - 3) / actionHeight).toNumber();
-        return count < 1 ? 1 : count;
-    }
-
-    function actionLabel(index as Number) as String {
-        if (index == 0) {
-            return mapView.isBloodhoundTarget(pointId) ? "Stop Bloodhound" : "Bloodhound";
-        } else if (index == 1) {
-            return "Change Title";
-        } else if (index == 2) {
-            return mapView.getPointText(pointId, "remark").equals("") ? "Add Remark" : "Change Remark";
-        } else if (index == 3) {
-            return "Change Marker";
-        } else if (index == 4) {
-            return "Move to Current Location";
-        } else if (index == 5) {
-            return "Delete Marker";
-        }
-        return "Back";
-    }
-
-    function drawActionButtons(dc, width as Number) as Void {
-        var visible = visibleActionCount();
-        if (selectedAction < firstVisibleAction) {
-            firstVisibleAction = selectedAction;
-        } else if (selectedAction >= firstVisibleAction + visible) {
-            firstVisibleAction = selectedAction - visible + 1;
-        }
-        for (var row = 0; row < visible; row++) {
-            var index = firstVisibleAction + row;
-            if (index >= actionCount) {
-                break;
-            }
-            var top = actionTop + row * actionHeight;
-            var isSelected = index == selectedAction;
-            if (isSelected) {
-                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_WHITE);
-                dc.fillRectangle(7, top, width - 14, actionHeight - 2);
-                dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
-            } else {
-                dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-                dc.drawRectangle(7, top, width - 14, actionHeight - 2);
-            }
-            if (index == 6) {
-                drawBackArrow(dc, 17, top + 9);
-                dc.drawText(width / 2 + 5, top + 2, Graphics.FONT_XTINY, actionLabel(index), Graphics.TEXT_JUSTIFY_CENTER);
-            } else {
-                dc.drawText(width / 2, top + 2, Graphics.FONT_XTINY, actionLabel(index), Graphics.TEXT_JUSTIFY_CENTER);
-            }
-        }
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        if (firstVisibleAction > 0) {
-            dc.drawText(width - 20, actionTop - 10, Graphics.FONT_XTINY, "^", Graphics.TEXT_JUSTIFY_RIGHT);
-        }
-        if (firstVisibleAction + visible < actionCount) {
-            dc.drawText(width - 8, actionTop - 10, Graphics.FONT_XTINY, "v", Graphics.TEXT_JUSTIFY_RIGHT);
-        }
-    }
-
-    function drawBackArrow(dc, x as Number, y as Number) as Void {
-        dc.drawLine(x + 5, y - 4, x, y);
-        dc.drawLine(x, y, x + 5, y + 4);
-        dc.drawLine(x, y, x + 10, y);
-    }
-
-    function moveSelection(delta as Number) as Void {
-        selectedAction += delta;
-        if (selectedAction < 0) {
-            selectedAction = actionCount - 1;
-        } else if (selectedAction >= actionCount) {
-            selectedAction = 0;
-        }
-        WatchUi.requestUpdate();
-    }
-
-    function actionAt(y as Number) as Number? {
-        if (y < actionTop) {
-            return null;
-        }
-        var row = Math.floor((y - actionTop) / actionHeight).toNumber();
-        var index = firstVisibleAction + row;
-        return row < visibleActionCount() && index < actionCount ? index : null;
-    }
+function buildPointDetailsMenu(mapView as StandaloneMapView, pointId as String) as WatchUi.Menu2 {
+    var title = mapView.getPointText(pointId, "title");
+    var menu = new WatchUi.Menu2({:title => title});
+    menu.addItem(new WatchUi.MenuItem(mapView.getPointTypeShortLabel(pointId), "Dropped " + mapView.getPointDropTime(pointId), :pointSummary, null));
+    menu.addItem(new WatchUi.MenuItem("Distance", mapView.getPointDistanceLabel(pointId), :pointDistance, null));
+    var bearing = mapView.getPointBearingDegrees(pointId);
+    menu.addItem(new WatchUi.MenuItem("Bearing", bearing.format("%03d") + " deg " + mapView.getPointCardinalDirection(pointId), :pointBearing, null));
+    menu.addItem(new WatchUi.MenuItem("Coordinates", mapView.getPointLatitudeLabel(pointId) + ", " + mapView.getPointLongitudeLabel(pointId), :pointCoordinates, null));
+    menu.addItem(new WatchUi.MenuItem("MGRS", mapView.getPointMGRSLabel(pointId), :pointMGRS, null));
+    menu.addItem(new WatchUi.MenuItem(mapView.isBloodhoundTarget(pointId) ? "Stop Bloodhound" : "Bloodhound", null, :pointBloodhound, null));
+    menu.addItem(new WatchUi.MenuItem("Change Title", null, :pointTitle, null));
+    menu.addItem(new WatchUi.MenuItem(mapView.getPointText(pointId, "remark").equals("") ? "Add Remark" : "Change Remark", null, :pointRemark, null));
+    menu.addItem(new WatchUi.MenuItem("Change Marker", null, :pointType, null));
+    menu.addItem(new WatchUi.MenuItem("Move to Current Location", null, :pointMove, null));
+    menu.addItem(new WatchUi.MenuItem("Delete Marker", null, :pointDelete, null));
+    return menu;
 }
 
-class PointDetailsDelegate extends WatchUi.InputDelegate {
+class PointDetailsMenuDelegate extends WatchUi.Menu2InputDelegate {
     var mapView as StandaloneMapView;
     var pointId as String;
-    var view as PointDetailsView;
+    var menu as WatchUi.Menu2;
 
-    function initialize(map as StandaloneMapView, id as String, detailsView as PointDetailsView) {
-        InputDelegate.initialize();
+    function initialize(map as StandaloneMapView, id as String, detailsMenu as WatchUi.Menu2) {
+        Menu2InputDelegate.initialize();
         mapView = map;
         pointId = id;
-        view = detailsView;
+        menu = detailsMenu;
     }
 
-    function onTap(evt) as Boolean {
-        var index = view.actionAt(evt.getCoordinates()[1]);
-        if (index != null) {
-            view.selectedAction = index as Number;
-            activateAction(index as Number);
-        }
-        return true;
-    }
-
-    function onSwipe(evt) as Boolean {
-        if (evt.getDirection() == WatchUi.SWIPE_UP) {
-            view.moveSelection(1);
-        } else if (evt.getDirection() == WatchUi.SWIPE_DOWN) {
-            view.moveSelection(-1);
-        }
-        return true;
-    }
-
-    function onKey(evt) as Boolean {
-        var key = evt.getKey();
-        if (key == WatchUi.KEY_ESC) {
-            WatchUi.popView(WatchUi.SLIDE_DOWN);
-        } else if (key == WatchUi.KEY_UP) {
-            view.moveSelection(-1);
-        } else if (key == WatchUi.KEY_DOWN) {
-            view.moveSelection(1);
-        } else if (key == WatchUi.KEY_ENTER) {
-            activateAction(view.selectedAction);
-        } else {
-            return false;
-        }
-        return true;
-    }
-
-    function activateAction(index as Number) as Void {
-        if (index == 0) {
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :pointSummary || id == :pointDistance || id == :pointBearing || id == :pointCoordinates || id == :pointMGRS) {
+            return;
+        } else if (id == :pointBloodhound) {
             mapView.toggleBloodhound(pointId);
+            item.setLabel(mapView.isBloodhoundTarget(pointId) ? "Stop Bloodhound" : "Bloodhound");
             WatchUi.requestUpdate();
-        } else if (index == 1) {
+        } else if (id == :pointTitle) {
             WatchUi.pushView(new WatchUi.TextPicker(mapView.getPointText(pointId, "title")), new PointTextPickerDelegate(mapView, pointId, "title"), WatchUi.SLIDE_UP);
-        } else if (index == 2) {
+        } else if (id == :pointRemark) {
             WatchUi.pushView(new WatchUi.TextPicker(mapView.getPointText(pointId, "remark")), new PointTextPickerDelegate(mapView, pointId, "remark"), WatchUi.SLIDE_UP);
-        } else if (index == 3) {
+        } else if (id == :pointType) {
             var typeMenu = new WatchUi.Menu2({:title => "Change Marker"});
             typeMenu.addItem(new WatchUi.MenuItem(mapView.application.text(:unknownPoint), null, :unknown, null));
             typeMenu.addItem(new WatchUi.MenuItem(mapView.application.text(:hostile), null, :hostile, null));
             typeMenu.addItem(new WatchUi.MenuItem(mapView.application.text(:friendly), null, :friendly, null));
             typeMenu.addItem(new WatchUi.MenuItem(mapView.application.text(:neutral), null, :neutral, null));
             WatchUi.pushView(typeMenu, new PointTypeMenuDelegate(mapView, pointId), WatchUi.SLIDE_LEFT);
-        } else if (index == 4) {
+        } else if (id == :pointMove) {
             if (!mapView.movePointToCurrentLocation(pointId)) {
                 WatchUi.showToast(mapView.application.text(:locationUnavailable), null);
             }
-            WatchUi.requestUpdate();
-        } else if (index == 5) {
+            refreshSummary();
+        } else if (id == :pointDelete) {
             mapView.deletePoint(pointId);
             WatchUi.popView(WatchUi.SLIDE_DOWN);
-        } else if (index == 6) {
-            WatchUi.popView(WatchUi.SLIDE_DOWN);
         }
+    }
+
+    function refreshSummary() as Void {
+        var distanceItem = menu.getItem(menu.findItemById(:pointDistance));
+        if (distanceItem != null) { distanceItem.setSubLabel(mapView.getPointDistanceLabel(pointId)); }
+        var bearingItem = menu.getItem(menu.findItemById(:pointBearing));
+        if (bearingItem != null) {
+            var bearing = mapView.getPointBearingDegrees(pointId);
+            bearingItem.setSubLabel(bearing.format("%03d") + " deg " + mapView.getPointCardinalDirection(pointId));
+        }
+        var coordinatesItem = menu.getItem(menu.findItemById(:pointCoordinates));
+        if (coordinatesItem != null) { coordinatesItem.setSubLabel(mapView.getPointLatitudeLabel(pointId) + ", " + mapView.getPointLongitudeLabel(pointId)); }
+        var mgrsItem = menu.getItem(menu.findItemById(:pointMGRS));
+        if (mgrsItem != null) { mgrsItem.setSubLabel(mapView.getPointMGRSLabel(pointId)); }
+        WatchUi.requestUpdate();
     }
 }
 

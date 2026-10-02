@@ -4,10 +4,7 @@ import Toybox.WatchUi;
 function buildChatMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleChat)});
     var messages = app.getChatMessages();
-    if (messages.size() == 0) {
-        menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.ChatEmpty), null, :empty, null));
-        return menu;
-    }
+    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.ChatEmpty), null, :empty, null));
     for (var index = messages.size() - 1; index >= 0; index--) {
         var message = messages[index] as Dictionary;
         var sender = message.get("sender");
@@ -28,9 +25,7 @@ class ChatMenuDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         var index = item.getId();
         if (index == :empty) {
-            var mapView = app.getMapView();
-            mapView.setTakClient(app.getTakClient());
-            WatchUi.pushView(mapView, new StandaloneMapDelegate(mapView, false, app), WatchUi.SLIDE_LEFT);
+            openMapForUserSelection();
             return;
         }
         var messages = app.getChatMessages();
@@ -41,6 +36,12 @@ class ChatMenuDelegate extends WatchUi.Menu2InputDelegate {
         replyMenu.addItem(new WatchUi.MenuItem("ObjS", null, :objs, null));
         replyMenu.addItem(new WatchUi.MenuItem("nPos", null, :npos, null));
         WatchUi.pushView(replyMenu, new QuickReplyDelegate(app, message), WatchUi.SLIDE_UP);
+    }
+
+    function openMapForUserSelection() as Void {
+        var mapView = app.getMapView();
+        mapView.setTakClient(app.getTakClient());
+        WatchUi.pushView(mapView, new StandaloneMapDelegate(mapView, false, app), WatchUi.SLIDE_LEFT);
     }
 
     function onBack() as Void {

@@ -69,6 +69,72 @@ function buildDevicePreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     addMenuEntry(menu, "My Team", app.getMyTeamColor(), :myTeam);
     addMenuEntry(menu, "My Role", app.getMyRoleLabel(), :myRole);
     addMenuEntry(menu, app.text(:userMetrics), null, :userMetrics);
+    addMenuEntry(menu, "----------------", null, :devicePreferencesSeparator);
+    addMenuEntry(menu, "Reporting Strategy", app.isDynamicReportingEnabled() ? "Dynamic" : "Static", :reportingStrategy);
+    return menu;
+}
+
+function buildReportingStrategyMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Reporting Strategy"});
+    addMenuEntry(menu, "Dynamic Reporting", app.isDynamicReportingEnabled() ? "Selected" : null, :dynamicReporting);
+    addMenuEntry(menu, "Constant Reporting", !app.isDynamicReportingEnabled() ? "Selected" : null, :constantReporting);
+    addMenuEntry(menu, "Save Battery on WiFi", app.getSaveBatteryOnWifiMode(), :saveBatteryOnWifi);
+    addToggleEntry(menu, "Physiological Monitoring", app.isPhysiologicalMonitoringEnabled(), :physiologicalMonitoring);
+    return menu;
+}
+
+function buildDynamicReportingMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Dynamic Reporting"});
+    addLabelValueEntry(menu, "Stationary Reporting Interval", app.getReportingInterval(:stationary).toString() + " seconds", :intervalStationary);
+    addLabelValueEntry(menu, "On Foot Reporting Interval", app.getReportingInterval(:onFoot).toString() + " seconds", :intervalOnFoot);
+    addLabelValueEntry(menu, "Vehicle Reporting Interval", app.getReportingInterval(:vehicle).toString() + " seconds", :intervalVehicle);
+    addLabelValueEntry(menu, "While Alerting Reporting Interval", app.getReportingInterval(:whileAlerting).toString() + " seconds", :intervalWhileAlerting);
+    return menu;
+}
+
+function buildConstantReportingMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Constant Reporting"});
+    addLabelValueEntry(menu, "Constant Reporting Interval", app.getReportingInterval(:constant).toString() + " seconds", :intervalConstant);
+    return menu;
+}
+
+function reportingIntervalSetting(id as Symbol) as Symbol {
+    if (id == :intervalStationary) { return :stationary; }
+    else if (id == :intervalOnFoot) { return :onFoot; }
+    else if (id == :intervalVehicle) { return :vehicle; }
+    else if (id == :intervalWhileAlerting) { return :whileAlerting; }
+    return :constant;
+}
+
+function buildReportingIntervalValuesMenu(app as StandaloneApp, setting as Symbol) as WatchUi.Menu2 {
+    var title = setting == :stationary ? "Stationary Interval" : setting == :onFoot ? "On Foot Interval" : setting == :vehicle ? "Vehicle Interval" : setting == :whileAlerting ? "While Alerting Interval" : "Constant Interval";
+    var menu = new WatchUi.Menu2({:title => title});
+    var values = [5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600];
+    var current = app.getReportingInterval(setting);
+    for (var index = 0; index < values.size(); index++) {
+        var value = values[index] as Number;
+        menu.addItem(new WatchUi.MenuItem(value.toString() + " seconds", value == current ? "Selected" : null, value, null));
+    }
+    return menu;
+}
+
+function buildSaveBatteryOnWifiMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Save Battery on WiFi"});
+    var mode = app.getSaveBatteryOnWifiMode();
+    menu.addItem(new WatchUi.MenuItem("All WiFi Connections", mode.equals("All WiFi Connections") ? "Selected" : null, :wifiAll, null));
+    menu.addItem(new WatchUi.MenuItem("No WiFi Connections", mode.equals("No WiFi Connections") ? "Selected" : null, :wifiNone, null));
+    menu.addItem(new WatchUi.MenuItem("Some WiFi Connections", mode.equals("Some WiFi Connections") ? "Selected" : null, :wifiSome, null));
+    return menu;
+}
+
+function buildWifiNetworkMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Selected WiFi Networks"});
+    menu.addItem(new WatchUi.MenuItem("Add WiFi Network (enter name)", null, :addWifiNetwork, null));
+    var networks = app.getKnownWifiNetworks();
+    for (var index = 0; index < networks.size(); index++) {
+        var ssid = networks[index] as String;
+        menu.addItem(new WatchUi.MenuItem(ssid, app.isWifiNetworkSelected(ssid) ? "Selected" : "Not selected", ssid, null));
+    }
     return menu;
 }
 
@@ -547,9 +613,177 @@ class DevicePreferencesDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :myRole) {
             var roleMenu = buildMyRoleCategoryMenu(app);
             WatchUi.pushView(roleMenu, new MyRoleCategoryDelegate(app, menu), WatchUi.SLIDE_LEFT);
+        } else if (id == :reportingStrategy) {
+            var reportingMenu = buildReportingStrategyMenu(app);
+            WatchUi.pushView(reportingMenu, new ReportingStrategyDelegate(app, reportingMenu, menu), WatchUi.SLIDE_LEFT);
         } else if (id == :userMetrics) {
             WatchUi.pushView(buildUserMetricsMenu(app), new UserMetricsDelegate(app), WatchUi.SLIDE_LEFT);
         }
+    }
+}
+
+class ReportingStrategyDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var menu as WatchUi.Menu2;
+    var preferencesMenu as WatchUi.Menu2;
+
+    function initialize(application as StandaloneApp, reportingMenu as WatchUi.Menu2, parentMenu as WatchUi.Menu2) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        menu = reportingMenu;
+        preferencesMenu = parentMenu;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :dynamicReporting) {
+            app.setDynamicReportingEnabled(true);
+            updatePreferenceLabel("Dynamic");
+            item.setSubLabel("Selected");
+            menu.getItem(menu.findItemById(:constantReporting)).setSubLabel(null);
+            var dynamicMenu = buildDynamicReportingMenu(app);
+            WatchUi.pushView(dynamicMenu, new ReportingIntervalsDelegate(app, dynamicMenu), WatchUi.SLIDE_LEFT);
+        } else if (id == :constantReporting) {
+            app.setDynamicReportingEnabled(false);
+            updatePreferenceLabel("Static");
+            item.setSubLabel("Selected");
+            menu.getItem(menu.findItemById(:dynamicReporting)).setSubLabel(null);
+            var constantMenu = buildConstantReportingMenu(app);
+            WatchUi.pushView(constantMenu, new ReportingIntervalsDelegate(app, constantMenu), WatchUi.SLIDE_LEFT);
+        } else if (id == :saveBatteryOnWifi) {
+            var wifiMenu = buildSaveBatteryOnWifiMenu(app);
+            WatchUi.pushView(wifiMenu, new SaveBatteryOnWifiDelegate(app, wifiMenu, menu), WatchUi.SLIDE_LEFT);
+        } else if (id == :physiologicalMonitoring) {
+            var enabled = !app.isPhysiologicalMonitoringEnabled();
+            app.setPhysiologicalMonitoringEnabled(enabled);
+            item.setSubLabel(toolToggleLabel(enabled));
+            WatchUi.requestUpdate();
+        }
+    }
+
+    function updatePreferenceLabel(value as String) as Void {
+        var item = preferencesMenu.getItem(preferencesMenu.findItemById(:reportingStrategy));
+        if (item != null) { item.setSubLabel(value); }
+    }
+}
+
+class ReportingIntervalsDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var menu as WatchUi.Menu2;
+
+    function initialize(application as StandaloneApp, intervalMenu as WatchUi.Menu2) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        menu = intervalMenu;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var setting = reportingIntervalSetting(item.getId() as Symbol);
+        var valuesMenu = buildReportingIntervalValuesMenu(app, setting);
+        WatchUi.pushView(valuesMenu, new ReportingIntervalValuesDelegate(app, valuesMenu, menu, setting), WatchUi.SLIDE_LEFT);
+    }
+}
+
+class ReportingIntervalValuesDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var valuesMenu as WatchUi.Menu2;
+    var intervalMenu as WatchUi.Menu2;
+    var setting as Symbol;
+
+    function initialize(application as StandaloneApp, valueMenu as WatchUi.Menu2, parentMenu as WatchUi.Menu2, intervalSetting as Symbol) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        valuesMenu = valueMenu;
+        intervalMenu = parentMenu;
+        setting = intervalSetting;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var seconds = item.getId() as Number;
+        app.setReportingInterval(setting, seconds);
+        var parentId = setting == :stationary ? :intervalStationary : setting == :onFoot ? :intervalOnFoot : setting == :vehicle ? :intervalVehicle : setting == :whileAlerting ? :intervalWhileAlerting : :intervalConstant;
+        intervalMenu.getItem(intervalMenu.findItemById(parentId)).setSubLabel(seconds.toString() + " seconds");
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+    }
+}
+
+class SaveBatteryOnWifiDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var wifiMenu as WatchUi.Menu2;
+    var reportingMenu as WatchUi.Menu2;
+
+    function initialize(application as StandaloneApp, modeMenu as WatchUi.Menu2, parentMenu as WatchUi.Menu2) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        wifiMenu = modeMenu;
+        reportingMenu = parentMenu;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :wifiAll || id == :wifiNone || id == :wifiSome) {
+            var mode = id == :wifiAll ? "All WiFi Connections" : id == :wifiNone ? "No WiFi Connections" : "Some WiFi Connections";
+            app.setSaveBatteryOnWifiMode(mode);
+            reportingMenu.getItem(reportingMenu.findItemById(:saveBatteryOnWifi)).setSubLabel(mode);
+            item.setSubLabel("Selected");
+            if (id == :wifiSome) {
+                var networksMenu = buildWifiNetworkMenu(app);
+                WatchUi.pushView(networksMenu, new WifiNetworkDelegate(app, networksMenu), WatchUi.SLIDE_LEFT);
+            }
+        }
+    }
+}
+
+class WifiNetworkDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var menu as WatchUi.Menu2;
+
+    function initialize(application as StandaloneApp, networkMenu as WatchUi.Menu2) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        menu = networkMenu;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :addWifiNetwork) {
+            WatchUi.pushView(new WatchUi.TextPicker(""), new WifiNetworkTextPickerDelegate(app, menu), WatchUi.SLIDE_UP);
+        } else if (id instanceof String) {
+            var ssid = id as String;
+            app.toggleWifiNetwork(ssid);
+            item.setSubLabel(app.isWifiNetworkSelected(ssid) ? "Selected" : "Not selected");
+        }
+    }
+}
+
+class WifiNetworkTextPickerDelegate extends WatchUi.TextPickerDelegate {
+    var app as StandaloneApp;
+    var menu as WatchUi.Menu2;
+
+    function initialize(application as StandaloneApp, networkMenu as WatchUi.Menu2) {
+        TextPickerDelegate.initialize();
+        app = application;
+        menu = networkMenu;
+    }
+
+    function onTextEntered(value as String, changed as Boolean) as Boolean {
+        if (changed && value.length() > 0) {
+            var networks = app.getKnownWifiNetworks();
+            var exists = false;
+            for (var index = 0; index < networks.size(); index++) {
+                if ((networks[index] as String).equals(value)) { exists = true; }
+            }
+            if (!exists) {
+                app.addKnownWifiNetwork(value);
+                menu.addItem(new WatchUi.MenuItem(value, "Selected", value, null));
+            }
+        }
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+        return true;
+    }
+
+    function onCancel() as Boolean {
+        return true;
     }
 }
 

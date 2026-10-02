@@ -10,7 +10,7 @@ import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
 
 class StandaloneApp extends Application.AppBase {
-    const APP_VERSION = "5.8.0.3-0c54201";
+    const APP_VERSION = "5.8.0.3-9db5aa1-dirty";
 
     private var view;
     private var takClient;
@@ -78,6 +78,16 @@ class StandaloneApp extends Application.AppBase {
     private var myTeamColor as String = "Blue";
     private var myRoleCategory as String = "MIL";
     private var myRole as String = "Team Member";
+    private var dynamicReportingEnabled as Boolean = true;
+    private var stationaryReportingInterval as Number = 3600;
+    private var onFootReportingInterval as Number = 60;
+    private var vehicleReportingInterval as Number = 60;
+    private var whileAlertingReportingInterval as Number = 10;
+    private var constantReportingInterval as Number = 60;
+    private var saveBatteryOnWifiMode as String = "All WiFi Connections";
+    private var knownWifiNetworks as Array = [];
+    private var selectedWifiNetworks as Array = [];
+    private var physiologicalMonitoringEnabled as Boolean = true;
     private var bloodType as String = "Unknown";
     private var userType as String = "N/A";
     private var allergies as Array = ["N/A"];
@@ -99,7 +109,7 @@ class StandaloneApp extends Application.AppBase {
         loadAlertSettings();
         takClient.setVerboseLogging(verboseLoggingEnabled);
         applyLocationServices();
-        Sensor.setEnabledSensors([Sensor.SENSOR_HEARTRATE]);
+        applyPhysiologicalMonitoring();
         Sensor.enableSensorEvents(method(:onSensor));
     }
 
@@ -153,6 +163,117 @@ class StandaloneApp extends Application.AppBase {
             || value.equals("Red") || value.equals("Maroon") || value.equals("Purple") || value.equals("Dark Blue")
             || value.equals("Blue") || value.equals("Cyan") || value.equals("Teal") || value.equals("Green")
             || value.equals("Dark Green") || value.equals("Brown");
+    }
+
+    function isDynamicReportingEnabled() as Boolean {
+        return dynamicReportingEnabled;
+    }
+
+    function setDynamicReportingEnabled(enabled as Boolean) as Void {
+        dynamicReportingEnabled = enabled;
+        Application.Storage.setValue("dynamicReportingEnabled", enabled);
+    }
+
+    function getReportingInterval(setting as Symbol) as Number {
+        if (setting == :stationary) { return stationaryReportingInterval; }
+        else if (setting == :onFoot) { return onFootReportingInterval; }
+        else if (setting == :vehicle) { return vehicleReportingInterval; }
+        else if (setting == :whileAlerting) { return whileAlertingReportingInterval; }
+        return constantReportingInterval;
+    }
+
+    function setReportingInterval(setting as Symbol, seconds as Number) as Void {
+        var key = "constantReportingInterval";
+        if (setting == :stationary) {
+            stationaryReportingInterval = seconds;
+            key = "stationaryReportingInterval";
+        } else if (setting == :onFoot) {
+            onFootReportingInterval = seconds;
+            key = "onFootReportingInterval";
+        } else if (setting == :vehicle) {
+            vehicleReportingInterval = seconds;
+            key = "vehicleReportingInterval";
+        } else if (setting == :whileAlerting) {
+            whileAlertingReportingInterval = seconds;
+            key = "whileAlertingReportingInterval";
+        } else {
+            constantReportingInterval = seconds;
+        }
+        Application.Storage.setValue(key, seconds);
+    }
+
+    function getSaveBatteryOnWifiMode() as String {
+        return saveBatteryOnWifiMode;
+    }
+
+    function setSaveBatteryOnWifiMode(mode as String) as Void {
+        if (mode.equals("All WiFi Connections") || mode.equals("No WiFi Connections") || mode.equals("Some WiFi Connections")) {
+            saveBatteryOnWifiMode = mode;
+            Application.Storage.setValue("saveBatteryOnWifiMode", mode);
+        }
+    }
+
+    function getKnownWifiNetworks() as Array<String> {
+        return knownWifiNetworks;
+    }
+
+    function isWifiNetworkSelected(ssid as String) as Boolean {
+        for (var index = 0; index < selectedWifiNetworks.size(); index++) {
+            if ((selectedWifiNetworks[index] as String).equals(ssid)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function addKnownWifiNetwork(ssid as String) as Void {
+        if (ssid.length() == 0) { return; }
+        for (var index = 0; index < knownWifiNetworks.size(); index++) {
+            if ((knownWifiNetworks[index] as String).equals(ssid)) { return; }
+        }
+        knownWifiNetworks.add(ssid);
+        selectedWifiNetworks.add(ssid);
+        Application.Storage.setValue("knownWifiNetworks", knownWifiNetworks);
+        Application.Storage.setValue("selectedWifiNetworks", selectedWifiNetworks);
+    }
+
+    function toggleWifiNetwork(ssid as String) as Void {
+        if (isWifiNetworkSelected(ssid)) {
+            for (var index = selectedWifiNetworks.size() - 1; index >= 0; index--) {
+                if ((selectedWifiNetworks[index] as String).equals(ssid)) { selectedWifiNetworks.remove(index); }
+            }
+        } else {
+            selectedWifiNetworks.add(ssid);
+        }
+        Application.Storage.setValue("selectedWifiNetworks", selectedWifiNetworks);
+    }
+
+    function isPhysiologicalMonitoringEnabled() as Boolean {
+        return physiologicalMonitoringEnabled;
+    }
+
+    function setPhysiologicalMonitoringEnabled(enabled as Boolean) as Void {
+        physiologicalMonitoringEnabled = enabled;
+        Application.Storage.setValue("physiologicalMonitoringEnabled", enabled);
+        lastHeartRateSampleTime = null;
+        highRestingSince = null;
+        lowRestingSince = null;
+        exertionWarningSince = null;
+        exertionAlertSince = null;
+        highRestingWarningActive = false;
+        highRestingAlertActive = false;
+        lowRestingWarningActive = false;
+        lowRestingAlertActive = false;
+        exertionWarningActive = false;
+        exertionAlertActive = false;
+        takClient.clearAutomatedAlert("High resting heart rate");
+        takClient.clearAutomatedAlert("Low resting heart rate");
+        takClient.clearAutomatedAlert("High exertion");
+        applyPhysiologicalMonitoring();
+    }
+
+    function applyPhysiologicalMonitoring() as Void {
+        Sensor.setEnabledSensors(physiologicalMonitoringEnabled ? [Sensor.SENSOR_HEARTRATE] : []);
     }
 
     function getMyRoleCategory() as String {
@@ -377,6 +498,16 @@ class StandaloneApp extends Application.AppBase {
         if (!isSupportedTeamColor(myTeamColor)) {
             myTeamColor = "Blue";
         }
+        dynamicReportingEnabled = storedBoolean("dynamicReportingEnabled", dynamicReportingEnabled);
+        stationaryReportingInterval = storedNumber("stationaryReportingInterval", stationaryReportingInterval);
+        onFootReportingInterval = storedNumber("onFootReportingInterval", onFootReportingInterval);
+        vehicleReportingInterval = storedNumber("vehicleReportingInterval", vehicleReportingInterval);
+        whileAlertingReportingInterval = storedNumber("whileAlertingReportingInterval", whileAlertingReportingInterval);
+        constantReportingInterval = storedNumber("constantReportingInterval", constantReportingInterval);
+        saveBatteryOnWifiMode = storedString("saveBatteryOnWifiMode", saveBatteryOnWifiMode);
+        knownWifiNetworks = storedStringArray("knownWifiNetworks");
+        selectedWifiNetworks = storedStringArray("selectedWifiNetworks");
+        physiologicalMonitoringEnabled = storedBoolean("physiologicalMonitoringEnabled", physiologicalMonitoringEnabled);
         myRoleCategory = storedString("myRoleCategory", myRoleCategory);
         myRole = storedString("myRole", myRole);
         if (!isValidMyRole(myRoleCategory, myRole)) {
@@ -524,6 +655,11 @@ class StandaloneApp extends Application.AppBase {
     function storedString(key as String, fallback as String) as String {
         var storedValue = Application.Storage.getValue(key);
         return storedValue == null ? fallback : storedValue as String;
+    }
+
+    function storedStringArray(key as String) as Array {
+        var storedValue = Application.Storage.getValue(key);
+        return storedValue == null ? [] : storedValue as Array;
     }
 
     function isPhysiologicalAlertsEnabled() as Boolean {
@@ -806,6 +942,12 @@ class StandaloneApp extends Application.AppBase {
     function onSensor(info as Sensor.Info) as Void {
         sensorInfo = info;
         var now = Time.now().value();
+        if (!physiologicalMonitoringEnabled) {
+            evaluatePressureAlerts();
+            evaluateImmersionAlerts();
+            WatchUi.requestUpdate();
+            return;
+        }
         var activityInfo = ActivityMonitor.getInfo();
         if (activityInfo != null && activityInfo.steps != null) {
             if (lastStepCount != null && activityInfo.steps > lastStepCount) {
