@@ -71,12 +71,16 @@ The Garmin-to-ATAK relay is being integrated in the companion's
 right now:
 
 - Open and navigate the map.
-- Drop an Unknown 2525D point from the main menu or map.
+- Drop a 2525D point from the main menu or map; new point titles use the
+	configured callsign and UTC time in `CALLSIGN_HHMMSSZ` format.
 - Clear all 2525D points from the main menu.
 - Rename a point.
 - Change a point's type.
 - Delete a point.
-- View point and self coordinates in latitude/longitude and MGRS.
+- View point details with marker type/drop time, bearing arrow, distance,
+	latitude/longitude, MGRS, and Bloodhound, title, remark, marker-type, move,
+	delete, and back actions.
+- View self coordinates in latitude/longitude and MGRS.
 - Pan, zoom, and recenter the map.
 - Track a selected point with Bloodhound range, true bearing, proximity radius,
 	vibration, and cancel controls.
