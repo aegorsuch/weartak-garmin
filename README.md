@@ -31,8 +31,8 @@ The TAK Forge repository is canonical. GitHub is a secondary repository.
 	appear as a removable drive.
 3. Open the watch drive and navigate to `GARMIN/Apps`.
 4. Drag only the matching `.prg` into the `GARMIN/Apps` folder. For a fēnix
-	7X running version `5.8.0.3-547526a`, use
-	`WearTAK-Garmin-fenix7x-5.8.0.3-547526a.prg`.
+	7X running version `5.8.0.3-0c54201`, use
+	`WearTAK-Garmin-fenix7x-5.8.0.3-0c54201.prg`.
 5. Safely eject the watch, disconnect the USB cable, and launch WearTAK from
 	the watch's app list.
 
@@ -73,6 +73,10 @@ right now:
 - Open and navigate the map.
 - Drop a 2525D point from the main menu or map; new point titles use the
 	configured callsign and UTC time in `CALLSIGN_HHMMSSZ` format.
+- Set a callsign, choose one of 14 My Team colors, and select a MIL or LEO role
+	with its subrole under Callsign and Device Preferences. The team color is used
+	for the self marker and Bloodhound direction arrow; tracked point icons remain
+	unchanged.
 - Configure a callsign, MIL/LEO role, and My Team color under Callsign and
 	Device Preferences. The selected team color marks the watch's self position
 	and Bloodhound direction arrow without changing target marker icons.
@@ -290,7 +294,7 @@ fenix6spro, fenix6xpro, fenix7x, fenix847mm, fenix8solar47mm, and
 fenix8solar51mm) for Garmin's distribution workflow.
 
 1. Bump `APP_VERSION` in `source/StandaloneApp.mc` to the new version, including
-	the short source commit hash (for example, `5.8.0.3-547526a`), and
+	the short source commit hash (for example, `5.8.0.3-0c54201`), and
    commit it (consistent with the government repo being canonical, merge this
    into `develop` first as described above).
 2. Build each device-specific `.prg` with the Garmin Connect IQ SDK, selecting

@@ -10,7 +10,7 @@ import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
 
 class StandaloneApp extends Application.AppBase {
-    const APP_VERSION = "5.8.0.3-547526a";
+    const APP_VERSION = "5.8.0.3-0c54201";
 
     private var view;
     private var takClient;
