@@ -626,7 +626,8 @@ class DevicePreferencesDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
         if (id == :callsign) {
-            WatchUi.pushView(new WatchUi.TextPicker(app.getCallsign()), new CallsignTextPickerDelegate(app, menu), WatchUi.SLIDE_UP);
+            var initialCallsign = app.getCallsign().length() == 0 ? " " : app.getCallsign();
+            WatchUi.pushView(new WatchUi.TextPicker(initialCallsign), new CallsignTextPickerDelegate(app, menu), WatchUi.SLIDE_UP);
         } else if (id == :myTeam) {
             WatchUi.pushView(buildMyTeamMenu(app), new MyTeamDelegate(app, menu), WatchUi.SLIDE_LEFT);
         } else if (id == :myRole) {

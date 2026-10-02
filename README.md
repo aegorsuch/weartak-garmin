@@ -74,7 +74,8 @@ Garmin Connect IQ receiver. These are the watch features currently available:
 	written; it does not acknowledge TAK-server delivery.
 - Display Exertion or Heart Rate on the dashboard and persist the selection.
 	Unavailable sensor readings display as `N/A`. Physiological Alerts
-	can be enabled or disabled from the metric selector.
+	can be enabled or disabled from the metric selector. The metric tile border is
+	yellow during an active physiological warning and red during an active alert.
 - Open Manual Alert, point drop, Chat, Settings, Map, and Compass from the
 	dashboard. The alert control opens its alert menu; active alerts can be
 	cancelled there. Chat's Select a map user action opens the map.

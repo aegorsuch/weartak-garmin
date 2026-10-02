@@ -58,6 +58,7 @@ class TakClient {
             alertType = "Manual Alert";
             sendEmergency(:CANCEL);
         }
+        WatchUi.requestUpdate();
     }
 
     function isAlerting() as Boolean {
@@ -75,6 +76,7 @@ class TakClient {
         alertType = type;
         alerting = true;
         sendEmergency(:ALERT);
+        WatchUi.requestUpdate();
         return true;
     }
 
@@ -97,6 +99,7 @@ class TakClient {
         automatedAlertSentAt = {};
         status = :idle;
         notifyStatusChanged();
+        WatchUi.requestUpdate();
     }
 
     function onRelayTransmitComplete() as Void {
@@ -118,6 +121,7 @@ class TakClient {
         automatedAlertSentAt = {};
         status = :failed;
         notifyStatusChanged();
+        WatchUi.requestUpdate();
     }
 
     function sendMarker(id as String, location as Position.Location, type as Symbol, label as String, remark as String) as Void {

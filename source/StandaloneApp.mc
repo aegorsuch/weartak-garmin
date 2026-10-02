@@ -133,8 +133,19 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function setCallsign(value as String) as Void {
-        callsign = value;
+        var normalized = value;
+        while (normalized.length() > 0 && isCallsignWhitespace(normalized.substring(0, 1))) {
+            normalized = normalized.substring(1, normalized.length());
+        }
+        while (normalized.length() > 0 && isCallsignWhitespace(normalized.substring(normalized.length() - 1, normalized.length()))) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        callsign = normalized;
         Application.Storage.setValue("callsign", callsign);
+    }
+
+    function isCallsignWhitespace(character as String) as Boolean {
+        return character.equals(" ") || character.equals("\t") || character.equals("\r") || character.equals("\n");
     }
 
     function getMyTeamColor() as String {
@@ -1275,6 +1286,20 @@ class StandaloneApp extends Application.AppBase {
 
     function isExertionAvailable() as Boolean {
         return physiologicalMonitoringEnabled && sensorInfo != null && sensorInfo.heartRate != null;
+    }
+
+    function getPhysiologicalDashboardSeverity() as Number {
+        if (!physiologicalMonitoringEnabled || !physiologicalAlertsEnabled) { return 0; }
+        if (highRestingAlertActive || lowRestingAlertActive || exertionAlertActive) { return 2; }
+        if (highRestingWarningActive || lowRestingWarningActive || exertionWarningActive) { return 1; }
+        if (sensorInfo == null || sensorInfo.heartRate == null) { return 0; }
+        if (isMoving()) {
+            if (exertionPercent >= exertionAlertThreshold) { return 2; }
+            if (exertionPercent >= exertionWarningThreshold) { return 1; }
+        } else if (sensorInfo.heartRate >= highRestingHeartRate || sensorInfo.heartRate <= lowRestingHeartRate) {
+            return 1;
+        }
+        return 0;
     }
 
     function getHeartRate() as Number? {

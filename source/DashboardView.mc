@@ -150,6 +150,11 @@ class DashboardView extends WatchUi.View {
     function drawMetric(dc as Graphics.Dc) as Void {
         var centerX = screenWidth / 2;
         var top = (screenHeight * 0.205).toNumber();
+        var tileWidth = (screenWidth * 0.64).toNumber();
+        var severity = app.getPhysiologicalDashboardSeverity();
+        var borderColor = severity == 2 ? Graphics.COLOR_RED : severity == 1 ? Graphics.COLOR_YELLOW : Graphics.COLOR_DK_GRAY;
+        dc.setColor(borderColor, Graphics.COLOR_TRANSPARENT);
+        dc.drawRectangle((screenWidth - tileWidth) / 2, top - 5, tileWidth, 64);
         var metric = app.getDashboardMetric();
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.drawText(centerX, top, Graphics.FONT_XTINY, metric.toUpper(), Graphics.TEXT_JUSTIFY_CENTER);
@@ -196,8 +201,11 @@ class DashboardView extends WatchUi.View {
         var left = 8;
         var right = screenWidth - buttonWidth - 8;
         var alerting = app.getTakClient().isAlerting();
+        if (alerting) {
+            dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_RED);
+            dc.fillRectangle(left, centerY - buttonHeight / 2, buttonWidth, buttonHeight);
+        }
         dc.setColor(Graphics.COLOR_RED, alerting ? Graphics.COLOR_RED : Graphics.COLOR_TRANSPARENT);
-        if (alerting) { dc.fillRectangle(left, centerY - buttonHeight / 2, buttonWidth, buttonHeight); }
         dc.drawRectangle(left, centerY - buttonHeight / 2, buttonWidth, buttonHeight);
         dc.setColor(alerting ? Graphics.COLOR_WHITE : Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
         dc.drawText(left + buttonWidth / 2, centerY - 8, Graphics.FONT_SMALL, "ALERT", Graphics.TEXT_JUSTIFY_CENTER);
