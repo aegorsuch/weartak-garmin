@@ -24,9 +24,14 @@ class StandaloneMapView extends WatchUi.MapView {
     var markers = {};
     var pointLocations = {};
     var pointDetails = {};
+    var pointOrder as Array<String> = [];
     var defaultPointType as Symbol = :unknown;
     var incomingIds = [];
     var incomingLastSeen = {};
+    var incomingDetails = {};
+    var hiddenMapTeams as Array<String> = [];
+    var hiddenMapRoles as Array<String> = [];
+    var mapButtonsVisible as Boolean = true;
     var nextPointNumber = 1;
     var takClient as TakClient? = null;
     var controlSize = 40;
@@ -56,7 +61,29 @@ class StandaloneMapView extends WatchUi.MapView {
         mapAreaDirty = false;
         entityPruneTimer = new Timer.Timer();
         entityPruneTimer.start(method(:pruneIncomingEntitiesOnTimer), 60000, true);
+        hiddenMapTeams = loadStoredStringArray("hiddenMapTeams");
+        hiddenMapRoles = loadStoredStringArray("hiddenMapRoles");
+        var storedButtons = Application.Storage.getValue("mapButtonsVisible");
+        if (storedButtons instanceof Boolean) { mapButtonsVisible = storedButtons as Boolean; }
         loadPoints();
+    }
+
+    function loadStoredStringArray(key as String) as Array<String> {
+        var value = Application.Storage.getValue(key);
+        if (!(value instanceof Array)) { return []; }
+        var normalized = [];
+        var values = value as Array;
+        for (var index = 0; index < values.size(); index++) {
+            if (values[index] instanceof String) {
+                var groupKey = normalizeMapGroup(values[index] as String);
+                var exists = false;
+                for (var normalizedIndex = 0; normalizedIndex < normalized.size(); normalizedIndex++) {
+                    if ((normalized[normalizedIndex] as String).equals(groupKey)) { exists = true; }
+                }
+                if (groupKey.length() > 0 && !exists) { normalized.add(groupKey); }
+            }
+        }
+        return normalized;
     }
 
     function typeToString(type as Symbol) as String {
@@ -83,9 +110,9 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function savePoints() as Void {
         var saved = [];
-        var ids = pointLocations.keys();
-        for (var i = 0; i < ids.size(); i++) {
-            var id = ids[i];
+        for (var i = 0; i < pointOrder.size(); i++) {
+            var id = pointOrder[i] as String;
+            if (!pointLocations.hasKey(id) || !pointDetails.hasKey(id)) { continue; }
             var details = pointDetails.get(id) as Dictionary;
             var degrees = pointLocations.get(id).toDegrees();
             saved.add({
@@ -95,7 +122,9 @@ class StandaloneMapView extends WatchUi.MapView {
                 "type" => typeToString(details.get("type") as Symbol),
                 "title" => safeDetailString(details, "title", ""),
                 "remark" => safeDetailString(details, "remark", ""),
-                "droppedAt" => safeDetailString(details, "droppedAt", "Unknown")
+                "droppedAt" => safeDetailString(details, "droppedAt", "Unknown"),
+                "localTime" => safeDetailString(details, "localTime", "Unknown"),
+                "createdAt" => details.get("createdAt") == null ? 0 : details.get("createdAt") as Number
             });
         }
         Application.Storage.setValue("droppedPoints", saved);
@@ -119,14 +148,18 @@ class StandaloneMapView extends WatchUi.MapView {
             var type = typeFromString(entry.get("type") as String);
             var title = entry.get("title") as String;
             var droppedAt = entry.get("droppedAt");
+            var localTime = entry.get("localTime");
+            var createdAt = entry.get("createdAt");
             var marker = new StandaloneMapMarker(location);
             var icon = iconForType(type);
             marker.setIcon(icon, icon.getWidth() / 2, icon.getHeight() / 2);
             marker.setLabel(title);
             markers.put(id, marker);
             pointLocations.put(id, location);
-            pointDetails.put(id, {"type" => type, "title" => title, "remark" => entry.get("remark") as String, "droppedAt" => droppedAt == null ? "Unknown" : droppedAt.toString()});
+            pointDetails.put(id, {"type" => type, "title" => title, "remark" => entry.get("remark") as String, "droppedAt" => droppedAt == null ? "Unknown" : droppedAt.toString(), "localTime" => localTime == null ? "Unknown" : localTime.toString(), "createdAt" => createdAt == null ? 0 : createdAt as Number});
+            pointOrder.add(id);
         }
+        sortPointOrderNewestFirst();
         var storedNextPointNumber = Application.Storage.getValue("nextPointNumber");
         if (storedNextPointNumber != null) {
             nextPointNumber = storedNextPointNumber as Number;
@@ -217,25 +250,161 @@ class StandaloneMapView extends WatchUi.MapView {
         WatchUi.requestUpdate();
     }
 
-    function updateIncomingCot(uid as String, latitude, longitude, cotType as String) as Void {
+    function updateIncomingCot(uid as String, latitude, longitude, cotType as String, callSign as String?, team as String?, role as String?) as Void {
         var markerId = "cot-" + uid;
         var location = new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees});
         var marker = new StandaloneMapMarker(location);
         var icon = cotType.find("a-h-") != null ? iconForType(:hostile) : cotType.find("a-f-") != null ? iconForType(:friendly) : iconForType(:unknown);
         marker.setIcon(icon, icon.getWidth() / 2, icon.getHeight() / 2);
-        marker.setLabel(uid);
+        marker.setLabel(callSign == null || trimMapText(callSign).length() == 0 ? uid : trimMapText(callSign));
         if (!markers.hasKey(markerId)) {
             incomingIds.add(markerId);
             if (incomingIds.size() > 50) {
                 var oldestId = incomingIds.remove(0);
                 markers.remove(oldestId);
                 incomingLastSeen.remove(oldestId);
+                incomingDetails.remove(oldestId);
             }
         }
         incomingLastSeen.put(markerId, Time.now().value());
+        incomingDetails.put(markerId, {
+            "uid" => uid, "type" => cotType,
+            "callSign" => callSign == null ? "" : trimMapText(callSign),
+            "team" => team == null ? "" : trimMapText(team),
+            "role" => role == null ? "" : trimMapText(role)
+        });
         markers.put(markerId, marker);
         pruneIncomingEntities();
         markersDirty = true;
+        WatchUi.requestUpdate();
+    }
+
+    function trimMapText(value as String) as String {
+        while (value.length() > 0 && isMapWhitespace(value.substring(0, 1))) { value = value.substring(1, value.length()); }
+        while (value.length() > 0 && isMapWhitespace(value.substring(value.length() - 1, value.length()))) { value = value.substring(0, value.length() - 1); }
+        return value;
+    }
+
+    function isMapWhitespace(value as String) as Boolean {
+        return value.equals(" ") || value.equals("\t") || value.equals("\r") || value.equals("\n");
+    }
+
+    function normalizeMapGroup(value as String) as String {
+        return trimMapText(value).toLower();
+    }
+
+    function isUserCotType(cotType as String) as Boolean {
+        return cotType.find("a-") == 0 && cotType.find("-G-U-C") != null;
+    }
+
+    function incomingUserGroups(isTeam as Boolean) as Array<Dictionary> {
+        var names = {};
+        var counts = {};
+        for (var index = 0; index < incomingIds.size(); index++) {
+            var markerId = incomingIds[index] as String;
+            var details = incomingDetails.get(markerId);
+            if (!(details instanceof Dictionary)) { continue; }
+            var type = (details as Dictionary).get("type");
+            if (!(type instanceof String) || !isUserCotType(type as String) || isSelfIncomingUser(details as Dictionary)) { continue; }
+            var value = (details as Dictionary).get(isTeam ? "team" : "role");
+            if (!(value instanceof String)) { continue; }
+            var displayName = trimMapText(value as String);
+            if (displayName.length() == 0) { continue; }
+            var key = normalizeMapGroup(displayName);
+            names.put(key, names.hasKey(key) ? names.get(key) : displayName);
+            counts.put(key, counts.hasKey(key) ? (counts.get(key) as Number) + 1 : 1);
+        }
+        var groups = [];
+        var keys = names.keys();
+        for (var keyIndex = 0; keyIndex < keys.size(); keyIndex++) {
+            var key = keys[keyIndex] as String;
+            var name = names.get(key);
+            groups.add({"key" => key, "name" => name == null ? key : name.toString(), "count" => counts.get(key) as Number});
+        }
+        return groups;
+    }
+
+    function isIncomingUserVisible(markerId as String) as Boolean {
+        var details = incomingDetails.get(markerId);
+        if (!(details instanceof Dictionary)) { return true; }
+        var eventType = (details as Dictionary).get("type");
+        if (!(eventType instanceof String) || !isUserCotType(eventType as String) || isSelfIncomingUser(details as Dictionary)) { return true; }
+        var teamValue = (details as Dictionary).get("team");
+        var roleValue = (details as Dictionary).get("role");
+        var team = teamValue instanceof String ? teamValue as String : "";
+        var role = roleValue instanceof String ? roleValue as String : "";
+        return !isMapGroupHidden(hiddenMapTeams, team) && !isMapGroupHidden(hiddenMapRoles, role);
+    }
+
+    function sortPointOrderNewestFirst() as Void {
+        for (var index = 1; index < pointOrder.size(); index++) {
+            var pointId = pointOrder[index] as String;
+            var pointTime = (pointDetails.get(pointId) as Dictionary).get("createdAt") as Number;
+            var cursor = index;
+            while (cursor > 0) {
+                var previousId = pointOrder[cursor - 1] as String;
+                var previousTime = (pointDetails.get(previousId) as Dictionary).get("createdAt") as Number;
+                if (previousTime >= pointTime) { break; }
+                pointOrder[cursor] = previousId;
+                cursor -= 1;
+            }
+            pointOrder[cursor] = pointId;
+        }
+    }
+
+    function isSelfIncomingUser(details as Dictionary) as Boolean {
+        if (application == null) { return false; }
+        var callSignValue = details.get("callSign");
+        var ownCallSign = application.getCallsign();
+        if (callSignValue instanceof String && ownCallSign.length() > 0 && normalizeMapGroup(callSignValue as String).equals(normalizeMapGroup(ownCallSign))) { return true; }
+        var deviceId = System.getDeviceSettings().uniqueIdentifier;
+        var uid = details.get("uid");
+        return deviceId != null && uid instanceof String && (uid as String).equals(deviceId);
+    }
+
+    function isMapGroupHidden(hiddenGroups as Array<String>, value as String) as Boolean {
+        var key = normalizeMapGroup(value);
+        if (key.length() == 0) { return false; }
+        for (var index = 0; index < hiddenGroups.size(); index++) {
+            if ((hiddenGroups[index] as String).equals(key)) { return true; }
+        }
+        return false;
+    }
+
+    function isMapGroupHiddenForKind(isTeam as Boolean, value as String) as Boolean {
+        return isMapGroupHidden(isTeam ? hiddenMapTeams : hiddenMapRoles, value);
+    }
+
+    function toggleMapGroup(isTeam as Boolean, value as String) as Void {
+        var key = normalizeMapGroup(value);
+        if (key.length() == 0) { return; }
+        var groups = isTeam ? hiddenMapTeams : hiddenMapRoles;
+        var found = false;
+        for (var index = 0; index < groups.size(); index++) {
+            if ((groups[index] as String).equals(key)) {
+                found = true;
+            }
+        }
+        if (found) { groups.remove(key); }
+        else { groups.add(key); }
+        if (isTeam) {
+            hiddenMapTeams = groups;
+            Application.Storage.setValue("hiddenMapTeams", hiddenMapTeams);
+        } else {
+            hiddenMapRoles = groups;
+            Application.Storage.setValue("hiddenMapRoles", hiddenMapRoles);
+        }
+        markersDirty = true;
+        WatchUi.requestUpdate();
+    }
+
+    function areMapButtonsVisible() as Boolean {
+        return mapButtonsVisible;
+    }
+
+    function setMapButtonsVisible(visible as Boolean) as Void {
+        mapButtonsVisible = visible;
+        Application.Storage.setValue("mapButtonsVisible", visible);
         WatchUi.requestUpdate();
     }
 
@@ -271,12 +440,70 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         WatchUi.MapView.onUpdate(dc);
         drawTeamOverlay(dc);
-        var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
-        drawControl(dc, controlMargin, top, "+");
-        drawCenterControl(dc, controlMargin, top + controlSize + controlGap);
-        drawControl(dc, controlMargin, top + (controlSize + controlGap) * 2, "-");
+        drawIncomingUserOverlays(dc);
+        if (mapButtonsVisible) {
+            var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
+            drawControl(dc, controlMargin, top, "+");
+            drawCenterControl(dc, controlMargin, top + controlSize + controlGap);
+            drawControl(dc, controlMargin, top + (controlSize + controlGap) * 2, "-");
+        }
+        drawLayersControl(dc);
         drawBackControl(dc, screenWidth - controlSize - controlMargin, (screenHeight - controlSize) / 2);
         drawBloodhound(dc);
+    }
+
+    function drawLayersControl(dc) as Void {
+        var x = (screenWidth - controlSize) / 2;
+        var y = controlMargin;
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(x, y, controlSize, controlSize);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawRectangle(x, y, controlSize, controlSize);
+        dc.drawLine(x + 9, y + 12, x + 30, y + 12);
+        dc.drawLine(x + 9, y + 20, x + 30, y + 20);
+        dc.drawLine(x + 9, y + 28, x + 30, y + 28);
+    }
+
+    function drawIncomingUserOverlays(dc) as Void {
+        var topLeft = mapTopLeft.toDegrees();
+        var bottomRight = mapBottomRight.toDegrees();
+        for (var index = 0; index < incomingIds.size(); index++) {
+            var markerId = incomingIds[index] as String;
+            var details = incomingDetails.get(markerId);
+            if (!(details instanceof Dictionary) || !isUserCotType((details as Dictionary).get("type").toString()) || !isIncomingUserVisible(markerId)) { continue; }
+            var location = pointLocations.get(markerId);
+            if (location == null) { continue; }
+            var degrees = location.toDegrees();
+            var markerX = ((degrees[1] - topLeft[1]) / (bottomRight[1] - topLeft[1]) * screenWidth).toNumber();
+            var markerY = ((topLeft[0] - degrees[0]) / (topLeft[0] - bottomRight[0]) * screenHeight).toNumber();
+            if (markerX < 0 || markerX >= screenWidth || markerY < 0 || markerY >= screenHeight) { continue; }
+            var team = (details as Dictionary).get("team").toString();
+            var color = mapColorForTeam(team);
+            dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+            dc.fillCircle(markerX, markerY, 7);
+            dc.setColor(color, color);
+            dc.fillCircle(markerX, markerY, 5);
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+            dc.drawCircle(markerX, markerY, 5);
+        }
+    }
+
+    function mapColorForTeam(team as String) as Number {
+        var color = trimMapText(team).toLower();
+        if (color.equals("white")) { return Graphics.createColor(255, 255, 255, 255); }
+        else if (color.equals("yellow")) { return Graphics.createColor(255, 255, 255, 0); }
+        else if (color.equals("orange")) { return Graphics.createColor(255, 255, 165, 0); }
+        else if (color.equals("magenta")) { return Graphics.createColor(255, 255, 0, 255); }
+        else if (color.equals("red")) { return Graphics.createColor(255, 255, 0, 0); }
+        else if (color.equals("maroon")) { return Graphics.createColor(255, 128, 0, 0); }
+        else if (color.equals("purple")) { return Graphics.createColor(255, 128, 0, 128); }
+        else if (color.equals("dark blue")) { return Graphics.createColor(255, 0, 0, 139); }
+        else if (color.equals("cyan")) { return Graphics.createColor(255, 0, 255, 255); }
+        else if (color.equals("teal")) { return Graphics.createColor(255, 0, 128, 128); }
+        else if (color.equals("green")) { return Graphics.createColor(255, 0, 128, 0); }
+        else if (color.equals("dark green")) { return Graphics.createColor(255, 0, 100, 0); }
+        else if (color.equals("brown")) { return Graphics.createColor(255, 165, 42, 42); }
+        return Graphics.createColor(255, 0, 0, 255);
     }
 
     function drawTeamOverlay(dc) as Void {
@@ -551,10 +778,18 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function dropAtCurrentLocation() as Boolean {
+        return dropAtCurrentLocationAs(defaultPointType);
+    }
+
+    function getDefaultPointType() as Symbol {
+        return defaultPointType;
+    }
+
+    function dropAtCurrentLocationAs(type as Symbol) as Boolean {
         var info = Position.getInfo();
         if (info != null && info.position != null) {
             var droppedAt = utcTimeLabel(Time.now());
-            addPoint(info.position, defaultPointType, newPointTitle(droppedAt), droppedAt);
+            addPoint(info.position, type, newPointTitle(droppedAt), droppedAt);
             return true;
         }
         return false;
@@ -596,7 +831,17 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function isControlAt(x, y) {
-        return isZoomInControlAt(x, y) || isZoomOutControlAt(x, y) || isCenterControlAt(x, y) || isBackControlAt(x, y);
+        return isLayersControlAt(x, y) || (mapButtonsVisible && (isZoomInControlAt(x, y) || isZoomOutControlAt(x, y) || isCenterControlAt(x, y))) || isBackControlAt(x, y);
+    }
+
+    function isLayersControlAt(x, y) as Boolean {
+        var left = (screenWidth - controlSize) / 2;
+        return x >= left && x < left + controlSize && y >= controlMargin && y < controlMargin + controlSize;
+    }
+
+    function showLayersMenu() as Void {
+        var menu = buildMapLayersMenu(self);
+        WatchUi.pushView(menu, new MapLayersMenuDelegate(self, menu), WatchUi.SLIDE_DOWN);
     }
 
     function isZoomInControlAt(x, y) {
@@ -632,7 +877,16 @@ class StandaloneMapView extends WatchUi.MapView {
         marker.setLabel(label);
         markers.put(id, marker);
         pointLocations.put(id, location);
-        pointDetails.put(id, {"type" => type, "title" => label, "remark" => "", "droppedAt" => droppedAt});
+        var localInfo = Time.Gregorian.info(Time.now(), Time.FORMAT_SHORT);
+        var localTime = localInfo.hour.format("%02d") + ":" + localInfo.min.format("%02d");
+        pointDetails.put(id, {"type" => type, "title" => label, "remark" => "", "droppedAt" => droppedAt, "localTime" => localTime, "createdAt" => Time.now().value()});
+        var newestFirst = [id];
+        for (var orderIndex = 0; orderIndex < pointOrder.size(); orderIndex++) {
+            newestFirst.add(pointOrder[orderIndex]);
+        }
+        pointOrder = newestFirst;
+        defaultPointType = type;
+        Application.Storage.setValue("defaultPointType", typeToString(type));
         markersDirty = true;
         if (takClient != null) {
             takClient.sendMarker(id, location, type, label, "");
@@ -642,7 +896,8 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function newPointTitle(droppedAt as String) as String {
-        return application.getCallsign() + "_" + droppedAt;
+        var callsign = application.getCallsign();
+        return callsign.length() == 0 ? droppedAt : callsign + "_" + droppedAt;
     }
 
     function utcTimeLabel(moment as Time.Moment) as String {
@@ -656,7 +911,7 @@ class StandaloneMapView extends WatchUi.MapView {
         } else if (type == :hostile) {
             return WatchUi.loadResource(Rez.Drawables.HostileIcon);
         } else if (type == :neutral) {
-            return WatchUi.loadResource(Rez.Drawables.ObstacleIcon);
+            return WatchUi.loadResource(Rez.Drawables.NeutralIcon);
         }
         return WatchUi.loadResource(Rez.Drawables.UnknownIcon);
     }
@@ -665,7 +920,10 @@ class StandaloneMapView extends WatchUi.MapView {
         var result = [];
         var ids = markers.keys();
         for (var i = 0; i < ids.size(); i++) {
-            result.add(markers.get(ids[i]));
+            var markerId = ids[i].toString();
+            if (!markerId.substring(0, 4).equals("cot-") || isIncomingUserVisible(markerId)) {
+                result.add(markers.get(ids[i]));
+            }
         }
         return result;
     }
@@ -746,6 +1004,26 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         var value = (pointDetails.get(id) as Dictionary).get(field);
         return value == null ? "" : value.toString();
+    }
+
+    function getPointLocalTime(id as String) as String {
+        if (!pointDetails.hasKey(id)) { return "Unknown"; }
+        return safeDetailString(pointDetails.get(id) as Dictionary, "localTime", "Unknown");
+    }
+
+    function getOrderedPointIds() as Array<String> {
+        return pointOrder;
+    }
+
+    function getPointIcon(id as String) {
+        if (!pointDetails.hasKey(id)) { return iconForType(:unknown); }
+        return iconForType((pointDetails.get(id) as Dictionary).get("type") as Symbol);
+    }
+
+    function deleteLastPoint() as Boolean {
+        if (pointOrder.size() == 0) { return false; }
+        deletePoint(pointOrder[0] as String);
+        return true;
     }
 
     function getPointTypeLabel(id) as String {
@@ -870,6 +1148,7 @@ class StandaloneMapView extends WatchUi.MapView {
         markers.remove(id);
         pointLocations.remove(id);
         pointDetails.remove(id);
+        pointOrder.remove(id);
         if (takClient != null) {
             takClient.deleteMarker(id);
         }
@@ -889,6 +1168,7 @@ class StandaloneMapView extends WatchUi.MapView {
             }
             pointLocations = {};
             pointDetails = {};
+            pointOrder = [];
             bloodhoundPointId = null;
             bloodhoundProximityNotified = false;
             markersDirty = true;
@@ -916,6 +1196,7 @@ class StandaloneMapView extends WatchUi.MapView {
         for (var j = 0; j < staleIds.size(); j++) {
             markers.remove(staleIds[j]);
             incomingLastSeen.remove(staleIds[j]);
+            incomingDetails.remove(staleIds[j]);
             incomingIds.remove(staleIds[j]);
         }
         if (staleIds.size() > 0) {
@@ -989,6 +1270,72 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 }
 
+function buildMapLayersMenu(mapView as StandaloneMapView) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Layers Menu"});
+    addMenuEntry(menu, "Map Buttons", mapView.areMapButtonsVisible() ? "On" : "Off", :mapButtonsToggle);
+    var teams = mapView.incomingUserGroups(true);
+    menu.addItem(new WatchUi.MenuItem("Team Colors (" + teams.size().toString() + ")", null, :teamColorsHeading, null));
+    for (var teamIndex = 0; teamIndex < teams.size(); teamIndex++) {
+        var team = teams[teamIndex] as Dictionary;
+        var teamName = team.get("name").toString();
+        var teamCount = team.get("count") as Number;
+        menu.addItem(new WatchUi.MenuItem(teamName + " (" + teamCount.toString() + ")", mapView.isMapGroupHiddenForKind(true, teamName) ? "Hidden" : "Shown", teamIndex, null));
+    }
+    var roles = mapView.incomingUserGroups(false);
+    menu.addItem(new WatchUi.MenuItem("Default Roles (" + roles.size().toString() + ")", null, :defaultRolesHeading, null));
+    for (var roleIndex = 0; roleIndex < roles.size(); roleIndex++) {
+        var role = roles[roleIndex] as Dictionary;
+        var roleName = role.get("name").toString();
+        var roleCount = role.get("count") as Number;
+        menu.addItem(new WatchUi.MenuItem(roleName + " (" + roleCount.toString() + ")", mapView.isMapGroupHiddenForKind(false, roleName) ? "Hidden" : "Shown", 1000 + roleIndex, null));
+    }
+    menu.addItem(new WatchUi.MenuItem("Back", null, :layersBack, null));
+    return menu;
+}
+
+class MapLayersMenuDelegate extends WatchUi.Menu2InputDelegate {
+    var mapView as StandaloneMapView;
+    var menu as WatchUi.Menu2;
+
+    function initialize(map as StandaloneMapView, layersMenu as WatchUi.Menu2) {
+        Menu2InputDelegate.initialize();
+        mapView = map;
+        menu = layersMenu;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :layersBack) {
+            WatchUi.popView(WatchUi.SLIDE_UP);
+        } else if (id == :mapButtonsToggle) {
+            mapView.setMapButtonsVisible(!mapView.areMapButtonsVisible());
+            item.setSubLabel(mapView.areMapButtonsVisible() ? "On" : "Off");
+        } else if (id instanceof Number) {
+            var index = id as Number;
+            var teamGroup = index < 1000;
+            var groups = mapView.incomingUserGroups(teamGroup);
+            if (teamGroup) {
+                if (index >= 0 && index < groups.size()) {
+                    var group = groups[index] as Dictionary;
+                    mapView.toggleMapGroup(true, group.get("name").toString());
+                    item.setSubLabel(mapView.isMapGroupHiddenForKind(true, group.get("name").toString()) ? "Hidden" : "Shown");
+                }
+            } else {
+                var roleIndex = index - 1000;
+                if (roleIndex >= 0 && roleIndex < groups.size()) {
+                    var role = groups[roleIndex] as Dictionary;
+                    mapView.toggleMapGroup(false, role.get("name").toString());
+                    item.setSubLabel(mapView.isMapGroupHiddenForKind(false, role.get("name").toString()) ? "Hidden" : "Shown");
+                }
+            }
+        }
+    }
+
+    function onBack() as Void {
+        WatchUi.popView(WatchUi.SLIDE_UP);
+    }
+}
+
 class StandaloneMapDelegate extends WatchUi.InputDelegate {
     var view;
     var app as StandaloneApp;
@@ -996,6 +1343,7 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
     var lastDragX;
     var lastDragY;
     var isDragging = false;
+    var suppressNextTap as Boolean = false;
 
     function initialize(mapView, showMainMenuOnBack as Boolean, application as StandaloneApp) {
         WatchUi.InputDelegate.initialize();
@@ -1013,6 +1361,10 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
     }
 
     function onTap(evt) {
+        if (suppressNextTap) {
+            suppressNextTap = false;
+            return true;
+        }
         if (isDragging) {
             isDragging = false;
             lastDragX = null;
@@ -1025,7 +1377,9 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
             return true;
         }
         if (view.isControlAt(coordinates[0], coordinates[1])) {
-            if (view.isZoomInControlAt(coordinates[0], coordinates[1])) {
+            if (view.isLayersControlAt(coordinates[0], coordinates[1])) {
+                view.showLayersMenu();
+            } else if (view.isZoomInControlAt(coordinates[0], coordinates[1])) {
                 view.zoom(0.5);
             } else if (view.isZoomOutControlAt(coordinates[0], coordinates[1])) {
                 view.zoom(2.0);
@@ -1049,6 +1403,7 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
     }
 
     function onHold(evt) {
+        suppressNextTap = true;
         var coordinates = evt.getCoordinates();
         if (view.isControlAt(coordinates[0], coordinates[1])) {
             return true;

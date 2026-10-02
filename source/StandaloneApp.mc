@@ -74,7 +74,8 @@ class StandaloneApp extends Application.AppBase {
     private var height as Number = 68;
     private var weight as Number = 155;
     private var sex as String = "Not Set";
-    private var callsign as String = "GARMIN";
+    private var callsign as String = "";
+    private var dashboardMetric as String = "Exertion";
     private var myTeamColor as String = "Blue";
     private var myRoleCategory as String = "MIL";
     private var myRole as String = "Team Member";
@@ -121,10 +122,17 @@ class StandaloneApp extends Application.AppBase {
         return callsign;
     }
 
+    function getDashboardMetric() as String {
+        return dashboardMetric;
+    }
+
+    function setDashboardMetric(value as String) as Void {
+        if (!value.equals("Exertion") && !value.equals("Heart Rate")) { return; }
+        dashboardMetric = value;
+        Application.Storage.setValue("dashboardMetric", dashboardMetric);
+    }
+
     function setCallsign(value as String) as Void {
-        if (value.length() == 0) {
-            return;
-        }
         callsign = value;
         Application.Storage.setValue("callsign", callsign);
     }
@@ -494,6 +502,8 @@ class StandaloneApp extends Application.AppBase {
 
     function loadAlertSettings() as Void {
         callsign = storedString("callsign", callsign);
+        dashboardMetric = storedString("dashboardMetric", dashboardMetric);
+        if (!dashboardMetric.equals("Exertion") && !dashboardMetric.equals("Heart Rate")) { dashboardMetric = "Exertion"; }
         myTeamColor = storedString("myTeamColor", myTeamColor);
         if (!isSupportedTeamColor(myTeamColor)) {
             myTeamColor = "Blue";
@@ -1263,12 +1273,20 @@ class StandaloneApp extends Application.AppBase {
         return exertionPercent;
     }
 
+    function isExertionAvailable() as Boolean {
+        return physiologicalMonitoringEnabled && sensorInfo != null && sensorInfo.heartRate != null;
+    }
+
+    function getHeartRate() as Number? {
+        return !physiologicalMonitoringEnabled || sensorInfo == null ? null : sensorInfo.heartRate;
+    }
+
     function getSensorInfo() as Sensor.Info? {
         return sensorInfo;
     }
 
-    function onIncomingCot(uid, latitude, longitude, type) as Void {
-        getMapView().updateIncomingCot(uid, latitude, longitude, type);
+    function onIncomingCot(uid, latitude, longitude, type, callSign, team, role) as Void {
+        getMapView().updateIncomingCot(uid, latitude, longitude, type, callSign, team, role);
     }
 
     function onIncomingChat(message as Dictionary) as Void {
@@ -1300,6 +1318,7 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function getInitialView() {
-        return [buildMainMenu(self), new MainMenuDelegate(self)];
+        var dashboard = new DashboardView(self);
+        return [dashboard, new DashboardDelegate(self, dashboard)];
     }
 }

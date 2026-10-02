@@ -4,5 +4,6 @@
     <bitmap id="FriendlyIcon" filename="images/friendly.png" />
     <bitmap id="UnknownIcon" filename="images/unknown.png" />
     <bitmap id="HostileIcon" filename="images/hostile.png" />
+    <bitmap id="NeutralIcon" filename="images/obstacle.png" />
     <bitmap id="ObstacleIcon" filename="images/obstacle.png" />
 </resources>

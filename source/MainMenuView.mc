@@ -1,4 +1,5 @@
 import Toybox.Lang;
+import Toybox.Communications;
 import Toybox.WatchUi;
 
 function addMenuEntry(menu as WatchUi.Menu2, label as String, subLabel, id as Symbol) as Void {
@@ -45,6 +46,7 @@ function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var entries = [
         {:label => "Callsign and Device Preferences", :subLabel => null, :id => :devicePreferences},
         {:label => app.text(:networkPreferences), :subLabel => null, :id => :networkPreferences},
+        {:label => app.text(:environment), :subLabel => null, :id => :environment},
         {:label => app.text(:alertingPreferences), :subLabel => null, :id => :alertingPreferences},
         {:label => app.text(:toolPreferences), :subLabel => null, :id => :toolPreferences},
         {:label => "Version " + app.getAppVersion(), :subLabel => null, :id => :appVersion}
@@ -65,7 +67,7 @@ function buildDeveloperOptionsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function buildDevicePreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => "Callsign and Device Preferences"});
-    addMenuEntry(menu, "My Callsign", app.getCallsign(), :callsign);
+    addMenuEntry(menu, "My Callsign", app.getCallsign().length() == 0 ? null : app.getCallsign(), :callsign);
     addMenuEntry(menu, "My Team", app.getMyTeamColor(), :myTeam);
     addMenuEntry(menu, "My Role", app.getMyRoleLabel(), :myRole);
     addMenuEntry(menu, app.text(:userMetrics), null, :userMetrics);
@@ -212,17 +214,37 @@ function buildNetworkPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => app.text(:networkPreferences)});
     var client = app.getTakClient();
     addToggleEntry(menu, app.text(:takConnect), client.status == :connecting || client.isConnected(), :atakRelayToggle);
-    addMenuEntry(menu, "Sit(x)", app.getSitxClient().networkStatusLabel(), :sitxDeviceApi);
+    addMenuEntry(menu, "Sit(x) TAK", app.getSitxClient().networkStatusLabel(), :sitxDeviceApi);
     return menu;
 }
 
 function buildSitxDeviceApiMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var client = app.getSitxClient();
-    var menu = new WatchUi.Menu2({:title => "Sit(x) Device API"});
-    addMenuEntry(menu, "Sit(x) Host", client.getApiHost(), :sitxApiHost);
-    addMenuEntry(menu, "Auth Code", client.getUserCode(), :sitxAuthCode);
-    addMenuEntry(menu, "Status", client.statusText(), :sitxStatus);
-    addMenuEntry(menu, "Clear Sit(x)", null, :sitxClear);
+    var menu = new WatchUi.Menu2({:title => "Sit(x) TAK"});
+    addToggleEntry(menu, "TAK", client.isTakEnabled(), :sitxEnabledToggle);
+    var organization = client.getOrganizationAddress();
+    addMenuEntry(menu, "Address", organization.length() == 0 ? "Not set" : organization, :sitxApiHost);
+    addMenuEntry(menu, "Group", client.getSelectedGroupName(), :sitxGroup);
+    addMenuEntry(menu, "Sit(x) State", client.statusText(), :sitxStatus);
+    addMenuEntry(menu, "Re-auth", null, :sitxReauth);
+    addMenuEntry(menu, "Back", null, :sitxBack);
+    return menu;
+}
+
+function buildSitxGroupsMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var client = app.getSitxClient();
+    var menu = new WatchUi.Menu2({:title => "Select TAK Group"});
+    var groups = client.getGroups();
+    if (groups.size() == 0) {
+        addMenuEntry(menu, "No permitted TAK groups", null, :sitxNoGroups);
+    } else {
+        for (var index = 0; index < groups.size(); index++) {
+            var group = groups[index] as SitxGroup;
+            var label = group.flowTag.equals(client.getSelectedGroupFlowTag()) ? "Selected" : null;
+            menu.addItem(new WatchUi.MenuItem(group.name, label, index, null));
+        }
+    }
+    addMenuEntry(menu, "Back", null, :sitxGroupBack);
     return menu;
 }
 
@@ -528,13 +550,8 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
             confirmation.addItem(new WatchUi.MenuItem(app.text(:cancel), null, :cancel, null));
             WatchUi.pushView(confirmation, new ClearPointsDelegate(app), WatchUi.SLIDE_UP);
         } else if (id == :dropPoint) {
-            var mapView = app.getMapView();
-            mapView.setTakClient(app.getTakClient());
-            if (mapView.dropAtCurrentLocation()) {
-                WatchUi.showToast(app.text(:pointDropped), null);
-            } else {
-                WatchUi.showToast(app.text(:locationUnavailable), null);
-            }
+            var picker = new PointDropTypePickerView(app);
+            WatchUi.pushView(picker, new PointDropTypePickerDelegate(app, picker), WatchUi.SLIDE_LEFT);
         }
     }
 }
@@ -558,6 +575,8 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :networkPreferences) {
             var networkMenu = buildNetworkPreferencesMenu(app);
             WatchUi.pushView(networkMenu, new NetworkPreferencesDelegate(app, networkMenu), WatchUi.SLIDE_LEFT);
+        } else if (id == :environment) {
+            WatchUi.pushView(new EnvironmentalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
         } else if (id == :alertingPreferences) {
             var alertingMenu = buildAlertingPreferencesMenu(app);
             WatchUi.pushView(alertingMenu, new AlertingPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
@@ -864,9 +883,10 @@ class CallsignTextPickerDelegate extends WatchUi.TextPickerDelegate {
     }
 
     function onTextEntered(value as String, changed as Boolean) as Boolean {
-        if (changed && value.length() > 0) {
+        if (changed) {
             app.setCallsign(value);
-            menu.getItem(menu.findItemById(:callsign)).setSubLabel(app.getCallsign());
+            var callsign = app.getCallsign();
+            menu.getItem(menu.findItemById(:callsign)).setSubLabel(callsign.length() == 0 ? null : callsign);
         }
         WatchUi.popView(WatchUi.SLIDE_DOWN);
         return true;
@@ -929,20 +949,34 @@ class SitxDeviceApiDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
         var client = app.getSitxClient();
-        if (id == :sitxApiHost) {
-            WatchUi.pushView(new WatchUi.TextPicker(client.getApiHost()), new SitxSettingsTextPickerDelegate(app, menu), WatchUi.SLIDE_UP);
-        } else if (id == :sitxAuthCode) {
+        if (id == :sitxEnabledToggle) {
+            client.setTakEnabled(!client.isTakEnabled());
+        } else if (id == :sitxApiHost) {
+            WatchUi.pushView(new WatchUi.TextPicker(client.getOrganizationAddress()), new SitxSettingsTextPickerDelegate(app, menu), WatchUi.SLIDE_UP);
+        } else if (id == :sitxGroup) {
+            var groupsMenu = buildSitxGroupsMenu(app);
+            WatchUi.pushView(groupsMenu, new SitxGroupsDelegate(app, groupsMenu, menu, networkMenu), WatchUi.SLIDE_LEFT);
+        } else if (id == :sitxStatus) {
+            if (client.getUserCode().length() > 0) {
+                WatchUi.showToast("Auth code: " + client.getUserCode(), null);
+                if (client.getVerificationUrl().length() > 0) {
+                    Communications.openWebPage(client.getVerificationUrl(), null, null);
+                }
+            }
+        } else if (id == :sitxReauth) {
             client.refreshAuthCode();
-        } else if (id == :sitxClear) {
-            client.forgetAuthorization();
+        } else if (id == :sitxBack) {
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
         }
         updateMenu();
     }
 
     function updateMenu() as Void {
         var client = app.getSitxClient();
-        setMenuSubLabel(:sitxApiHost, client.getApiHost());
-        setMenuSubLabel(:sitxAuthCode, client.getUserCode());
+        var organization = client.getOrganizationAddress();
+        setMenuSubLabel(:sitxApiHost, organization.length() == 0 ? "Not set" : organization);
+        setMenuSubLabel(:sitxEnabledToggle, toolToggleLabel(client.isTakEnabled()));
+        setMenuSubLabel(:sitxGroup, client.getSelectedGroupName());
         setMenuSubLabel(:sitxStatus, client.statusText());
         var parentStatus = networkMenu.getItem(networkMenu.findItemById(:sitxDeviceApi));
         if (parentStatus != null) {
@@ -959,6 +993,41 @@ class SitxDeviceApiDelegate extends WatchUi.Menu2InputDelegate {
     }
 }
 
+class SitxGroupsDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var groupsMenu as WatchUi.Menu2;
+    var sitxMenu as WatchUi.Menu2;
+    var networkMenu as WatchUi.Menu2;
+
+    function initialize(application as StandaloneApp, groupMenu as WatchUi.Menu2, settingsMenu as WatchUi.Menu2, parentNetworkMenu as WatchUi.Menu2) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        groupsMenu = groupMenu;
+        sitxMenu = settingsMenu;
+        networkMenu = parentNetworkMenu;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :sitxGroupBack || id == :sitxNoGroups) {
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
+            return;
+        }
+        if (!(id instanceof Number)) { return; }
+        var groups = app.getSitxClient().getGroups();
+        var index = id as Number;
+        if (index < 0 || index >= groups.size()) { return; }
+        app.getSitxClient().setSelectedGroup(groups[index] as SitxGroup);
+        var groupItem = sitxMenu.getItem(sitxMenu.findItemById(:sitxGroup));
+        if (groupItem != null) { groupItem.setSubLabel(app.getSitxClient().getSelectedGroupName()); }
+        var stateItem = sitxMenu.getItem(sitxMenu.findItemById(:sitxStatus));
+        if (stateItem != null) { stateItem.setSubLabel(app.getSitxClient().statusText()); }
+        var networkItem = networkMenu.getItem(networkMenu.findItemById(:sitxDeviceApi));
+        if (networkItem != null) { networkItem.setSubLabel(app.getSitxClient().networkStatusLabel()); }
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+    }
+}
+
 class SitxSettingsTextPickerDelegate extends WatchUi.TextPickerDelegate {
     var app as StandaloneApp;
     var menu as WatchUi.Menu2;
@@ -972,7 +1041,8 @@ class SitxSettingsTextPickerDelegate extends WatchUi.TextPickerDelegate {
     function onTextEntered(value as String, changed as Boolean) as Boolean {
         if (changed) {
             app.getSitxClient().setApiHost(value);
-            menu.getItem(menu.findItemById(:sitxApiHost)).setSubLabel(app.getSitxClient().getApiHost());
+            var organization = app.getSitxClient().getOrganizationAddress();
+            menu.getItem(menu.findItemById(:sitxApiHost)).setSubLabel(organization.length() == 0 ? "Not set" : organization);
         }
         WatchUi.popView(WatchUi.SLIDE_DOWN);
         return true;

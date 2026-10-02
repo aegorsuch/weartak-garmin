@@ -283,7 +283,25 @@ class TakClient {
         var longitude = entity.get("lon");
         var cotType = entity.get("type");
         if (uid != null && latitude != null && longitude != null && cotType != null) {
-            incomingCotCallback.invoke(uid.toString(), (latitude as Number).toFloat(), (longitude as Number).toFloat(), cotType.toString());
+            var callSign = entity.get("callSign");
+            if (callSign == null) { callSign = entity.get("callsign"); }
+            var team = entity.get("team");
+            var role = entity.get("role");
+            var group = entity.get("__group");
+            if (group instanceof Dictionary) {
+                if (team == null) { team = (group as Dictionary).get("name"); }
+                if (role == null) { role = (group as Dictionary).get("role"); }
+            }
+            var contact = entity.get("contact");
+            if (callSign == null && contact instanceof Dictionary) {
+                callSign = (contact as Dictionary).get("callsign");
+            }
+            incomingCotCallback.invoke(
+                uid.toString(), (latitude as Number).toFloat(), (longitude as Number).toFloat(), cotType.toString(),
+                callSign == null ? null : callSign.toString(),
+                team == null ? null : team.toString(),
+                role == null ? null : role.toString()
+            );
         }
     }
 

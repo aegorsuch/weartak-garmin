@@ -6,6 +6,8 @@
             "type": "shell",
             "command": "${env:CONNECTIQ_SDK}\\bin\\monkeyc.bat",
             "args": [
+                "-O",
+                "3z",
                 "-o",
                 "${workspaceFolder}\\WearTAK-Garmin.iq",
                 "-f",

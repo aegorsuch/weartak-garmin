@@ -65,23 +65,38 @@ messages. That transport is being implemented in the ATAK companion's
 
 ## Current capabilities
 
-The app is currently focused on a lightweight, local map-and-point workflow.
-The Garmin-to-ATAK relay is being integrated in the companion's
-`garmin-connect-iq-integration` branch. These are the watch features working
-right now:
+The app opens to a screen-filling dashboard with native Connect IQ navigation
+and status indicators. The Garmin-to-ATAK phone relay depends on the companion's
+Garmin Connect IQ receiver. These are the watch features currently available:
 
+- Show network connectivity, local time, battery, location-service preference,
+	and relay status on the dashboard. BLE relay status means a phone message was
+	written; it does not acknowledge TAK-server delivery.
+- Display Exertion or Heart Rate on the dashboard and persist the selection.
+	Unavailable sensor readings display as `N/A`. Physiological Alerts
+	can be enabled or disabled from the metric selector.
+- Open Manual Alert, point drop, Chat, Settings, Map, and Compass from the
+	dashboard. The alert control opens its alert menu; active alerts can be
+	cancelled there. Chat's Select a map user action opens the map.
+- The Settings gear displays the configured callsign and is blank when the
+	callsign is unset.
 - Open and navigate the map.
-- Drop a 2525D point from the main menu or map; new point titles use the
-	configured callsign and UTC time in `CALLSIGN_HHMMSSZ` format.
-- Hold on the map to drop a point. The first drop defaults to Unknown; after a
-	marker type is selected or changed, held drops default to that last-used type.
+- The dashboard's point control opens a four-direction
+	Hostile/Neutral/Friendly/Unknown picker. Tap the center to cancel or hold it
+	for Dropped Markers, Back, and confirmed Clear Last Marker. Arrow keys select
+	a direction and Select confirms on button-only devices.
+- Drop a 2525D point from the dashboard or map; new point titles use the
+	configured callsign and UTC time in `CALLSIGN_HHMMSSZ` format. With no callsign,
+	the title is the UTC timestamp alone.
+- Hold on the map to drop a point. The default starts as Unknown, then remembers
+	the last successfully dropped or changed marker type across launches. Unknown
+	can be selected again; title/remark-only edits do not change the default.
+- Browse saved Dropped Markers newest first, with symbol, title, type, and local
+	drop time. Edit or delete individual markers, or confirm Clear Last/Clear All.
 - Set a callsign, choose one of 14 My Team colors, and select a MIL or LEO role
 	with its subrole under Callsign and Device Preferences. The team color is used
 	for the self marker and Bloodhound direction arrow; tracked point icons remain
 	unchanged.
-- Configure a callsign, MIL/LEO role, and My Team color under Callsign and
-	Device Preferences. The selected team color marks the watch's self position
-	and Bloodhound direction arrow without changing target marker icons.
 - Configure Dynamic or Constant Reporting intervals, Wi-Fi battery-saving
 	preferences, and Physiological Monitoring under Reporting Strategy. These
 	settings are intended for standalone Sit(x) use when no phone is connected.
@@ -89,16 +104,21 @@ right now:
 	and Wi-Fi preferences are currently stored only and do not change transmitted
 	PLI because direct Sit(x) PLI transport and active Wi-Fi SSID detection are
 	not implemented on Garmin.
-- Clear all 2525D points from the main menu.
-- Rename a point.
-- Change a point's type.
-- Delete a point.
-- View point details with marker type/drop time, bearing arrow, distance,
-	latitude/longitude, MGRS, and Bloodhound, title, remark, marker-type, move,
-	delete, and back actions.
+- View point details as native scrollable rows for marker type/drop time,
+	distance, bearing, latitude/longitude, and MGRS, followed by Bloodhound,
+	title, remark, marker-type, move, delete, and back actions.
 - View self coordinates in latitude/longitude and MGRS.
 - Tap the self marker to view separate latitude and longitude rows and MGRS.
 - Pan, zoom, and recenter the map.
+- Open Map Layers from the top-center stacked-layers control. Map Buttons hides
+	zoom/snap controls while Layers and Back remain accessible. Team Colors and
+	Default Roles show current received-user counts, including zero. Toggles exist
+	only for nonempty metadata groups; group keys are case-insensitive, hidden
+	filters persist, and a user must pass both team and role filters. Hidden users
+	remain counted. Saved points, self, and non-user remote markers are not hidden.
+	Reported team colors and callsigns are used when the phone-relay entity message
+	includes them. The filter groups can only be formed when the relay supplies
+	`callSign`/`callsign`, `team` or `__group.name`, and `role` or `__group.role`.
 - Track a selected point with Bloodhound range, true bearing, proximity radius,
 	vibration, and cancel controls.
 - Send and clear categorized manual alerts through the Garmin relay when the
@@ -121,9 +141,10 @@ right now:
 - Configure Chat and Navigation tools, including proximity vibration, radius,
 	and intensity preferences.
 - Pair a user account with the Sit(x) Device API using OAuth device authorization
-	from Network Preferences. Pairing, token refresh, and an authenticated profile
-	request are implemented using the shared WearTAK public OAuth client; mission,
-	GeoChat, SOS, and other resource operations are not yet connected.
+	from Network Preferences > Sit(x) TAK. Device authorization, refresh, permitted
+	group discovery, and group-specific access-token provisioning use the shared
+	WearTAK public OAuth client. Connect IQ has no WebSocket/raw socket API, so
+	this does not establish a live CoT connection.
 
 The following are still planned capabilities and are not the current scope of
 this build:
@@ -131,18 +152,17 @@ this build:
 - full ATAK chat integration and quick replies
 - completing and validating the WearTAK ATAK plugin connection and relay integration
 - SOS and emergency alert workflows
-- incoming entity or entities syncing beyond the current local map groundwork
+- end-to-end phone-relay entity sync and delivery acknowledgement
 - full shared TAK mission/overlay behaviors
-- broader map-layer, team, or operational features beyond point creation and
-	editing
+- server-backed shared TAK map layers and broader operational features
 - end-to-end acknowledgement, delivery retries, and validation of automated
 	alert/cancellation behavior on physical devices
 - Sit(x) Device API integration for missions, GeoChat, SOS, and other resources
 
 ## Using the app
 
-1. In the ATAK companion, enable **Garmin Connect IQ**. On the watch, select
-	**Settings**, select **Network Preferences**, then toggle **ATAK Relay** on.
+1. In the ATAK companion, enable **Garmin Connect IQ**. On the watch dashboard,
+	open **Network Preferences** and toggle **ATAK Relay** on.
 	Toggle it off there to stop the watch-side relay. Garmin Connect Mobile must
 	be paired with the watch; ATAK manages the TAK server connection.
 2. Open **Device Preferences** to maintain user metrics. App text follows the
@@ -150,18 +170,17 @@ this build:
 3. Open **Alerting Preferences** to opt in to alerts. Warnings remain local to
 	the watch; qualifying automated alerts use the same companion emergency CoT
 	path as Samsung/Wear OS and require an active ATAK relay and a valid phone fix.
-4. Use **Drop 2525D Point** to add an Unknown point at the current location,
-	then open **Map** to edit points, view coordinates, or start Bloodhound.
-5. Select **Manual Alert** from the main menu and choose an alert type to send
-	it through the active Garmin relay. Select **Clear Manual Alert** to send a
-	cancellation.
-6. To pair Sit(x), open **Settings** > **Network Preferences** > **Sit(x) Device
-	API**, enter the organization's host (for example, `weartak.sitx.io`), then
-	select **Auth Code** to request a code. Open Sit(x)'s device authorization page
-	on your phone or computer and enter the displayed code. Select **Auth Code**
-	again to request a fresh code. A paired phone or watch-supported internet
-	connection is required; pairing does not yet enable Sit(x) mission, chat, or
-	SOS actions. Select **Clear Sit(x)** to remove saved authorization.
+4. Use the dashboard point control to choose a marker type and add a point at
+	the current location, then open **Map** to edit points, view coordinates, or
+	start Bloodhound. Long-press the map to place the current default marker type.
+5. Select **Manual Alert** on the dashboard and choose an alert type to send it
+	through the active Garmin relay. Return to Manual Alert to send cancellation.
+6. To configure Sit(x), open **Network Preferences** > **Sit(x) TAK**, turn on
+	TAK, enter the organization under **Address**, authorize with the displayed
+	code, and select a permitted **Group**. **Sit(x) State** will say that the
+	group is ready but a WebSocket is unavailable on Connect IQ; this is not a live
+	TAK data connection. **Re-auth** starts a new device authorization. A paired
+	phone or watch-supported internet connection is required.
 
 Manual alerts use the `emergency` message envelope with an `ALERT` or `CANCEL`
 state and the selected alert type. The companion's Garmin Connect IQ integration
@@ -185,7 +204,16 @@ messages through Garmin Connect. The Sit(x) Device API uses HTTPS requests throu
 Connect IQ networking. Account authorization, group discovery, and group-token
 provisioning do not establish a TAK data connection: Connect IQ exposes no
 authenticated WebSocket or raw socket API, so this watch build cannot send or
-receive Sit(x) CoT.
+receive Sit(x) CoT. The current direct Sit(x) status is therefore explicitly
+not connected to a TAK data stream.
+
+Connect IQ exposes no UDP socket or multicast group membership. The Garmin app
+does not implement TAK SA Multicast. Map user filters can use `callSign`,
+`team`, and `role` only when those fields arrive in phone-relayed entity
+messages. The relay parser accepts direct `callSign`/`team`/`role` fields and
+nested `contact.callsign`/`__group.name`/`__group.role` dictionaries. The current
+Garmin Connect IQ companion integration does not guarantee forwarding those
+fields or provide an end-to-end delivery acknowledgement.
 
 Connect IQ storage is not an OS Keychain; credentials persisted by this app are
 not protected by an equivalent secure-token store.
