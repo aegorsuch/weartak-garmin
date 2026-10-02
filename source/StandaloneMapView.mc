@@ -74,7 +74,7 @@ class StandaloneMapView extends WatchUi.MapView {
             return :friendly;
         } else if (type.equals("hostile")) {
             return :hostile;
-        } else if (type.equals("neutral") || type.equals("obstacle")) {
+        } else if (type.equals("neutral")) {
             return :neutral;
         }
         return :unknown;
@@ -265,12 +265,51 @@ class StandaloneMapView extends WatchUi.MapView {
             markersDirty = false;
         }
         WatchUi.MapView.onUpdate(dc);
+        drawTeamOverlay(dc);
         var top = (screenHeight - (controlSize * 3 + controlGap * 2)) / 2;
         drawControl(dc, controlMargin, top, "+");
         drawCenterControl(dc, controlMargin, top + controlSize + controlGap);
         drawControl(dc, controlMargin, top + (controlSize + controlGap) * 2, "-");
         drawBackControl(dc, screenWidth - controlSize - controlMargin, (screenHeight - controlSize) / 2);
         drawBloodhound(dc);
+    }
+
+    function drawTeamOverlay(dc) as Void {
+        if (application == null || currentPosition == null || mapTopLeft == null || mapBottomRight == null) {
+            return;
+        }
+        var topLeft = mapTopLeft.toDegrees();
+        var bottomRight = mapBottomRight.toDegrees();
+        var selfDegrees = currentPosition.toDegrees();
+        var markerX = ((selfDegrees[1] - topLeft[1]) / (bottomRight[1] - topLeft[1]) * screenWidth).toNumber();
+        var markerY = ((topLeft[0] - selfDegrees[0]) / (topLeft[0] - bottomRight[0]) * screenHeight).toNumber();
+        if (markerX < 0 || markerX >= screenWidth || markerY < 0 || markerY >= screenHeight) {
+            return;
+        }
+
+        var teamColor = application.getMyTeamColorValue();
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.drawCircle(markerX, markerY, 8);
+        dc.setColor(teamColor, teamColor);
+        dc.fillCircle(markerX, markerY, 5);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawCircle(markerX, markerY, 5);
+
+        if (isBloodhoundActive()) {
+            var bearing = Math.toRadians(bearingDegrees(currentPosition, pointLocations.get(bloodhoundPointId)));
+            var directionX = Math.sin(bearing);
+            var directionY = -Math.cos(bearing);
+            var tipX = (markerX + directionX * 28).toNumber();
+            var tipY = (markerY + directionY * 28).toNumber();
+            var baseX = tipX - directionX * 8;
+            var baseY = tipY - directionY * 8;
+            var sideX = -directionY * 5;
+            var sideY = directionX * 5;
+            dc.setColor(teamColor, teamColor);
+            dc.drawLine(markerX, markerY, tipX, tipY);
+            dc.drawLine(tipX, tipY, (baseX + sideX).toNumber(), (baseY + sideY).toNumber());
+            dc.drawLine(tipX, tipY, (baseX - sideX).toNumber(), (baseY - sideY).toNumber());
+        }
     }
 
     function drawBloodhound(dc) as Void {
@@ -369,8 +408,10 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function showCoordinateMenu(title as String, location) as Void {
         var menu = new WatchUi.Menu2({:title => title});
-        menu.addItem(new WatchUi.MenuItem("Lat/Lon", latLonLabel(location), :coordinates, null));
-        menu.addItem(new WatchUi.MenuItem("MGRS", mgrsLabel(location), :coordinates, null));
+        var degrees = location.toDegrees();
+        menu.addItem(new WatchUi.MenuItem("Lat: " + degrees[0].format("%.5f"), null, :coordinates, null));
+        menu.addItem(new WatchUi.MenuItem("Lon: " + degrees[1].format("%.5f"), null, :coordinates, null));
+        menu.addItem(new WatchUi.MenuItem(mgrsLabel(location), null, :coordinates, null));
         WatchUi.pushView(menu, new CoordinateMenuDelegate(), WatchUi.SLIDE_UP);
     }
 
@@ -1076,20 +1117,32 @@ class PointDetailsView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawText(width / 2, 2, titleFont, title, Graphics.TEXT_JUSTIFY_CENTER);
         dc.drawText(width / 2, 19, Graphics.FONT_XTINY, mapView.getPointTypeShortLabel(pointId) + " | " + mapView.getPointDropTime(pointId), Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawLine(5, 33, width - 5, 33);
+        var sectionTop = 32;
+        var remark = mapView.getPointText(pointId, "remark");
+        if (!remark.equals("")) {
+            dc.drawText(5, sectionTop, Graphics.FONT_XTINY, "Remark: " + remark, Graphics.TEXT_JUSTIFY_LEFT);
+            sectionTop += 13;
+        }
+        if (mapView.isBloodhoundTarget(pointId)) {
+            dc.drawText(width / 2, sectionTop, Graphics.FONT_XTINY, "Bloodhounding", Graphics.TEXT_JUSTIFY_CENTER);
+            sectionTop += 13;
+        }
+        dc.drawLine(5, sectionTop, width - 5, sectionTop);
 
+        var dataTop = sectionTop + 3;
         var leftCenterX = width / 4;
-        var directionCenterY = 61;
+        var directionCenterY = dataTop + 25;
         drawBearingArrow(dc, leftCenterX, directionCenterY, mapView.getPointBearingDegrees(pointId));
         var bearing = mapView.getPointBearingDegrees(pointId);
-        dc.drawText(leftCenterX, 84, Graphics.FONT_XTINY, bearing.format("%03d") + " deg " + mapView.getPointCardinalDirection(pointId), Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(leftCenterX, dataTop + 48, Graphics.FONT_XTINY, bearing.format("%03d") + " deg " + mapView.getPointCardinalDirection(pointId), Graphics.TEXT_JUSTIFY_CENTER);
 
         var rightX = width * 0.42;
-        dc.drawText(rightX, 36, Graphics.FONT_MEDIUM, mapView.getPointDistanceLabel(pointId), Graphics.TEXT_JUSTIFY_LEFT);
-        dc.drawText(rightX, 54, Graphics.FONT_XTINY, "Lat: " + mapView.getPointLatitudeLabel(pointId), Graphics.TEXT_JUSTIFY_LEFT);
-        dc.drawText(rightX, 67, Graphics.FONT_XTINY, "Long: " + mapView.getPointLongitudeLabel(pointId), Graphics.TEXT_JUSTIFY_LEFT);
-        dc.drawText(rightX, 80, Graphics.FONT_XTINY, "MGRS: " + mapView.getPointMGRSLabel(pointId), Graphics.TEXT_JUSTIFY_LEFT);
-        dc.drawLine(5, 98, width - 5, 98);
+        dc.drawText(rightX, dataTop, Graphics.FONT_MEDIUM, mapView.getPointDistanceLabel(pointId), Graphics.TEXT_JUSTIFY_LEFT);
+        dc.drawText(rightX, dataTop + 18, Graphics.FONT_XTINY, mapView.getPointLatitudeLabel(pointId), Graphics.TEXT_JUSTIFY_LEFT);
+        dc.drawText(rightX, dataTop + 31, Graphics.FONT_XTINY, mapView.getPointLongitudeLabel(pointId), Graphics.TEXT_JUSTIFY_LEFT);
+        dc.drawText(rightX, dataTop + 44, Graphics.FONT_XTINY, mapView.getPointMGRSLabel(pointId), Graphics.TEXT_JUSTIFY_LEFT);
+        actionTop = dataTop + 64;
+        dc.drawLine(5, actionTop - 3, width - 5, actionTop - 3);
 
         drawActionButtons(dc, width);
     }

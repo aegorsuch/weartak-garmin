@@ -1,6 +1,7 @@
 import Toybox.Application;
 import Toybox.ActivityMonitor;
 import Toybox.Attention;
+import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.Position;
 import Toybox.Sensor;
@@ -9,7 +10,7 @@ import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
 
 class StandaloneApp extends Application.AppBase {
-    const APP_VERSION = "5.8.0.3-c545fb2";
+    const APP_VERSION = "5.8.0.3-547526a";
 
     private var view;
     private var takClient;
@@ -74,6 +75,9 @@ class StandaloneApp extends Application.AppBase {
     private var weight as Number = 155;
     private var sex as String = "Not Set";
     private var callsign as String = "GARMIN";
+    private var myTeamColor as String = "Blue";
+    private var myRoleCategory as String = "MIL";
+    private var myRole as String = "Team Member";
     private var bloodType as String = "Unknown";
     private var userType as String = "N/A";
     private var allergies as Array = ["N/A"];
@@ -113,6 +117,77 @@ class StandaloneApp extends Application.AppBase {
         }
         callsign = value;
         Application.Storage.setValue("callsign", callsign);
+    }
+
+    function getMyTeamColor() as String {
+        return myTeamColor;
+    }
+
+    function setMyTeamColor(value as String) as Void {
+        if (!isSupportedTeamColor(value)) {
+            return;
+        }
+        myTeamColor = value;
+        Application.Storage.setValue("myTeamColor", myTeamColor);
+    }
+
+    function getMyTeamColorValue() as Number {
+        if (myTeamColor.equals("White")) { return Graphics.createColor(255, 255, 255, 255); }
+        else if (myTeamColor.equals("Yellow")) { return Graphics.createColor(255, 255, 255, 0); }
+        else if (myTeamColor.equals("Orange")) { return Graphics.createColor(255, 255, 165, 0); }
+        else if (myTeamColor.equals("Magenta")) { return Graphics.createColor(255, 255, 0, 255); }
+        else if (myTeamColor.equals("Red")) { return Graphics.createColor(255, 255, 0, 0); }
+        else if (myTeamColor.equals("Maroon")) { return Graphics.createColor(255, 128, 0, 0); }
+        else if (myTeamColor.equals("Purple")) { return Graphics.createColor(255, 128, 0, 128); }
+        else if (myTeamColor.equals("Dark Blue")) { return Graphics.createColor(255, 0, 0, 139); }
+        else if (myTeamColor.equals("Cyan")) { return Graphics.createColor(255, 0, 255, 255); }
+        else if (myTeamColor.equals("Teal")) { return Graphics.createColor(255, 0, 128, 128); }
+        else if (myTeamColor.equals("Green")) { return Graphics.createColor(255, 0, 128, 0); }
+        else if (myTeamColor.equals("Dark Green")) { return Graphics.createColor(255, 0, 100, 0); }
+        else if (myTeamColor.equals("Brown")) { return Graphics.createColor(255, 165, 42, 42); }
+        return Graphics.createColor(255, 0, 0, 255);
+    }
+
+    function isSupportedTeamColor(value as String) as Boolean {
+        return value.equals("White") || value.equals("Yellow") || value.equals("Orange") || value.equals("Magenta")
+            || value.equals("Red") || value.equals("Maroon") || value.equals("Purple") || value.equals("Dark Blue")
+            || value.equals("Blue") || value.equals("Cyan") || value.equals("Teal") || value.equals("Green")
+            || value.equals("Dark Green") || value.equals("Brown");
+    }
+
+    function getMyRoleCategory() as String {
+        return myRoleCategory;
+    }
+
+    function getMyRole() as String {
+        return myRole;
+    }
+
+    function getMyRoleLabel() as String {
+        return myRoleCategory + " - " + myRole;
+    }
+
+    function setMyRole(category as String, role as String) as Void {
+        if (!isValidMyRole(category, role)) {
+            return;
+        }
+        myRoleCategory = category;
+        myRole = role;
+        Application.Storage.setValue("myRoleCategory", myRoleCategory);
+        Application.Storage.setValue("myRole", myRole);
+    }
+
+    function isValidMyRole(category as String, role as String) as Boolean {
+        if (category.equals("MIL")) {
+            return role.equals("Forward Observer") || role.equals("HQ") || role.equals("K9") || role.equals("Medic")
+                || role.equals("RTO") || role.equals("Sniper") || role.equals("Team Lead") || role.equals("Team Member");
+        } else if (category.equals("LEO")) {
+            return role.equals("Armed Surveillance") || role.equals("Assistant Team Leader") || role.equals("Aviation")
+                || role.equals("Bomb Tech") || role.equals("Command Post") || role.equals("Critical Response")
+                || role.equals("Hazards") || role.equals("Negotiator") || role.equals("Surveillance")
+                || role.equals("Tactical Communicator") || role.equals("TOC");
+        }
+        return false;
     }
 
     function getSitxClient() as SitxClient {
@@ -298,6 +373,16 @@ class StandaloneApp extends Application.AppBase {
 
     function loadAlertSettings() as Void {
         callsign = storedString("callsign", callsign);
+        myTeamColor = storedString("myTeamColor", myTeamColor);
+        if (!isSupportedTeamColor(myTeamColor)) {
+            myTeamColor = "Blue";
+        }
+        myRoleCategory = storedString("myRoleCategory", myRoleCategory);
+        myRole = storedString("myRole", myRole);
+        if (!isValidMyRole(myRoleCategory, myRole)) {
+            myRoleCategory = "MIL";
+            myRole = "Team Member";
+        }
         var storedValue = Application.Storage.getValue("physiologicalAlertsEnabled");
         if (storedValue != null) {
             physiologicalAlertsEnabled = storedValue as Boolean;

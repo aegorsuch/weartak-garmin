@@ -65,8 +65,80 @@ function buildDeveloperOptionsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function buildDevicePreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => "Callsign and Device Preferences"});
-    addMenuEntry(menu, "Callsign", app.getCallsign(), :callsign);
+    addMenuEntry(menu, "My Callsign", app.getCallsign(), :callsign);
+    addMenuEntry(menu, "My Team", app.getMyTeamColor(), :myTeam);
+    addMenuEntry(menu, "My Role", app.getMyRoleLabel(), :myRole);
     addMenuEntry(menu, app.text(:userMetrics), null, :userMetrics);
+    return menu;
+}
+
+function teamColorForMenuId(id as Symbol) as String {
+    if (id == :teamWhite) { return "White"; }
+    else if (id == :teamYellow) { return "Yellow"; }
+    else if (id == :teamOrange) { return "Orange"; }
+    else if (id == :teamMagenta) { return "Magenta"; }
+    else if (id == :teamRed) { return "Red"; }
+    else if (id == :teamMaroon) { return "Maroon"; }
+    else if (id == :teamPurple) { return "Purple"; }
+    else if (id == :teamDarkBlue) { return "Dark Blue"; }
+    else if (id == :teamCyan) { return "Cyan"; }
+    else if (id == :teamTeal) { return "Teal"; }
+    else if (id == :teamGreen) { return "Green"; }
+    else if (id == :teamDarkGreen) { return "Dark Green"; }
+    else if (id == :teamBrown) { return "Brown"; }
+    return "Blue";
+}
+
+function teamMenuIdForColor(color as String) as Symbol {
+    if (color.equals("White")) { return :teamWhite; }
+    else if (color.equals("Yellow")) { return :teamYellow; }
+    else if (color.equals("Orange")) { return :teamOrange; }
+    else if (color.equals("Magenta")) { return :teamMagenta; }
+    else if (color.equals("Red")) { return :teamRed; }
+    else if (color.equals("Maroon")) { return :teamMaroon; }
+    else if (color.equals("Purple")) { return :teamPurple; }
+    else if (color.equals("Dark Blue")) { return :teamDarkBlue; }
+    else if (color.equals("Cyan")) { return :teamCyan; }
+    else if (color.equals("Teal")) { return :teamTeal; }
+    else if (color.equals("Green")) { return :teamGreen; }
+    else if (color.equals("Dark Green")) { return :teamDarkGreen; }
+    else if (color.equals("Brown")) { return :teamBrown; }
+    return :teamBlue;
+}
+
+function buildMyTeamMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "My Team"});
+    var colors = ["White", "Yellow", "Orange", "Magenta", "Red", "Maroon", "Purple", "Dark Blue", "Blue", "Cyan", "Teal", "Green", "Dark Green", "Brown"];
+    for (var index = 0; index < colors.size(); index++) {
+        var color = colors[index] as String;
+        var subLabel = color.equals(app.getMyTeamColor()) ? "Selected" : null;
+        menu.addItem(new WatchUi.MenuItem(color, subLabel, teamMenuIdForColor(color), null));
+    }
+    return menu;
+}
+
+function buildMyRoleCategoryMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "My Role"});
+    menu.addItem(new WatchUi.MenuItem("MIL", app.getMyRoleCategory().equals("MIL") ? "Selected" : null, :myRoleMil, null));
+    menu.addItem(new WatchUi.MenuItem("LEO", app.getMyRoleCategory().equals("LEO") ? "Selected" : null, :myRoleLeo, null));
+    return menu;
+}
+
+function myRoleOptions(category as String) as Array<String> {
+    if (category.equals("LEO")) {
+        return ["Armed Surveillance", "Assistant Team Leader", "Aviation", "Bomb Tech", "Command Post", "Critical Response", "Hazards", "Negotiator", "Surveillance", "Tactical Communicator", "TOC"];
+    }
+    return ["Forward Observer", "HQ", "K9", "Medic", "RTO", "Sniper", "Team Lead", "Team Member"];
+}
+
+function buildMyRoleOptionsMenu(app as StandaloneApp, category as String) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => category + " Roles"});
+    var roles = myRoleOptions(category);
+    for (var index = 0; index < roles.size(); index++) {
+        var role = roles[index] as String;
+        var subLabel = app.getMyRoleCategory().equals(category) && app.getMyRole().equals(role) ? "Selected" : null;
+        menu.addItem(new WatchUi.MenuItem(role, subLabel, index, null));
+    }
     return menu;
 }
 
@@ -467,10 +539,82 @@ class DevicePreferencesDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function onSelect(item as WatchUi.MenuItem) as Void {
-        if (item.getId() == :callsign) {
+        var id = item.getId();
+        if (id == :callsign) {
             WatchUi.pushView(new WatchUi.TextPicker(app.getCallsign()), new CallsignTextPickerDelegate(app, menu), WatchUi.SLIDE_UP);
-        } else if (item.getId() == :userMetrics) {
+        } else if (id == :myTeam) {
+            WatchUi.pushView(buildMyTeamMenu(app), new MyTeamDelegate(app, menu), WatchUi.SLIDE_LEFT);
+        } else if (id == :myRole) {
+            var roleMenu = buildMyRoleCategoryMenu(app);
+            WatchUi.pushView(roleMenu, new MyRoleCategoryDelegate(app, menu), WatchUi.SLIDE_LEFT);
+        } else if (id == :userMetrics) {
             WatchUi.pushView(buildUserMetricsMenu(app), new UserMetricsDelegate(app), WatchUi.SLIDE_LEFT);
+        }
+    }
+}
+
+class MyTeamDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var preferencesMenu as WatchUi.Menu2;
+
+    function initialize(application as StandaloneApp, menu as WatchUi.Menu2) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        preferencesMenu = menu;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        app.setMyTeamColor(teamColorForMenuId(item.getId() as Symbol));
+        var teamItem = preferencesMenu.getItem(preferencesMenu.findItemById(:myTeam));
+        if (teamItem != null) {
+            teamItem.setSubLabel(app.getMyTeamColor());
+        }
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+    }
+
+}
+
+class MyRoleCategoryDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var preferencesMenu as WatchUi.Menu2;
+
+    function initialize(application as StandaloneApp, menu as WatchUi.Menu2) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        preferencesMenu = menu;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var category = item.getId() == :myRoleLeo ? "LEO" : "MIL";
+        var roleMenu = buildMyRoleOptionsMenu(app, category);
+        WatchUi.pushView(roleMenu, new MyRoleOptionsDelegate(app, preferencesMenu, category, roleMenu), WatchUi.SLIDE_LEFT);
+    }
+}
+
+class MyRoleOptionsDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var preferencesMenu as WatchUi.Menu2;
+    var category as String;
+    var roles as Array<String>;
+
+    function initialize(application as StandaloneApp, menu as WatchUi.Menu2, roleCategory as String, roleMenu as WatchUi.Menu2) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        preferencesMenu = menu;
+        category = roleCategory;
+        roles = myRoleOptions(category);
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var index = item.getId() as Number;
+        if (index >= 0 && index < roles.size()) {
+            app.setMyRole(category, roles[index] as String);
+            var roleItem = preferencesMenu.getItem(preferencesMenu.findItemById(:myRole));
+            if (roleItem != null) {
+                roleItem.setSubLabel(app.getMyRoleLabel());
+            }
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
         }
     }
 }
