@@ -73,6 +73,10 @@ features currently available:
 	Point(s), Drop 2525D Point, Manual Alert, Map, and Settings.
 - Open Network Preferences from Settings. BLE relay status means a phone
 	message was written; it does not acknowledge TAK-server delivery.
+- View and toggle TAK Server channels from Network Preferences > TAK Channels.
+	The phone companion uses the enabled server profile's P12 certificate for
+	channel requests; certificate material stays on the phone and only channel
+	names, directions, bit positions, and active state are sent to the watch.
 - Manual Alert becomes locally active even if the phone relay is stopped. When
 	the relay is active, the alert is sent to the companion; selecting the active
 	main-menu row again clears it.
@@ -163,19 +167,22 @@ this build:
 	open **Settings** > **Network Preferences** and toggle **ATAK Relay** on.
 	Toggle it off there to stop the watch-side relay. Garmin Connect Mobile must
 	be paired with the watch; ATAK manages the TAK server connection.
-2. Open **Device Preferences** to maintain user metrics. App text follows the
+2. To view or edit server channels, open **Settings** > **Network Preferences**
+	> **TAK Channels**, choose an enabled P12-configured server profile, and select
+	channels to toggle them. The phone plugin performs authenticated server calls.
+3. Open **Device Preferences** to maintain user metrics. App text follows the
 	watch's system language.
-3. Open **Alerting Preferences** to opt in to alerts. Warnings remain local to
+4. Open **Alerting Preferences** to opt in to alerts. Warnings remain local to
 	the watch; qualifying automated alerts use the same companion emergency CoT
 	path as Samsung/Wear OS and require an active ATAK relay and a valid phone fix.
-4. Select **Drop 2525D Point** from the main menu to choose a marker type and
+5. Select **Drop 2525D Point** from the main menu to choose a marker type and
 	add it at the current location. **Clear 2525D Point(s)** opens the saved
 	marker list or Clear Last Marker. Open **Map** to edit points, view coordinates,
 	or start Bloodhound. Long-press the map to place the current default marker.
-5. Select **Manual Alert** from the main menu and choose an alert type. It is
+6. Select **Manual Alert** from the main menu and choose an alert type. It is
 	sent through an active Garmin relay; without one, its active state remains
 	local. Select **Manual Alert (Active)** to clear it.
-6. To configure Sit(x), open **Network Preferences** > **Sit(x) TAK**, turn on
+7. To configure Sit(x), open **Network Preferences** > **Sit(x) TAK**, turn on
 	TAK, enter the organization under **Address**, authorize with the displayed
 	code, and select a permitted **Group**. **Sit(x) State** will say that the
 	group is ready but a WebSocket is unavailable on Connect IQ; this is not a live

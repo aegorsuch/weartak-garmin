@@ -56,16 +56,6 @@ function buildPointManagementMenu() as WatchUi.Menu2 {
     return menu;
 }
 
-function buildDashboardMetricMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Display Metric"});
-    menu.addItem(new WatchUi.MenuItem("Physiological Alerts", app.isPhysiologicalAlertsEnabled() ? "On" : "Off", :dashboardPhysiologyAlerts, null));
-    var exertion = app.getExertionPercent();
-    var heartRate = app.getHeartRate();
-    menu.addItem(new WatchUi.MenuItem("Exertion", app.isExertionAvailable() ? exertion.toNumber().format("%.0f") + "%" : "N/A", :dashboardExertion, null));
-    menu.addItem(new WatchUi.MenuItem("Heart Rate", heartRate == null ? "N/A" : heartRate.toNumber().toString() + " BPM", :dashboardHeartRate, null));
-    return menu;
-}
-
 function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => app.text(:settings)});
     var entries = [
@@ -239,6 +229,40 @@ function buildNetworkPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var client = app.getTakClient();
     addToggleEntry(menu, app.text(:takConnect), client.status == :connecting || client.isConnected(), :atakRelayToggle);
     addMenuEntry(menu, "Sit(x) TAK", app.getSitxClient().networkStatusLabel(), :sitxDeviceApi);
+    addMenuEntry(menu, "TAK Channels", null, :takChannels);
+    return menu;
+}
+
+function openTakChannels(app as StandaloneApp) as Void {
+    var client = app.getTakClient();
+    if (!client.isConnected()) {
+        WatchUi.showToast("Phone relay is stopped", null);
+        return;
+    }
+    var channelsMenu = buildChannelServersMenu([]);
+    WatchUi.pushView(channelsMenu, new TakChannelsMenuDelegate(app, [], []), WatchUi.SLIDE_LEFT);
+    client.requestChannelServers();
+}
+
+function buildChannelServersMenu(servers as Array) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "TAK Channels"});
+    for (var index = 0; index < servers.size(); index++) {
+        var server = servers[index] as Dictionary;
+        var label = server.get("name") == null ? "TAK Server" : server.get("name").toString();
+        menu.addItem(new WatchUi.MenuItem(label, null, server.get("serverIndex"), null));
+    }
+    menu.addItem(new WatchUi.MenuItem("Back", null, :backChannels, null));
+    return menu;
+}
+
+function buildChannelsMenu(serverName as String, channels as Array) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => serverName});
+    for (var index = 0; index < channels.size(); index++) {
+        var channel = channels[index] as Dictionary;
+        var subLabel = channel.get("direction").toString() + " | " + (channel.get("active") == true ? "Active" : "Inactive");
+        menu.addItem(new WatchUi.MenuItem(channel.get("name").toString(), subLabel, channel.get("bitpos"), null));
+    }
+    menu.addItem(new WatchUi.MenuItem("Back", null, :backChannels, null));
     return menu;
 }
 
@@ -544,17 +568,9 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
             var mapView = app.getMapView();
             mapView.setTakClient(app.getTakClient());
             WatchUi.pushView(mapView, new StandaloneMapDelegate(mapView, false, app), WatchUi.SLIDE_LEFT);
-        } else if (id == :environment) {
-            WatchUi.pushView(new EnvironmentalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
-        } else if (id == :physiology) {
-            WatchUi.pushView(new PhysiologicalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
         } else if (id == :chat) {
             var chatMenu = buildChatMenu(app);
             WatchUi.pushView(chatMenu, new ChatMenuDelegate(app), WatchUi.SLIDE_LEFT);
-        } else if (id == :environmentalAlerts) {
-            WatchUi.pushView(buildEnvironmentalAlertsMenu(app), new EnvironmentalAlertsDelegate(app), WatchUi.SLIDE_LEFT);
-        } else if (id == :physiologicalAlerts) {
-            WatchUi.pushView(buildPhysiologicalAlertsMenu(app), new PhysiologicalAlertsDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :sos) {
             var alertClient = app.getTakClient();
             if (alertClient.isAlerting()) {
@@ -566,17 +582,6 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
             }
         } else if (id == :settings) {
             WatchUi.pushView(buildSettingsMenu(app), new SettingsMenuDelegate(app), WatchUi.SLIDE_LEFT);
-        } else if (id == :exit) {
-            WatchUi.popView(WatchUi.SLIDE_DOWN);
-        } else if (id == :clearPoints) {
-            var mapView = app.getMapView();
-            if (mapView == null || !mapView.hasPoints()) {
-                return;
-            }
-            var confirmation = new WatchUi.Menu2({:title => app.text(:clearPointsPrompt)});
-            confirmation.addItem(new WatchUi.MenuItem(app.text(:clearPointsAction), null, :clear, null));
-            confirmation.addItem(new WatchUi.MenuItem(app.text(:cancel), null, :cancel, null));
-            WatchUi.pushView(confirmation, new ClearPointsDelegate(app), WatchUi.SLIDE_UP);
         } else if (id == :dropPoint) {
             var pointTypeMenu = buildPointDropTypeMenu(app);
             WatchUi.pushView(pointTypeMenu, new PointDropTypeMenuDelegate(app), WatchUi.SLIDE_LEFT);
@@ -656,10 +661,7 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         if (id != :appVersion) {
             app.resetVersionTapCount();
         }
-        if (id == :displayMetric) {
-            var metricMenu = buildDashboardMetricMenu(app);
-            WatchUi.pushView(metricMenu, new DashboardMetricDelegate(app), WatchUi.SLIDE_LEFT);
-        } else if (id == :devicePreferences) {
+        if (id == :devicePreferences) {
             var deviceMenu = buildDevicePreferencesMenu(app);
             WatchUi.pushView(deviceMenu, new DevicePreferencesDelegate(app, deviceMenu), WatchUi.SLIDE_LEFT);
         } else if (id == :networkPreferences) {
@@ -999,7 +1001,9 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function onSelect(item as WatchUi.MenuItem) as Void {
-        if (item.getId() == :sitxDeviceApi) {
+        if (item.getId() == :takChannels) {
+            openTakChannels(app);
+        } else if (item.getId() == :sitxDeviceApi) {
             var sitxMenu = buildSitxDeviceApiMenu(app);
             WatchUi.pushView(sitxMenu, new SitxDeviceApiDelegate(app, sitxMenu, menu), WatchUi.SLIDE_LEFT);
         } else if (item.getId() == :atakRelayToggle) {
@@ -1020,6 +1024,79 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
         if (item != null) {
             item.setSubLabel(toolToggleLabel(client.status == :connecting || client.isConnected()));
             WatchUi.requestUpdate();
+        }
+    }
+}
+
+class TakChannelsMenuDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var servers as Array;
+    var channels as Array;
+    var serverIndex as Number = -1;
+    var showingChannels as Boolean = false;
+    var busy as Boolean = false;
+
+    function initialize(application as StandaloneApp, serverList as Array, channelList as Array) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        servers = serverList;
+        channels = channelList;
+        app.getTakClient().setChannelsCallback(method(:onChannelsResponse));
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        if (item.getId() == :backChannels) {
+            onBack();
+            return;
+        }
+        if (!(item.getId() instanceof Number) || busy) { return; }
+        if (showingChannels) {
+            var bitPosition = item.getId() as Number;
+            for (var index = 0; index < channels.size(); index++) {
+                var channel = channels[index] as Dictionary;
+                if (channel.get("bitpos") == bitPosition) {
+                    busy = true;
+                    app.getTakClient().updateChannel(serverIndex, bitPosition, channel.get("active") != true);
+                    WatchUi.showToast("Updating channel...", null);
+                    return;
+                }
+            }
+            return;
+        }
+
+        serverIndex = item.getId() as Number;
+        busy = true;
+        app.getTakClient().requestChannels(serverIndex);
+        WatchUi.showToast("Loading channels...", null);
+    }
+
+    function onChannelsResponse(msgType as String, payload as Dictionary) as Void {
+        if (msgType == "channels_error") {
+            busy = false;
+            WatchUi.showToast(payload.get("error").toString(), null);
+        } else if (msgType == "channels_servers_response") {
+            var serverList = payload.get("servers");
+            servers = serverList instanceof Array ? serverList as Array : [];
+            busy = false;
+            WatchUi.switchToView(buildChannelServersMenu(servers), self, WatchUi.SLIDE_LEFT);
+        } else if (msgType == "channels_response") {
+            var channelList = payload.get("channels");
+            channels = channelList instanceof Array ? channelList as Array : [];
+            var serverName = payload.get("serverName").toString();
+            showingChannels = true;
+            busy = false;
+            WatchUi.switchToView(buildChannelsMenu(serverName, channels), self, WatchUi.SLIDE_LEFT);
+        }
+    }
+
+    function onBack() as Void {
+        busy = false;
+        if (showingChannels) {
+            showingChannels = false;
+            WatchUi.switchToView(buildChannelServersMenu(servers), self, WatchUi.SLIDE_RIGHT);
+        } else {
+            app.getTakClient().setChannelsCallback(null);
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
         }
     }
 }

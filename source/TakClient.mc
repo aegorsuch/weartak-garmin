@@ -36,6 +36,7 @@ class TakClient {
     var statusCallback as Method?  = null;
     var incomingCotCallback as Method? = null;
     var incomingChatCallback as Method? = null;
+    var channelsCallback as Method? = null;
     var pendingMarkerOperations = [];
     var verboseLoggingEnabled as Boolean = false;
     var lastRelayMessageType as String? = null;
@@ -231,6 +232,26 @@ class TakClient {
         transmit("chat", {"replyTo" => replyTo, "text" => text});
     }
 
+    function setChannelsCallback(callback as Method?) as Void {
+        channelsCallback = callback;
+    }
+
+    function requestChannelServers() as Void {
+        transmit("channels_servers_request", {});
+    }
+
+    function requestChannels(serverIndex as Number) as Void {
+        transmit("channels_request", {"serverIndex" => serverIndex});
+    }
+
+    function updateChannel(serverIndex as Number, bitPosition as Number, active as Boolean) as Void {
+        transmit("channels_update", {
+            "serverIndex" => serverIndex,
+            "bitpos" => bitPosition,
+            "active" => active
+        });
+    }
+
     function transmit(msgType as String, payload as Dictionary) as Void {
         lastRelayMessageType = "-> " + msgType;
         lastRelayMessageTime = Time.now();
@@ -257,6 +278,11 @@ class TakClient {
         }
         if (msgType == "chat" && incomingChatCallback != null) {
             incomingChatCallback.invoke(payload as Dictionary);
+            return;
+        }
+        if ((msgType == "channels_servers_response" || msgType == "channels_response" || msgType == "channels_error")
+                && channelsCallback != null) {
+            channelsCallback.invoke(msgType.toString(), payload as Dictionary);
             return;
         }
         if ((msgType != "entity" && msgType != "entities") || incomingCotCallback == null) {
