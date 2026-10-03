@@ -1496,10 +1496,10 @@ class PointDetailsMenuDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.pushView(new WatchUi.TextPicker(mapView.getPointText(pointId, "remark")), new PointTextPickerDelegate(mapView, pointId, "remark"), WatchUi.SLIDE_UP);
         } else if (id == :pointType) {
             var typeMenu = new WatchUi.Menu2({:title => "Change Marker"});
-            typeMenu.addItem(new WatchUi.MenuItem(mapView.application.text(:unknownPoint), null, :unknown, null));
-            typeMenu.addItem(new WatchUi.MenuItem(mapView.application.text(:hostile), null, :hostile, null));
-            typeMenu.addItem(new WatchUi.MenuItem(mapView.application.text(:friendly), null, :friendly, null));
-            typeMenu.addItem(new WatchUi.MenuItem(mapView.application.text(:neutral), null, :neutral, null));
+            typeMenu.addItem(new WatchUi.MenuItem("Unknown", null, :unknown, null));
+            typeMenu.addItem(new WatchUi.MenuItem("Hostile", null, :hostile, null));
+            typeMenu.addItem(new WatchUi.MenuItem("Friendly", null, :friendly, null));
+            typeMenu.addItem(new WatchUi.MenuItem("Neutral", null, :neutral, null));
             WatchUi.pushView(typeMenu, new PointTypeMenuDelegate(mapView, pointId), WatchUi.SLIDE_LEFT);
         } else if (id == :pointMove) {
             if (!mapView.movePointToCurrentLocation(pointId)) {

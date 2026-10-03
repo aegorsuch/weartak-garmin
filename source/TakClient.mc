@@ -70,9 +70,6 @@ class TakClient {
     }
 
     function activateManualAlert(type as String) as Boolean {
-        if (!isConnected()) {
-            return false;
-        }
         alertType = type;
         alerting = true;
         sendEmergency(:ALERT);
@@ -94,7 +91,6 @@ class TakClient {
     }
 
     function disconnect() as Void {
-        alerting = false;
         automatedAlertUids = {};
         automatedAlertSentAt = {};
         status = :idle;
@@ -116,7 +112,6 @@ class TakClient {
         if (status == :idle) {
             return;
         }
-        alerting = false;
         automatedAlertUids = {};
         automatedAlertSentAt = {};
         status = :failed;

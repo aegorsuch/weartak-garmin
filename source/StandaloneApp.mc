@@ -10,7 +10,7 @@ import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
 
 class StandaloneApp extends Application.AppBase {
-    const APP_VERSION = "5.8.0.3-5de2839";
+    const APP_VERSION = "5.8.0.3-ca1ffaf";
 
     private var view;
     private var takClient;
@@ -1343,7 +1343,6 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function getInitialView() {
-        var dashboard = new DashboardView(self);
-        return [dashboard, new DashboardDelegate(self, dashboard)];
+        return [buildMainMenu(self), new MainMenuDelegate(self)];
     }
 }

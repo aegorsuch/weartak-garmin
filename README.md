@@ -2,8 +2,8 @@
 
 WearTAK-Garmin is a standalone Garmin Connect IQ watch application for basic
 Team Awareness Kit (TAK) operational awareness. It is designed for Garmin
-watches with maps and GPS, currently supporting the fenix 6, fenix 6S, fenix 6X
-Pro, fenix 7X, fenix 8 47 mm, and fenix 8 51 mm variants.
+watches with maps and GPS, currently supporting the fenix 6 family, fenix 7X,
+and fenix 8 (47 mm and 51 mm variants).
 
 ## Project links
 
@@ -31,8 +31,8 @@ The TAK Forge repository is canonical. GitHub is a secondary repository.
 	appear as a removable drive.
 3. Open the watch drive and navigate to `GARMIN/Apps`.
 4. Drag only the matching `.prg` into the `GARMIN/Apps` folder. For a fēnix
-	7X running version `5.8.0.3-5de2839`, use
-	`WearTAK-Garmin-fenix7x-5.8.0.3-5de2839.prg`.
+	7X running version `5.8.0.3-ca1ffaf`, use
+	`WearTAK-Garmin-fenix7x-5.8.0.3-ca1ffaf.prg`.
 5. Safely eject the watch, disconnect the USB cable, and launch WearTAK from
 	the watch's app list.
 
@@ -65,28 +65,25 @@ messages. That transport is being implemented in the ATAK companion's
 
 ## Current capabilities
 
-The app opens to a screen-filling dashboard with native Connect IQ navigation
-and status indicators. The Garmin-to-ATAK phone relay depends on the companion's
-Garmin Connect IQ receiver. These are the watch features currently available:
+The app opens to a native, scrollable Connect IQ menu. The Garmin-to-ATAK phone
+relay depends on the companion's Garmin Connect IQ receiver. These are the watch
+features currently available:
 
-- Show network connectivity, local time, battery, location-service preference,
-	and relay status on the dashboard. BLE relay status means a phone message was
-	written; it does not acknowledge TAK-server delivery.
-- Display Exertion or Heart Rate on the dashboard and persist the selection.
-	Unavailable sensor readings display as `N/A`. Physiological Alerts
-	can be enabled or disabled from the metric selector. The metric tile border is
-	yellow during an active physiological warning and red during an active alert.
-- Open Manual Alert, point drop, Chat, Settings, Map, and Compass from the
-	dashboard. The alert control opens its alert menu; active alerts can be
-	cancelled there. Chat's Select a map user action opens the map.
-- The Settings gear displays the configured callsign and is blank when the
+- The alphabetical main menu contains Chat (when enabled), Clear 2525D
+	Point(s), Drop 2525D Point, Manual Alert, Map, and Settings.
+- Open Network Preferences from Settings. BLE relay status means a phone
+	message was written; it does not acknowledge TAK-server delivery.
+- Manual Alert becomes locally active even if the phone relay is stopped. When
+	the relay is active, the alert is sent to the companion; selecting the active
+	main-menu row again clears it.
+- The Settings row displays the configured callsign and is blank when the
 	callsign is unset.
 - Open and navigate the map.
-- The dashboard's point control opens a four-direction
-	Hostile/Neutral/Friendly/Unknown picker. Tap the center to cancel or hold it
-	for Dropped Markers, Back, and confirmed Clear Last Marker. Arrow keys select
-	a direction and Select confirms on button-only devices.
-- Drop a 2525D point from the dashboard or map; new point titles use the
+- The main menu's Drop 2525D Point action opens a native scrollable list of
+	Hostile, Neutral, Friendly, and Unknown marker types. The remembered default
+	is marked; selecting a type drops at the current location. Clear 2525D
+	Point(s) opens the saved marker list or the Clear Last Marker action.
+- Drop a 2525D point from the main menu or map; new point titles use the
 	configured callsign and UTC time in `CALLSIGN_HHMMSSZ` format. With no callsign,
 	the title is the UTC timestamp alone.
 - Hold on the map to drop a point. The default starts as Unknown, then remembers
@@ -122,9 +119,9 @@ Garmin Connect IQ receiver. These are the watch features currently available:
 	`callSign`/`callsign`, `team` or `__group.name`, and `role` or `__group.role`.
 - Track a selected point with Bloodhound range, true bearing, proximity radius,
 	vibration, and cancel controls.
-- Send and clear categorized manual alerts through the Garmin relay when the
-	relay is active. The companion's Garmin Connect IQ integration uses the
-	phone's ATAK location to create the alert, so the watch does not need a GPS fix.
+- Send and clear categorized manual alerts through the Garmin relay when it is
+	active. The companion's Garmin Connect IQ integration uses the phone's ATAK
+	location to create the alert, so the watch does not need a GPS fix.
 - Show sensor readings for environment and physiology.
 - Enable or disable heart-rate sampling with the Physiological Monitoring
 	setting; disabling it clears active heart-rate and exertion alerts.
@@ -162,8 +159,8 @@ this build:
 
 ## Using the app
 
-1. In the ATAK companion, enable **Garmin Connect IQ**. On the watch dashboard,
-	open **Network Preferences** and toggle **ATAK Relay** on.
+1. In the ATAK companion, enable **Garmin Connect IQ**. On the watch main menu,
+	open **Settings** > **Network Preferences** and toggle **ATAK Relay** on.
 	Toggle it off there to stop the watch-side relay. Garmin Connect Mobile must
 	be paired with the watch; ATAK manages the TAK server connection.
 2. Open **Device Preferences** to maintain user metrics. App text follows the
@@ -171,11 +168,13 @@ this build:
 3. Open **Alerting Preferences** to opt in to alerts. Warnings remain local to
 	the watch; qualifying automated alerts use the same companion emergency CoT
 	path as Samsung/Wear OS and require an active ATAK relay and a valid phone fix.
-4. Use the dashboard point control to choose a marker type and add a point at
-	the current location, then open **Map** to edit points, view coordinates, or
-	start Bloodhound. Long-press the map to place the current default marker type.
-5. Select **Manual Alert** on the dashboard and choose an alert type to send it
-	through the active Garmin relay. Return to Manual Alert to send cancellation.
+4. Select **Drop 2525D Point** from the main menu to choose a marker type and
+	add it at the current location. **Clear 2525D Point(s)** opens the saved
+	marker list or Clear Last Marker. Open **Map** to edit points, view coordinates,
+	or start Bloodhound. Long-press the map to place the current default marker.
+5. Select **Manual Alert** from the main menu and choose an alert type. It is
+	sent through an active Garmin relay; without one, its active state remains
+	local. Select **Manual Alert (Active)** to clear it.
 6. To configure Sit(x), open **Network Preferences** > **Sit(x) TAK**, turn on
 	TAK, enter the organization under **Address**, authorize with the displayed
 	code, and select a permitted **Group**. **Sit(x) State** will say that the

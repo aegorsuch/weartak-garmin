@@ -1,5 +1,6 @@
 import Toybox.Lang;
 import Toybox.Communications;
+import Toybox.System;
 import Toybox.WatchUi;
 
 function addMenuEntry(menu as WatchUi.Menu2, label as String, subLabel, id as Symbol) as Void {
@@ -21,23 +22,47 @@ function addToggleEntry(menu as WatchUi.Menu2, label as String, enabled as Boole
     addMenuEntry(menu, label, toolToggleLabel(enabled), id);
 }
 
-// Builds the app's main menu: choose the map view or manage the ATAK relay.
 function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleMain)});
-    var entries = [
-        {:label => app.text(:chat), :subLabel => null, :id => :chat},
-        {:label => app.text(:clearPointsMain), :subLabel => null, :id => :clearPoints},
-        {:label => app.text(:dropPoint), :subLabel => null, :id => :dropPoint},
-        {:label => app.text(:environment), :subLabel => null, :id => :environment},
-        {:label => manualAlertMenuLabel(app), :subLabel => null, :id => :sos},
-        {:label => app.text(:map), :subLabel => null, :id => :map},
-        {:label => app.text(:physiology), :subLabel => null, :id => :physiology},
-        {:label => app.text(:settings), :subLabel => null, :id => :settings}
-    ];
-    if (!app.isChatEnabled()) {
-        entries = entries.slice(1, entries.size());
-    }
-    addMenuEntries(menu, entries);
+    var menu = new WatchUi.Menu2({:title => "WearTAK"});
+    if (app.isChatEnabled()) { addMenuEntry(menu, "Chat", null, :chat); }
+    addMenuEntry(menu, "Clear 2525D Point(s)", null, :managePoints);
+    addMenuEntry(menu, "Drop 2525D Point", null, :dropPoint);
+    addMenuEntry(menu, manualAlertMenuLabel(app), null, :sos);
+    addMenuEntry(menu, app.text(:map), null, :map);
+    var callsign = app.getCallsign();
+    addMenuEntry(menu, "Settings", callsign.length() == 0 ? null : callsign, :settings);
+    return menu;
+}
+
+function buildPointDropTypeMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Drop 2525D Point"});
+    var defaultType = app.getMapView().getDefaultPointType();
+    var hostileLabel = defaultType == :hostile ? "Selected default" : null;
+    var neutralLabel = defaultType == :neutral ? "Selected default" : null;
+    var friendlyLabel = defaultType == :friendly ? "Selected default" : null;
+    var unknownLabel = defaultType == :unknown ? "Selected default" : null;
+    menu.addItem(new WatchUi.MenuItem("Hostile", hostileLabel, :dropHostile, null));
+    menu.addItem(new WatchUi.MenuItem("Neutral", neutralLabel, :dropNeutral, null));
+    menu.addItem(new WatchUi.MenuItem("Friendly", friendlyLabel, :dropFriendly, null));
+    menu.addItem(new WatchUi.MenuItem("Unknown", unknownLabel, :dropUnknown, null));
+    menu.addItem(new WatchUi.MenuItem("Cancel", null, :cancelPointDrop, null));
+    return menu;
+}
+
+function buildPointManagementMenu() as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Clear 2525D Point(s)"});
+    menu.addItem(new WatchUi.MenuItem("Dropped Markers", null, :droppedMarkers, null));
+    menu.addItem(new WatchUi.MenuItem("Clear Last Marker", null, :clearLastMarker, null));
+    return menu;
+}
+
+function buildDashboardMetricMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "Display Metric"});
+    menu.addItem(new WatchUi.MenuItem("Physiological Alerts", app.isPhysiologicalAlertsEnabled() ? "On" : "Off", :dashboardPhysiologyAlerts, null));
+    var exertion = app.getExertionPercent();
+    var heartRate = app.getHeartRate();
+    menu.addItem(new WatchUi.MenuItem("Exertion", app.isExertionAvailable() ? exertion.toNumber().format("%.0f") + "%" : "N/A", :dashboardExertion, null));
+    menu.addItem(new WatchUi.MenuItem("Heart Rate", heartRate == null ? "N/A" : heartRate.toNumber().toString() + " BPM", :dashboardHeartRate, null));
     return menu;
 }
 
@@ -46,7 +71,6 @@ function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var entries = [
         {:label => "Callsign and Device Preferences", :subLabel => null, :id => :devicePreferences},
         {:label => app.text(:networkPreferences), :subLabel => null, :id => :networkPreferences},
-        {:label => app.text(:environment), :subLabel => null, :id => :environment},
         {:label => app.text(:alertingPreferences), :subLabel => null, :id => :alertingPreferences},
         {:label => app.text(:toolPreferences), :subLabel => null, :id => :toolPreferences},
         {:label => "Version " + app.getAppVersion(), :subLabel => null, :id => :appVersion}
@@ -503,7 +527,7 @@ function locationServicesLabel(app as StandaloneApp) as String {
 
 function manualAlertMenuLabel(app as StandaloneApp) as String {
     var client = app.getTakClient();
-    return client.isAlerting() ? app.text(:manualAlert) + " (" + app.alertTypeLabel(client.getAlertType()) + " " + app.text(:active) + ")" : app.text(:manualAlert);
+    return client.isAlerting() ? app.text(:manualAlert) + " (" + app.text(:active) + ")" : app.text(:manualAlert);
 }
 
 class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
@@ -520,8 +544,6 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
             var mapView = app.getMapView();
             mapView.setTakClient(app.getTakClient());
             WatchUi.pushView(mapView, new StandaloneMapDelegate(mapView, false, app), WatchUi.SLIDE_LEFT);
-        } else if (id == :bloodhoundCompassView) {
-            WatchUi.pushView(new BloodhoundCompassView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
         } else if (id == :environment) {
             WatchUi.pushView(new EnvironmentalSensorsView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
         } else if (id == :physiology) {
@@ -534,8 +556,14 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :physiologicalAlerts) {
             WatchUi.pushView(buildPhysiologicalAlertsMenu(app), new PhysiologicalAlertsDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :sos) {
-            var sosMenu = buildSosMenu(app);
-            WatchUi.pushView(sosMenu, new SosMenuDelegate(app, true), WatchUi.SLIDE_LEFT);
+            var alertClient = app.getTakClient();
+            if (alertClient.isAlerting()) {
+                alertClient.setAlerting(false);
+                WatchUi.switchToView(buildMainMenu(app), new MainMenuDelegate(app), WatchUi.SLIDE_RIGHT);
+            } else {
+                var sosMenu = buildSosMenu(app);
+                WatchUi.pushView(sosMenu, new SosMenuDelegate(app, true), WatchUi.SLIDE_LEFT);
+            }
         } else if (id == :settings) {
             WatchUi.pushView(buildSettingsMenu(app), new SettingsMenuDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :exit) {
@@ -550,8 +578,67 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
             confirmation.addItem(new WatchUi.MenuItem(app.text(:cancel), null, :cancel, null));
             WatchUi.pushView(confirmation, new ClearPointsDelegate(app), WatchUi.SLIDE_UP);
         } else if (id == :dropPoint) {
-            var picker = new PointDropTypePickerView(app);
-            WatchUi.pushView(picker, new PointDropTypePickerDelegate(app, picker), WatchUi.SLIDE_LEFT);
+            var pointTypeMenu = buildPointDropTypeMenu(app);
+            WatchUi.pushView(pointTypeMenu, new PointDropTypeMenuDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :managePoints) {
+            var pointManagementMenu = buildPointManagementMenu();
+            WatchUi.pushView(pointManagementMenu, new PointManagementMenuDelegate(app), WatchUi.SLIDE_LEFT);
+        }
+    }
+}
+
+class PointDropTypeMenuDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        Menu2InputDelegate.initialize();
+        app = application;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        var mapView = app.getMapView();
+        if (id == :cancelPointDrop) {
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
+            return;
+        }
+        var type = id == :dropHostile ? :hostile : id == :dropNeutral ? :neutral : id == :dropFriendly ? :friendly : :unknown;
+        mapView.setTakClient(app.getTakClient());
+        if (mapView.dropAtCurrentLocationAs(type)) {
+            WatchUi.showToast(app.text(:pointDropped), null);
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
+        } else {
+            WatchUi.showToast(app.text(:locationUnavailable), null);
+        }
+    }
+
+    function onBack() as Void {
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+    }
+}
+
+class PointManagementMenuDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        Menu2InputDelegate.initialize();
+        app = application;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var mapView = app.getMapView();
+        if (item.getId() == :droppedMarkers) {
+            var markersMenu = buildDroppedMarkersMenu(mapView);
+            WatchUi.pushView(markersMenu, new DroppedMarkersMenuDelegate(mapView, markersMenu), WatchUi.SLIDE_LEFT);
+        } else if (item.getId() == :clearLastMarker) {
+            if (!mapView.hasPoints()) {
+                WatchUi.showToast("No markers to clear", null);
+                return;
+            }
+            var confirmation = new WatchUi.Menu2({:title => "Clear Last Marker?"});
+            confirmation.addItem(new WatchUi.MenuItem("Clear Last Marker", null, :confirmClearLast, null));
+            confirmation.addItem(new WatchUi.MenuItem("Cancel", null, :cancelClearLast, null));
+            WatchUi.pushView(confirmation, new PointDeletionConfirmationDelegate(mapView, :last), WatchUi.SLIDE_UP);
         }
     }
 }
@@ -569,7 +656,10 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         if (id != :appVersion) {
             app.resetVersionTapCount();
         }
-        if (id == :devicePreferences) {
+        if (id == :displayMetric) {
+            var metricMenu = buildDashboardMetricMenu(app);
+            WatchUi.pushView(metricMenu, new DashboardMetricDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :devicePreferences) {
             var deviceMenu = buildDevicePreferencesMenu(app);
             WatchUi.pushView(deviceMenu, new DevicePreferencesDelegate(app, deviceMenu), WatchUi.SLIDE_LEFT);
         } else if (id == :networkPreferences) {
