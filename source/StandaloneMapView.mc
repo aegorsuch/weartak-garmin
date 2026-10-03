@@ -448,7 +448,9 @@ class StandaloneMapView extends WatchUi.MapView {
             drawControl(dc, controlMargin, top + (controlSize + controlGap) * 2, "-");
         }
         drawLayersControl(dc);
-        drawChannelsControl(dc);
+        if (mapButtonsVisible) {
+            drawChannelsControl(dc);
+        }
         drawBackControl(dc, screenWidth - controlSize - controlMargin, (screenHeight - controlSize) / 2);
         drawBloodhound(dc);
     }
@@ -466,7 +468,7 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function drawChannelsControl(dc) as Void {
-        var x = screenWidth - controlSize - controlMargin;
+        var x = screenWidth / 2 + controlSize / 2 + controlGap;
         var y = controlMargin + 24;
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
         dc.fillRectangle(x, y, controlSize, controlSize);
@@ -847,7 +849,7 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function isControlAt(x, y) {
-        return isLayersControlAt(x, y) || isChannelsControlAt(x, y) || (mapButtonsVisible && (isZoomInControlAt(x, y) || isZoomOutControlAt(x, y) || isCenterControlAt(x, y))) || isBackControlAt(x, y);
+        return isLayersControlAt(x, y) || (mapButtonsVisible && (isChannelsControlAt(x, y) || isZoomInControlAt(x, y) || isZoomOutControlAt(x, y) || isCenterControlAt(x, y))) || isBackControlAt(x, y);
     }
 
     function isLayersControlAt(x, y) as Boolean {
@@ -856,7 +858,7 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function isChannelsControlAt(x, y) as Boolean {
-        var left = screenWidth - controlSize - controlMargin;
+        var left = screenWidth / 2 + controlSize / 2 + controlGap;
         var top = controlMargin + 24;
         return x >= left && x < left + controlSize && y >= top && y < top + controlSize;
     }

@@ -114,8 +114,9 @@ features currently available:
 - View self coordinates in latitude/longitude and MGRS.
 - Tap the self marker to view separate latitude and longitude rows and MGRS.
 - Pan, zoom, and recenter the map.
-- Open Map Layers from the top-center stacked-layers control. Map Buttons hides
-	zoom/snap controls while Layers and Back remain accessible. Team Colors and
+- Open Map Layers from the top-center stacked-layers control and TAK Channels
+	from the adjacent control. Map Buttons hides zoom/snap and Channels controls
+	while Layers and Back remain accessible. Team Colors and
 	Default Roles show current received-user counts, including zero. Toggles exist
 	only for nonempty metadata groups; group keys are case-insensitive, hidden
 	filters persist, and a user must pass both team and role filters. Hidden users
@@ -170,9 +171,11 @@ this build:
 	**ATAK Relay** on. Toggle it off there to stop the watch-side relay. Garmin
 	Connect Mobile must be paired with the watch; ATAK manages the TAK server
 	connection.
-2. To view or edit server channels, open **Map** and tap the top-right **Channels**
-	control, choose an enabled server profile, and select channels to toggle them.
-	This requires a companion build that supports the Garmin channel relay messages.
+2. To view or edit server channels, open **Map** and tap **Channels** beside
+	Layers. Choose an enabled server profile and select channels to toggle them.
+	If **TAK Relay Off** appears, select it to open Network Preferences and enable
+	the relay first. This requires a companion build that supports Garmin channel
+	relay messages.
 3. Open **Device Preferences** to maintain user metrics. App text follows the
 	watch's system language.
 4. Open **Alerting Preferences** to opt in to alerts. Warnings remain local to

@@ -243,17 +243,18 @@ function buildTakRelayMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function openTakChannels(app as StandaloneApp) as Void {
     var client = app.getTakClient();
-    if (!client.isConnected()) {
-        WatchUi.showToast("Phone relay is stopped", null);
-        return;
-    }
-    var channelsMenu = buildChannelServersMenu([]);
+    var emptyLabel = client.isConnected() ? "Loading servers..." : "TAK Relay Off";
+    var channelsMenu = buildChannelServersMenu([], emptyLabel);
     WatchUi.pushView(channelsMenu, new TakChannelsMenuDelegate(app, [], []), WatchUi.SLIDE_LEFT);
-    client.requestChannelServers();
+    if (client.isConnected()) { client.requestChannelServers(); }
 }
 
-function buildChannelServersMenu(servers as Array) as WatchUi.Menu2 {
+function buildChannelServersMenu(servers as Array, emptyLabel as String) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => "TAK Channels"});
+    if (servers.size() == 0) {
+        var statusId = emptyLabel.equals("TAK Relay Off") ? :channelRelayOff : :channelStatus;
+        menu.addItem(new WatchUi.MenuItem(emptyLabel, null, statusId, null));
+    }
     for (var index = 0; index < servers.size(); index++) {
         var server = servers[index] as Dictionary;
         var label = server.get("name") == null ? "TAK Server" : server.get("name").toString();
@@ -1057,10 +1058,17 @@ class TakChannelsMenuDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function onSelect(item as WatchUi.MenuItem) as Void {
-        if (item.getId() == :backChannels) {
+        var id = item.getId();
+        if (id == :backChannels) {
             onBack();
             return;
         }
+        if (id == :channelRelayOff) {
+            var networkMenu = buildNetworkPreferencesMenu(app);
+            WatchUi.pushView(networkMenu, new NetworkPreferencesDelegate(app, networkMenu), WatchUi.SLIDE_LEFT);
+            return;
+        }
+        if (id == :channelStatus) { return; }
         if (!(item.getId() instanceof Number) || busy) { return; }
         if (showingChannels) {
             var bitPosition = item.getId() as Number;
@@ -1090,7 +1098,8 @@ class TakChannelsMenuDelegate extends WatchUi.Menu2InputDelegate {
             var serverList = payload.get("servers");
             servers = serverList instanceof Array ? serverList as Array : [];
             busy = false;
-            WatchUi.switchToView(buildChannelServersMenu(servers), self, WatchUi.SLIDE_LEFT);
+            var emptyLabel = servers.size() == 0 ? "No enabled servers" : "";
+            WatchUi.switchToView(buildChannelServersMenu(servers, emptyLabel), self, WatchUi.SLIDE_LEFT);
         } else if (msgType == "channels_response") {
             var channelList = payload.get("channels");
             channels = channelList instanceof Array ? channelList as Array : [];
@@ -1105,7 +1114,8 @@ class TakChannelsMenuDelegate extends WatchUi.Menu2InputDelegate {
         busy = false;
         if (showingChannels) {
             showingChannels = false;
-            WatchUi.switchToView(buildChannelServersMenu(servers), self, WatchUi.SLIDE_RIGHT);
+            var emptyLabel = servers.size() == 0 ? "No enabled servers" : "";
+            WatchUi.switchToView(buildChannelServersMenu(servers, emptyLabel), self, WatchUi.SLIDE_RIGHT);
         } else {
             app.getTakClient().setChannelsCallback(null);
             WatchUi.popView(WatchUi.SLIDE_DOWN);
