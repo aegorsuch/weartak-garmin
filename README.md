@@ -31,8 +31,8 @@ The TAK Forge repository is canonical. GitHub is a secondary repository.
 	appear as a removable drive.
 3. Open the watch drive and navigate to `GARMIN/Apps`.
 4. Drag only the matching `.prg` into the `GARMIN/Apps` folder. For a fēnix
-	7X running version `5.8.0.3-ca1ffaf`, use
-	`WearTAK-Garmin-fenix7x-5.8.0.3-ca1ffaf.prg`.
+	7X running version `5.8.0.3-2f0b9e1`, use
+	`WearTAK-Garmin-fenix7x-5.8.0.3-2f0b9e1.prg`.
 5. Safely eject the watch, disconnect the USB cable, and launch WearTAK from
 	the watch's app list.
 
