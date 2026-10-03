@@ -448,6 +448,7 @@ class StandaloneMapView extends WatchUi.MapView {
             drawControl(dc, controlMargin, top + (controlSize + controlGap) * 2, "-");
         }
         drawLayersControl(dc);
+        drawChannelsControl(dc);
         drawBackControl(dc, screenWidth - controlSize - controlMargin, (screenHeight - controlSize) / 2);
         drawBloodhound(dc);
     }
@@ -462,6 +463,21 @@ class StandaloneMapView extends WatchUi.MapView {
         dc.drawLine(x + 9, y + 12, x + 30, y + 12);
         dc.drawLine(x + 9, y + 20, x + 30, y + 20);
         dc.drawLine(x + 9, y + 28, x + 30, y + 28);
+    }
+
+    function drawChannelsControl(dc) as Void {
+        var x = screenWidth - controlSize - controlMargin;
+        var y = controlMargin + 24;
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(x, y, controlSize, controlSize);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawRectangle(x, y, controlSize, controlSize);
+        dc.drawLine(x + 13, y + 13, x + 27, y + 13);
+        dc.drawLine(x + 13, y + 13, x + 20, y + 27);
+        dc.drawLine(x + 27, y + 13, x + 20, y + 27);
+        dc.drawCircle(x + 12, y + 12, 3);
+        dc.drawCircle(x + 28, y + 12, 3);
+        dc.drawCircle(x + 20, y + 28, 3);
     }
 
     function drawIncomingUserOverlays(dc) as Void {
@@ -831,12 +847,18 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function isControlAt(x, y) {
-        return isLayersControlAt(x, y) || (mapButtonsVisible && (isZoomInControlAt(x, y) || isZoomOutControlAt(x, y) || isCenterControlAt(x, y))) || isBackControlAt(x, y);
+        return isLayersControlAt(x, y) || isChannelsControlAt(x, y) || (mapButtonsVisible && (isZoomInControlAt(x, y) || isZoomOutControlAt(x, y) || isCenterControlAt(x, y))) || isBackControlAt(x, y);
     }
 
     function isLayersControlAt(x, y) as Boolean {
         var left = (screenWidth - controlSize) / 2;
         return x >= left && x < left + controlSize && y >= controlMargin && y < controlMargin + controlSize;
+    }
+
+    function isChannelsControlAt(x, y) as Boolean {
+        var left = screenWidth - controlSize - controlMargin;
+        var top = controlMargin + 24;
+        return x >= left && x < left + controlSize && y >= top && y < top + controlSize;
     }
 
     function showLayersMenu() as Void {
@@ -1377,7 +1399,9 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
             return true;
         }
         if (view.isControlAt(coordinates[0], coordinates[1])) {
-            if (view.isLayersControlAt(coordinates[0], coordinates[1])) {
+            if (view.isChannelsControlAt(coordinates[0], coordinates[1])) {
+                openTakChannels(app);
+            } else if (view.isLayersControlAt(coordinates[0], coordinates[1])) {
                 view.showLayersMenu();
             } else if (view.isZoomInControlAt(coordinates[0], coordinates[1])) {
                 view.zoom(0.5);

@@ -25,8 +25,8 @@ function addToggleEntry(menu as WatchUi.Menu2, label as String, enabled as Boole
 function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => "WearTAK"});
     if (app.isChatEnabled()) { addMenuEntry(menu, "Chat", null, :chat); }
-    addMenuEntry(menu, "Clear 2525D Point(s)", null, :managePoints);
-    addMenuEntry(menu, "Drop 2525D Point", null, :dropPoint);
+    addMenuEntry(menu, "Clear 2525D", null, :managePoints);
+    addMenuEntry(menu, "Drop 2525D", null, :dropPoint);
     addMenuEntry(menu, manualAlertMenuLabel(app), null, :sos);
     addMenuEntry(menu, app.text(:map), null, :map);
     var callsign = app.getCallsign();
@@ -35,7 +35,7 @@ function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
 }
 
 function buildPointDropTypeMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Drop 2525D Point"});
+    var menu = new WatchUi.Menu2({:title => "Drop 2525D"});
     var defaultType = app.getMapView().getDefaultPointType();
     var hostileLabel = defaultType == :hostile ? "Selected default" : null;
     var neutralLabel = defaultType == :neutral ? "Selected default" : null;
@@ -50,7 +50,7 @@ function buildPointDropTypeMenu(app as StandaloneApp) as WatchUi.Menu2 {
 }
 
 function buildPointManagementMenu() as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Clear 2525D Point(s)"});
+    var menu = new WatchUi.Menu2({:title => "Clear 2525D"});
     menu.addItem(new WatchUi.MenuItem("Dropped Markers", null, :droppedMarkers, null));
     menu.addItem(new WatchUi.MenuItem("Clear Last Marker", null, :clearLastMarker, null));
     return menu;
@@ -226,10 +226,18 @@ function buildMyRoleOptionsMenu(app as StandaloneApp, category as String) as Wat
 
 function buildNetworkPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => app.text(:networkPreferences)});
-    var client = app.getTakClient();
-    addToggleEntry(menu, app.text(:takConnect), client.status == :connecting || client.isConnected(), :atakRelayToggle);
+    addMenuEntry(menu, "TAK Relay", null, :takRelayMenu);
     addMenuEntry(menu, "Sit(x) TAK", app.getSitxClient().networkStatusLabel(), :sitxDeviceApi);
-    addMenuEntry(menu, "TAK Channels", null, :takChannels);
+    return menu;
+}
+
+function buildTakRelayMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = new WatchUi.Menu2({:title => "TAK Relay"});
+    var client = app.getTakClient();
+    addToggleEntry(menu, "ATAK Relay", client.status == :connecting || client.isConnected(), :atakRelayToggle);
+    addMenuEntry(menu, "iTAK", "Teaming", :itakRelay);
+    addMenuEntry(menu, "TAK Aware", "Teaming", :takAwareRelay);
+    addMenuEntry(menu, "WearTAK Companion", "Developing", :wearTakCompanionRelay);
     return menu;
 }
 
@@ -1001,12 +1009,14 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function onSelect(item as WatchUi.MenuItem) as Void {
-        if (item.getId() == :takChannels) {
-            openTakChannels(app);
-        } else if (item.getId() == :sitxDeviceApi) {
+        var id = item.getId();
+        if (id == :sitxDeviceApi) {
             var sitxMenu = buildSitxDeviceApiMenu(app);
             WatchUi.pushView(sitxMenu, new SitxDeviceApiDelegate(app, sitxMenu, menu), WatchUi.SLIDE_LEFT);
-        } else if (item.getId() == :atakRelayToggle) {
+        } else if (id == :takRelayMenu) {
+            var relayMenu = buildTakRelayMenu(app);
+            WatchUi.pushView(relayMenu, new NetworkPreferencesDelegate(app, relayMenu), WatchUi.SLIDE_LEFT);
+        } else if (id == :atakRelayToggle) {
             var client = app.getTakClient();
             client.statusCallback = method(:onClientStatusChanged);
             if (client.status == :connecting || client.isConnected()) {
@@ -1015,14 +1025,16 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
                 client.connect();
             }
             onClientStatusChanged();
+        } else if (id == :itakRelay || id == :takAwareRelay || id == :wearTakCompanionRelay) {
+            WatchUi.showToast(item.getLabel() + " - " + item.getSubLabel(), null);
         }
     }
 
     function onClientStatusChanged() as Void {
         var client = app.getTakClient();
-        var item = menu.getItem(menu.findItemById(:atakRelayToggle));
-        if (item != null) {
-            item.setSubLabel(toolToggleLabel(client.status == :connecting || client.isConnected()));
+        var relayItem = menu.getItem(menu.findItemById(:atakRelayToggle));
+        if (relayItem != null) {
+            relayItem.setSubLabel(toolToggleLabel(client.status == :connecting || client.isConnected()));
             WatchUi.requestUpdate();
         }
     }

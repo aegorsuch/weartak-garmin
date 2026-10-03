@@ -69,24 +69,26 @@ The app opens to a native, scrollable Connect IQ menu. The Garmin-to-ATAK phone
 relay depends on the companion's Garmin Connect IQ receiver. These are the watch
 features currently available:
 
-- The alphabetical main menu contains Chat (when enabled), Clear 2525D
-	Point(s), Drop 2525D Point, Manual Alert, Map, and Settings.
-- Open Network Preferences from Settings. BLE relay status means a phone
-	message was written; it does not acknowledge TAK-server delivery.
-- View and toggle TAK Server channels from Network Preferences > TAK Channels.
-	The phone companion uses the enabled server profile's P12 certificate for
-	channel requests; certificate material stays on the phone and only channel
-	names, directions, bit positions, and active state are sent to the watch.
+- The alphabetical main menu contains Chat (when enabled), Clear 2525D,
+	Drop 2525D, Manual Alert, Map, and Settings.
+- Open TAK Relay inside Network Preferences. ATAK Relay is the currently
+	integrated option; iTAK and TAK Aware are marked Teaming, and WearTAK
+	Companion is marked Developing. BLE relay status means a phone message was
+	written; it does not acknowledge TAK-server delivery.
+- Open the TAK Channels menu from the map's top-right Channels control. Channel
+	requests require a compatible companion relay; the phone must keep any P12
+	certificate material and send only channel names, directions, bit positions,
+	and active state to the watch.
 - Manual Alert becomes locally active even if the phone relay is stopped. When
 	the relay is active, the alert is sent to the companion; selecting the active
 	main-menu row again clears it.
 - The Settings row displays the configured callsign and is blank when the
 	callsign is unset.
 - Open and navigate the map.
-- The main menu's Drop 2525D Point action opens a native scrollable list of
+- The main menu's Drop 2525D action opens a native scrollable list of
 	Hostile, Neutral, Friendly, and Unknown marker types. The remembered default
-	is marked; selecting a type drops at the current location. Clear 2525D
-	Point(s) opens the saved marker list or the Clear Last Marker action.
+	is marked; selecting a type drops at the current location. Clear 2525D opens
+	the saved marker list or the Clear Last Marker action.
 - Drop a 2525D point from the main menu or map; new point titles use the
 	configured callsign and UTC time in `CALLSIGN_HHMMSSZ` format. With no callsign,
 	the title is the UTC timestamp alone.
@@ -164,19 +166,20 @@ this build:
 ## Using the app
 
 1. In the ATAK companion, enable **Garmin Connect IQ**. On the watch main menu,
-	open **Settings** > **Network Preferences** and toggle **ATAK Relay** on.
-	Toggle it off there to stop the watch-side relay. Garmin Connect Mobile must
-	be paired with the watch; ATAK manages the TAK server connection.
-2. To view or edit server channels, open **Settings** > **Network Preferences**
-	> **TAK Channels**, choose an enabled P12-configured server profile, and select
-	channels to toggle them. The phone plugin performs authenticated server calls.
+	open **Settings** > **Network Preferences** > **TAK Relay** and toggle
+	**ATAK Relay** on. Toggle it off there to stop the watch-side relay. Garmin
+	Connect Mobile must be paired with the watch; ATAK manages the TAK server
+	connection.
+2. To view or edit server channels, open **Map** and tap the top-right **Channels**
+	control, choose an enabled server profile, and select channels to toggle them.
+	This requires a companion build that supports the Garmin channel relay messages.
 3. Open **Device Preferences** to maintain user metrics. App text follows the
 	watch's system language.
 4. Open **Alerting Preferences** to opt in to alerts. Warnings remain local to
 	the watch; qualifying automated alerts use the same companion emergency CoT
 	path as Samsung/Wear OS and require an active ATAK relay and a valid phone fix.
-5. Select **Drop 2525D Point** from the main menu to choose a marker type and
-	add it at the current location. **Clear 2525D Point(s)** opens the saved
+5. Select **Drop 2525D** from the main menu to choose a marker type and
+	add it at the current location. **Clear 2525D** opens the saved
 	marker list or Clear Last Marker. Open **Map** to edit points, view coordinates,
 	or start Bloodhound. Long-press the map to place the current default marker.
 6. Select **Manual Alert** from the main menu and choose an alert type. It is
