@@ -287,7 +287,7 @@ function buildSitxDeviceApiMenu(app as StandaloneApp) as WatchUi.Menu2 {
     addMenuEntry(menu, "Group", client.getSelectedGroupName(), :sitxGroup);
     addMenuEntry(menu, "Sit(x) State", client.statusText(), :sitxStatus);
     addMenuEntry(menu, "Re-auth", null, :sitxReauth);
-    addMenuEntry(menu, "Remove Sit(x) Connection", null, :sitxRemoveConnection);
+    addMenuEntry(menu, "Remove Sit(x) Connection", null, :sitxRemove);
     addMenuEntry(menu, "Back", null, :sitxBack);
     return menu;
 }
@@ -1158,7 +1158,7 @@ class SitxDeviceApiDelegate extends WatchUi.Menu2InputDelegate {
             }
         } else if (id == :sitxReauth) {
             client.refreshAuthCode();
-        } else if (id == :sitxRemoveConnection) {
+        } else if (id == :sitxRemove) {
             client.forgetAuthorization();
         } else if (id == :sitxBack) {
             WatchUi.popView(WatchUi.SLIDE_DOWN);

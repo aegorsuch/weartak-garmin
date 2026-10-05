@@ -136,18 +136,12 @@ class SitxClient {
     function refreshAuthCode() as Void {
         clearAuthorizationState();
         clearGroupSelection();
-        failureStatus = "";
         if (apiHost.length() < 8 || !apiHost.substring(0, 8).equals("https://")) {
             failureStatus = apiHost.length() == 0 ? "Enter Sit(x) API host" : "Bad host: " + apiHost;
             status = :needsConfiguration;
             notifyStatusChanged();
             return;
         }
-        stopPolling();
-        deviceCode = null;
-        userCode = "";
-        verificationUrl = "";
-        expiresAt = null;
         requestDeviceCode();
     }
 
@@ -519,7 +513,6 @@ class SitxClient {
         clearAuthorizationState();
         clearGroupSelection();
         status = :unconfigured;
-        notifyStatusChanged();
     }
 
     function networkStatusLabel() as String {
@@ -532,10 +525,10 @@ class SitxClient {
         Application.Storage.deleteValue("sitxRefreshToken");
         accessToken = null;
         refreshToken = null;
-        accessToken = null;
         deviceCode = null;
         userCode = "";
         verificationUrl = "";
+        expiresAt = null;
         groupEndpoint = null;
     }
 
