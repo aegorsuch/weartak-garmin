@@ -19,7 +19,7 @@ class StandaloneApp extends Application.AppBase {
         WatchUi.requestUpdate();
     }
 
-    const APP_VERSION = "5.8.0.3-d92c24d";
+    const APP_VERSION = "5.8.0.3-970e08b";
 
     private var view;
     private var takClient;
