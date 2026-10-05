@@ -29,6 +29,8 @@ class StandaloneMapView extends WatchUi.MapView {
     var incomingIds = [];
     var incomingLastSeen = {};
     var incomingDetails = {};
+    var pendingIncomingPoints as Array<String> = [];
+    var dismissedIncomingPoints = {};
     var hiddenMapTeams as Array<String> = [];
     var hiddenMapRoles as Array<String> = [];
     var mapButtonsVisible as Boolean = true;
@@ -132,6 +134,8 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function loadPoints() as Void {
+        var nextNumber = Application.Storage.getValue("nextPointNumber");
+        if (nextNumber instanceof Number) { nextPointNumber = nextNumber; }
         var storedDefaultType = Application.Storage.getValue("defaultPointType");
         if (storedDefaultType instanceof String) {
             defaultPointType = typeFromString(storedDefaultType as String);
@@ -172,6 +176,7 @@ class StandaloneMapView extends WatchUi.MapView {
             return;
         }
         currentPosition = info.position;
+        if (info.accuracy >= Position.QUALITY_USABLE) { resolvePendingPoints(info.position); }
         evaluateBloodhoundProximity();
 
         if (!hasInitialPosition) {
@@ -189,7 +194,7 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function evaluateBloodhoundProximity() as Void {
-        if (application == null || !isBloodhoundActive()) {
+        if (application == null || currentPosition == null || !isBloodhoundActive()) {
             bloodhoundProximityNotified = false;
             return;
         }
@@ -225,6 +230,11 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function showPointTypeMenu(pointId) as Void {
+        if (incomingDetails.hasKey(pointId)) {
+            WatchUi.pushView(buildIncomingPointActions(self, pointId),
+                new IncomingPointActionsDelegate(self, pointId), WatchUi.SLIDE_LEFT);
+            return;
+        }
         var menu = buildPointDetailsMenu(self, pointId);
         WatchUi.pushView(menu, new PointDetailsMenuDelegate(self, pointId, menu), WatchUi.SLIDE_LEFT);
     }
@@ -250,20 +260,27 @@ class StandaloneMapView extends WatchUi.MapView {
         WatchUi.requestUpdate();
     }
 
-    function updateIncomingCot(uid as String, latitude, longitude, cotType as String, callSign as String?, team as String?, role as String?) as Void {
+    function updateIncomingCot(uid as String, latitude, longitude, cotType as String, callSign as String?, team as String?, role as String?, metadata as Dictionary) as Void {
         var markerId = "cot-" + uid;
+        var isPoint = isIncomingMapPoint(cotType, metadata);
+        var revision = incomingPointRevision(metadata);
+        if (dismissedIncomingPoints.hasKey(markerId)) {
+            var dismissed = dismissedIncomingPoints.get(markerId) as Dictionary;
+            if (revision.equals(dismissed.get("revision")) || revision.length() == 0) { return; }
+            dismissedIncomingPoints.remove(markerId);
+        }
+        var previous = incomingDetails.get(markerId);
+        var notify = isPoint && (previous == null
+            || (revision.length() > 0 && !revision.equals(previous.get("revision"))));
         var location = new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees});
         var marker = new StandaloneMapMarker(location);
-        var icon = cotType.find("a-h-") != null ? iconForType(:hostile) : cotType.find("a-f-") != null ? iconForType(:friendly) : iconForType(:unknown);
+        var icon = cotType.find("a-h-") != null ? iconForType(:hostile) : cotType.find("a-f-") != null ? iconForType(:friendly) : cotType.find("a-n-") != null ? iconForType(:neutral) : iconForType(:unknown);
         marker.setIcon(icon, icon.getWidth() / 2, icon.getHeight() / 2);
         marker.setLabel(callSign == null || trimMapText(callSign).length() == 0 ? uid : trimMapText(callSign));
         if (!markers.hasKey(markerId)) {
             incomingIds.add(markerId);
             if (incomingIds.size() > 50) {
-                var oldestId = incomingIds.remove(0);
-                markers.remove(oldestId);
-                incomingLastSeen.remove(oldestId);
-                incomingDetails.remove(oldestId);
+                removeIncomingPoint(incomingIds[0], false);
             }
         }
         incomingLastSeen.put(markerId, Time.now().value());
@@ -271,10 +288,76 @@ class StandaloneMapView extends WatchUi.MapView {
             "uid" => uid, "type" => cotType,
             "callSign" => callSign == null ? "" : trimMapText(callSign),
             "team" => team == null ? "" : trimMapText(team),
-            "role" => role == null ? "" : trimMapText(role)
+            "role" => role == null ? "" : trimMapText(role),
+            "isPoint" => isPoint, "senderUID" => incomingPointSender(metadata),
+            "revision" => revision
         });
         markers.put(markerId, marker);
+        pointLocations.put(markerId, location);
+        if (notify) {
+            if (pendingIncomingPoints.indexOf(markerId) == -1) { pendingIncomingPoints.add(markerId); }
+            Attention.vibrate([new Attention.VibeProfile(80, 250)]);
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.IncomingPointReceived), null);
+        }
+        application.refreshIncomingPointCount();
         pruneIncomingEntities();
+        markersDirty = true;
+        WatchUi.requestUpdate();
+    }
+
+    function incomingPointTitle(id as String) as String {
+        var details = incomingDetails.get(id);
+        if (!(details instanceof Dictionary)) { return id; }
+        var title = details.get("callSign") as String;
+        return title.length() > 0 ? title : details.get("uid") as String;
+    }
+
+    function acknowledgeIncomingPoint(id as String) as Boolean {
+        var details = incomingDetails.get(id);
+        if (!(details instanceof Dictionary) || details.get("isPoint") != true) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.IncomingPointUnavailable), null);
+            return false;
+        }
+        if (takClient == null || !takClient.queuePointReply(details.get("senderUID") as String,
+                details.get("uid") as String, "Roger, bloodhounding to " + incomingPointTitle(id))) { return false; }
+        bloodhoundPointId = null;
+        toggleBloodhound(id);
+        pendingIncomingPoints.remove(id);
+        application.refreshIncomingPointCount();
+        return true;
+    }
+
+    function markIncomingPointInPosition(id as String) as Boolean {
+        var details = incomingDetails.get(id);
+        if (!(details instanceof Dictionary) || bloodhoundPointId == null || !bloodhoundPointId.equals(id)) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.IncomingPointUnavailable), null);
+            return false;
+        }
+        if (takClient == null || !takClient.queuePointReply(details.get("senderUID") as String,
+                details.get("uid") as String, "In Position at " + incomingPointTitle(id))) { return false; }
+        removeIncomingPoint(id, true);
+        return true;
+    }
+
+    function removeIncomingPoint(id as String, dismiss as Boolean) as Void {
+        var details = incomingDetails.get(id);
+        if (dismiss && details instanceof Dictionary) {
+            if (dismissedIncomingPoints.size() >= 50) {
+                dismissedIncomingPoints.remove(dismissedIncomingPoints.keys()[0]);
+            }
+            dismissedIncomingPoints.put(id, {"revision" => details.get("revision"), "removedAt" => Time.now().value()});
+        }
+        markers.remove(id);
+        pointLocations.remove(id);
+        incomingLastSeen.remove(id);
+        incomingDetails.remove(id);
+        incomingIds.remove(id);
+        pendingIncomingPoints.remove(id);
+        application.refreshIncomingPointCount();
+        if (bloodhoundPointId != null && bloodhoundPointId.equals(id)) {
+            bloodhoundPointId = null;
+            bloodhoundProximityNotified = false;
+        }
         markersDirty = true;
         WatchUi.requestUpdate();
     }
@@ -304,6 +387,7 @@ class StandaloneMapView extends WatchUi.MapView {
             var markerId = incomingIds[index] as String;
             var details = incomingDetails.get(markerId);
             if (!(details instanceof Dictionary)) { continue; }
+            if (details.get("isPoint") == true) { continue; }
             var type = (details as Dictionary).get("type");
             if (!(type instanceof String) || !isUserCotType(type as String) || isSelfIncomingUser(details as Dictionary)) { continue; }
             var value = (details as Dictionary).get(isTeam ? "team" : "role");
@@ -327,6 +411,7 @@ class StandaloneMapView extends WatchUi.MapView {
     function isIncomingUserVisible(markerId as String) as Boolean {
         var details = incomingDetails.get(markerId);
         if (!(details instanceof Dictionary)) { return true; }
+        if (details.get("isPoint") == true) { return true; }
         var eventType = (details as Dictionary).get("type");
         if (!(eventType instanceof String) || !isUserCotType(eventType as String) || isSelfIncomingUser(details as Dictionary)) { return true; }
         var teamValue = (details as Dictionary).get("team");
@@ -488,7 +573,7 @@ class StandaloneMapView extends WatchUi.MapView {
         for (var index = 0; index < incomingIds.size(); index++) {
             var markerId = incomingIds[index] as String;
             var details = incomingDetails.get(markerId);
-            if (!(details instanceof Dictionary) || !isUserCotType((details as Dictionary).get("type").toString()) || !isIncomingUserVisible(markerId)) { continue; }
+            if (!(details instanceof Dictionary) || details.get("isPoint") == true || !isUserCotType((details as Dictionary).get("type").toString()) || !isIncomingUserVisible(markerId)) { continue; }
             var location = pointLocations.get(markerId);
             if (location == null) { continue; }
             var degrees = location.toDegrees();
@@ -593,6 +678,10 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function showBloodhoundCancelMenu() as Void {
+        if (bloodhoundPointId != null && incomingDetails.hasKey(bloodhoundPointId)) {
+            showPointTypeMenu(bloodhoundPointId);
+            return;
+        }
         var menu = new WatchUi.Menu2({:title => application.text(:bloodhoundCompass)});
         menu.addItem(new WatchUi.MenuItem(application.text(:cancelBloodhound), null, :cancelBloodhound, null));
         WatchUi.pushView(menu, new BloodhoundCancelDelegate(self), WatchUi.SLIDE_UP);
@@ -635,6 +724,9 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function getBloodhoundTitle() as String {
+        if (bloodhoundPointId != null && incomingDetails.hasKey(bloodhoundPointId)) {
+            return incomingPointTitle(bloodhoundPointId);
+        }
         if (bloodhoundPointId == null || pointDetails.hasKey(bloodhoundPointId) == false) {
             return "Bloodhound";
         }
@@ -805,20 +897,21 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function dropAtCurrentLocationAs(type as Symbol) as Boolean {
         var info = Position.getInfo();
-        if (info != null && info.position != null) {
-            var droppedAt = utcTimeLabel(Time.now());
-            addPoint(info.position, type, newPointTitle(droppedAt), droppedAt);
-            return true;
-        }
-        return false;
+        var droppedAt = utcTimeLabel(Time.now());
+        var location = info != null && info.accuracy >= Position.QUALITY_USABLE
+            && application.isLocationServicesEnabled() ? info.position : null;
+        return addPoint(location, type, newPointTitle(droppedAt), droppedAt);
     }
 
     function hasPoints() as Boolean {
-        if (pointLocations == null) {
-            return false;
+        if (pointOrder.size() > 0) { return true; }
+        if (takClient != null) {
+            for (var i = 0; i < takClient.pointReplies.replies.size(); i++) {
+                var entry = takClient.pointReplies.replies[i];
+                if (entry.get("msgType").equals("marker")) { return true; }
+            }
         }
-        var ids = pointLocations.keys();
-        return ids != null && ids.size() > 0;
+        return false;
     }
 
     function snapToSelf() {
@@ -844,7 +937,6 @@ class StandaloneMapView extends WatchUi.MapView {
         var longitude = topLeft[1] + (bottomRight[1] - topLeft[1]) * xRatio;
         var droppedAt = utcTimeLabel(Time.now());
         addPoint(new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees}), defaultPointType, newPointTitle(droppedAt), droppedAt);
-        WatchUi.showToast(application != null ? application.text(:pointDropped) : "2525D point dropped", null);
         WatchUi.requestUpdate();
     }
 
@@ -889,12 +981,18 @@ class StandaloneMapView extends WatchUi.MapView {
         return x >= left && x < left + controlSize && y >= top && y < top + controlSize;
     }
 
-    function addPoint(location, type, label, droppedAt as String) {
-        if (location == null) {
-            return;
-        }
+    function addPoint(location, type, label, droppedAt as String) as Boolean {
         var id = "point-" + nextPointNumber.toString();
+        if (takClient == null || !takClient.sendMarker(id, location, type, label, "")) { return false; }
         nextPointNumber += 1;
+        Application.Storage.setValue("nextPointNumber", nextPointNumber);
+        defaultPointType = type;
+        Application.Storage.setValue("defaultPointType", typeToString(type));
+        if (location != null) { saveResolvedPoint(id, location, type, label, droppedAt); }
+        return true;
+    }
+
+    function saveResolvedPoint(id as String, location, type, label, droppedAt as String) as Void {
         var marker = new StandaloneMapMarker(location);
         var icon = iconForType(type);
         marker.setIcon(icon, icon.getWidth() / 2, icon.getHeight() / 2);
@@ -909,14 +1007,28 @@ class StandaloneMapView extends WatchUi.MapView {
             newestFirst.add(pointOrder[orderIndex]);
         }
         pointOrder = newestFirst;
-        defaultPointType = type;
-        Application.Storage.setValue("defaultPointType", typeToString(type));
         markersDirty = true;
-        if (takClient != null) {
-            takClient.sendMarker(id, location, type, label, "");
-        }
         savePoints();
         WatchUi.requestUpdate();
+    }
+
+    function resolvePendingPoints(location as Position.Location) as Void {
+        if (takClient == null) { return; }
+        takClient.expirePointReplies();
+        for (var i = 0; i < takClient.pointReplies.replies.size(); i++) {
+            var entry = takClient.pointReplies.replies[i];
+            var payload = entry.get("payload") as Dictionary;
+            if (!entry.get("msgType").equals("marker") || payload.get("lat") != null) { continue; }
+            var degrees = location.toDegrees();
+            payload.put("lat", degrees[0]);
+            payload.put("lon", degrees[1]);
+            var id = payload.get("localId") as String;
+            var cotType = payload.get("type").toString();
+            var type = cotType.find("a-h-") == 0 ? :hostile : cotType.find("a-f-") == 0 ? :friendly : cotType.find("a-n-") == 0 ? :neutral : :unknown;
+            saveResolvedPoint(id, location, type, payload.get("title").toString(), utcTimeLabel(Time.now()));
+        }
+        takClient.savePointReplies();
+        takClient.flushPointReplies();
     }
 
     function newPointTitle(droppedAt as String) as String {
@@ -957,6 +1069,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var bottomRight = mapBottomRight.toDegrees();
         var keys = pointLocations.keys();
         for (var i = 0; i < keys.size(); i++) {
+            if (incomingDetails.hasKey(keys[i]) && !isIncomingUserVisible(keys[i].toString())) { continue; }
             var location = pointLocations.get(keys[i]).toDegrees();
             var markerX = (location[1] - topLeft[1]) / (bottomRight[1] - topLeft[1]) * screenWidth;
             var markerY = (topLeft[0] - location[0]) / (topLeft[0] - bottomRight[0]) * screenHeight;
@@ -984,19 +1097,20 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function changePointType(id, type, label) {
-        defaultPointType = type;
-        Application.Storage.setValue("defaultPointType", typeToString(type));
         if (pointLocations.hasKey(id) == false || pointDetails.hasKey(id) == false) {
             return;
         }
-        var details = pointDetails.get(id) as Dictionary;
+        var details = copiedPointDetails(id);
         var currentType = details.get("type") as Symbol;
         var currentTitle = safeDetailString(details, "title", "");
         details.put("type", type);
         if (currentTitle.equals("") || currentTitle.equals(defaultPointTitle(currentType))) {
             details.put("title", defaultPointTitle(type));
         }
-        updatePoint(id, details);
+        if (updatePoint(id, details)) {
+            defaultPointType = type;
+            Application.Storage.setValue("defaultPointType", typeToString(type));
+        }
     }
 
     function defaultPointTitle(type as Symbol) as String {
@@ -1014,7 +1128,7 @@ class StandaloneMapView extends WatchUi.MapView {
         if (pointLocations.hasKey(id) == false || pointDetails.hasKey(id) == false) {
             return;
         }
-        var details = pointDetails.get(id) as Dictionary;
+        var details = copiedPointDetails(id);
         if (field.equals("title") && value.equals("")) {
             value = defaultPointTitle(details.get("type") as Symbol);
         }
@@ -1045,9 +1159,18 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function deleteLastPoint() as Boolean {
-        if (pointOrder.size() == 0) { return false; }
-        deletePoint(pointOrder[0] as String);
-        return true;
+        if (pointOrder.size() == 0) {
+            if (takClient != null) {
+                for (var i = takClient.pointReplies.replies.size() - 1; i >= 0; i--) {
+                    var entry = takClient.pointReplies.replies[i];
+                    if (entry.get("msgType").equals("marker")) {
+                        return takClient.deleteMarker((entry.get("payload") as Dictionary).get("localId").toString());
+                    }
+                }
+            }
+            return false;
+        }
+        return deletePoint(pointOrder[0] as String);
     }
 
     function getPointTypeLabel(id) as String {
@@ -1128,12 +1251,25 @@ class StandaloneMapView extends WatchUi.MapView {
     function movePointToCurrentLocation(id) as Boolean {
         var info = Position.getInfo();
         if (info == null || info.position == null || pointDetails.hasKey(id) == false) {
+            WatchUi.showToast(application.text(:locationUnavailable), null);
             return false;
         }
         currentPosition = info.position;
+        var previous = pointLocations.get(id);
         pointLocations.put(id, info.position);
-        updatePoint(id, pointDetails.get(id) as Dictionary);
+        if (!updatePoint(id, pointDetails.get(id) as Dictionary)) {
+            pointLocations.put(id, previous);
+            return false;
+        }
         return true;
+    }
+
+    function copiedPointDetails(id) as Dictionary {
+        var original = pointDetails.get(id) as Dictionary;
+        var copy = {};
+        var keys = original.keys();
+        for (var i = 0; i < keys.size(); i++) { copy.put(keys[i], original.get(keys[i])); }
+        return copy;
     }
 
     function safeDetailString(details as Dictionary, key as String, fallback as String) as String {
@@ -1144,28 +1280,30 @@ class StandaloneMapView extends WatchUi.MapView {
         return value.toString();
     }
 
-    function updatePoint(id, details as Dictionary) {
+    function updatePoint(id, details as Dictionary) as Boolean {
         var location = pointLocations.get(id);
         var type = details.get("type") as Symbol;
         var title = safeDetailString(details, "title", defaultPointTitle(type));
         var remark = safeDetailString(details, "remark", "");
+        if (takClient != null && !takClient.sendMarker(id, location, type, title, remark)) { return false; }
+        pointDetails.put(id, details);
         var marker = new StandaloneMapMarker(location);
         var icon = iconForType(type);
         marker.setIcon(icon, icon.getWidth() / 2, icon.getHeight() / 2);
         marker.setLabel(title);
         markers.put(id, marker);
         markersDirty = true;
-        if (takClient != null) {
-            takClient.sendMarker(id, location, type, title, remark);
-        }
         savePoints();
         WatchUi.requestUpdate();
+        return true;
     }
 
-    function deletePoint(id) {
+    function deletePoint(id) as Boolean {
         if (id == null || pointLocations == null || pointLocations.hasKey(id) == false) {
-            return;
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.IncomingPointUnavailable), null);
+            return false;
         }
+        if (takClient != null && !takClient.deleteMarker(id)) { return false; }
         if (bloodhoundPointId != null && bloodhoundPointId.equals(id)) {
             bloodhoundPointId = null;
         }
@@ -1173,31 +1311,29 @@ class StandaloneMapView extends WatchUi.MapView {
         pointLocations.remove(id);
         pointDetails.remove(id);
         pointOrder.remove(id);
-        if (takClient != null) {
-            takClient.deleteMarker(id);
-        }
         markersDirty = true;
         savePoints();
         WatchUi.requestUpdate();
+        return true;
     }
 
-    function clearDroppedPoints() {
-        if (hasPoints()) {
-            var pointIds = pointLocations.keys();
-            for (var i = 0; i < pointIds.size(); i++) {
-                markers.remove(pointIds[i]);
-                if (takClient != null) {
-                    takClient.deleteMarker(pointIds[i]);
+    function clearDroppedPoints() as Boolean {
+        var complete = true;
+        var pointIds = pointOrder.slice(0, pointOrder.size());
+        for (var i = 0; i < pointIds.size(); i++) {
+            if (!deletePoint(pointIds[i])) { complete = false; }
+        }
+        if (takClient != null) {
+            var entries = takClient.pointReplies.replies.slice(0, takClient.pointReplies.replies.size());
+            for (var j = 0; j < entries.size(); j++) {
+                var entry = entries[j];
+                var payload = entry.get("payload") as Dictionary;
+                if (entry.get("msgType").equals("marker") && payload.get("lat") == null) {
+                    if (!takClient.deleteMarker(payload.get("localId").toString())) { complete = false; }
                 }
             }
-            pointLocations = {};
-            pointDetails = {};
-            pointOrder = [];
-            bloodhoundPointId = null;
-            bloodhoundProximityNotified = false;
-            markersDirty = true;
-            savePoints();
         }
+        if (!complete) { return false; }
 
         var waypoints = PersistedContent.getAppWaypoints();
         var waypoint = waypoints.next();
@@ -1206,6 +1342,7 @@ class StandaloneMapView extends WatchUi.MapView {
             waypoint = waypoints.next();
         }
         WatchUi.requestUpdate();
+        return true;
     }
 
     function pruneIncomingEntities() as Boolean {
@@ -1218,10 +1355,13 @@ class StandaloneMapView extends WatchUi.MapView {
             }
         }
         for (var j = 0; j < staleIds.size(); j++) {
-            markers.remove(staleIds[j]);
-            incomingLastSeen.remove(staleIds[j]);
-            incomingDetails.remove(staleIds[j]);
-            incomingIds.remove(staleIds[j]);
+            removeIncomingPoint(staleIds[j], false);
+        }
+        var dismissedIds = dismissedIncomingPoints.keys();
+        for (var k = 0; k < dismissedIds.size(); k++) {
+            if (now - dismissedIncomingPoints.get(dismissedIds[k]).get("removedAt") > 300) {
+                dismissedIncomingPoints.remove(dismissedIds[k]);
+            }
         }
         if (staleIds.size() > 0) {
             markersDirty = true;
@@ -1528,12 +1668,10 @@ class PointDetailsMenuDelegate extends WatchUi.Menu2InputDelegate {
             typeMenu.addItem(new WatchUi.MenuItem("Neutral", null, :neutral, null));
             WatchUi.pushView(typeMenu, new PointTypeMenuDelegate(mapView, pointId), WatchUi.SLIDE_LEFT);
         } else if (id == :pointMove) {
-            if (!mapView.movePointToCurrentLocation(pointId)) {
-                WatchUi.showToast(mapView.application.text(:locationUnavailable), null);
-            }
+            if (!mapView.movePointToCurrentLocation(pointId)) { return; }
             refreshSummary();
         } else if (id == :pointDelete) {
-            mapView.deletePoint(pointId);
+            if (!mapView.deletePoint(pointId)) { return; }
             WatchUi.popView(WatchUi.SLIDE_DOWN);
         }
     }

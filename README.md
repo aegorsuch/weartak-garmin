@@ -126,6 +126,12 @@ features currently available:
 	`callSign`/`callsign`, `team` or `__group.name`, and `role` or `__group.role`.
 - Track a selected point with Bloodhound range, true bearing, proximity radius,
 	vibration, and cancel controls.
+- Open **Compass** from the main menu to browse incoming map points and open
+	the Bloodhound compass. The main-menu row counts new points; new or newly
+	revised points vibrate once. **RGR** queues a reply and starts Bloodhound;
+	**nPos** queues "In Position", stops tracking, and removes the point locally.
+	**Remove locally** does not delete a remote TAK marker. **Bloodhound** can
+	start without a reply when sender metadata is unavailable.
 - Send and clear categorized manual alerts through the Garmin relay when it is
 	active. The companion's Garmin Connect IQ integration uses the phone's ATAK
 	location to create the alert, so the watch does not need a GPS fix.
@@ -206,6 +212,65 @@ handling with the companion integration on physical devices.
 Marker create and update operations use the `marker` envelope when relay plumbing
 is available. Deletion uses a `marker_delete` envelope with the Garmin marker UID,
 for example `garmin-marker-point-1`; full ATAK handling remains future work.
+
+### Incoming-point workflow and reply handoff
+
+The watch accepts point metadata in an `entity` payload or each entry in
+`entities`. A Boolean `isPoint` is authoritative. Otherwise, a
+`takv.device` of `Map Marker`, or a non-user CoT atom with a human-entered
+`how` beginning `h-`, identifies a point. Without these fields the watch still
+displays the entity on the map but does not add a new-point notification.
+The title uses `callSign`/`callsign` as before. A sender is taken from
+`senderUID`, `senderUid`, or `link: {relation: "p-p", uid: ...}`; the watch
+does not infer the sender from the marker UID.
+
+`time` (or `tStart`) identifies a point revision. Repeated snapshots of the
+same revision do not notify again. A newer revision can notify again after
+RGR or local removal. Without a revision, repeated snapshots cannot be
+distinguished from a deliberate resend. The existing 50-entity/five-minute
+inactivity limits remain in place; expired or evicted targets also stop
+Bloodhound. A locally removed revision is suppressed for five minutes.
+
+Point replies use the existing `chat` envelope with `text`, `replyTo` and
+additional `recipientUid`, `pointUid`, `messageId`, and `createdAt` fields.
+For these replies, `replyTo` is the sender UID. Unsent replies are persisted,
+limited to 20, and expire after 24 hours with a visible warning. Failed phone handoffs remain
+queued for the next relay connection; their message IDs do not change.
+Queue rejection leaves the point/tracking state unchanged and shows an error.
+A successful Connect IQ transmit removes the queued reply and reports
+**Handed to phone; TAK unconfirmed**. It is not a TAK delivery acknowledgement.
+
+This change is watch-side only. The ATAK companion still needs to supply the
+point/sender/revision metadata, route these replies to `recipientUid`, and
+preserve `messageId` for receiver deduplication. Do not treat point replies as
+end-to-end operational until that companion work and physical-device checks
+are complete. The new UI strings use English fallbacks in non-English locales
+pending translation.
+
+### Offline store and forward
+
+The same durable queue now holds marker creates/edits/deletions, manual and
+automated alerts/cancellations, ordinary chat, and point replies. It survives
+app restarts and uses a 24-hour expiry; PLI is not backlogged. A newer marker
+operation replaces that marker's older queued operation. An alert cancellation
+replaces its queued activation, including if the older phone handoff completes
+late. Other chat messages remain separate and retain their IDs.
+
+Dropping a point reports **Marker details stored and will be sent when connected
+and/or location is updated**. Without a watch location, the queue retains its
+UID, title and type, then creates the local saved marker at the next location
+fix before attempting the phone handoff. Those eventual coordinates are not
+claimed to be the original drop location. Location-pending markers do not block
+alerts or chat. A local marker edit/delete is not committed when queue admission
+fails; storage and capacity errors are surfaced rather than reporting success.
+
+Garmin's queue is limited to 20 entries and a 512-unit text budget (Connect IQ
+`String.length`) across each newly submitted payload's string fields.
+Long titles, remarks or chat must be shortened; they are not silently truncated.
+The watch tries queued handoffs every five seconds while its relay is active.
+Failed handoffs remain queued; a failed relay must reconnect before replay.
+The current phone handoff still does not confirm TAK-server or recipient
+delivery. No direct Garmin Sit(x) data transport is introduced by this change.
 
 
 ## Platform limits
@@ -308,6 +373,17 @@ Use the simulator for UI and payload checks, then validate relay behavior on a
 physical watch with Garmin Connect and the ATAK plugin. Do not commit generated
 build output or the private `developer_key.der`; both are ignored by Git.
 
+Use size optimization and release mode (`-O 3z -r`) for distributable builds,
+particularly on the memory-constrained Fenix 6 family. To compile and run the
+focused point workflow tests with the Connect IQ simulator already running:
+
+```powershell
+& "$env:CONNECTIQ_SDK\bin\monkeyc.bat" -f monkey.jungle -d fenix7x -y developer_key.der -o bin\point-workflow-tests.prg -O 3z -l 1 -t
+if ($LASTEXITCODE -eq 0) {
+    & "$env:CONNECTIQ_SDK\bin\monkeydo.bat" bin\point-workflow-tests.prg fenix7x /t
+}
+```
+
 ## Git workflow
 
 The government repository (`origin`) is the canonical repository. New work starts
@@ -365,4 +441,3 @@ fenix8solar51mm) for Garmin's distribution workflow.
 5. Mirror the same release to `github`
 	(https://github.com/aegorsuch/weartak-garmin): push the tag there and
 	create a release attaching the same build artifacts.
-

@@ -26,6 +26,10 @@ function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => "WearTAK"});
     addMenuEntry(menu, "Chat", null, :chat);
     addMenuEntry(menu, "Clear 2525D", null, :managePoints);
+    var compassItem = new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.IncomingPointsTitle), null, :incomingPoints, null);
+    menu.addItem(compassItem);
+    app.incomingPointMenuItem = compassItem;
+    app.refreshIncomingPointCount();
     addMenuEntry(menu, "Drop 2525D", null, :dropPoint);
     addMenuEntry(menu, manualAlertMenuLabel(app), null, :sos);
     addMenuEntry(menu, app.text(:map), null, :map);
@@ -578,6 +582,8 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :chat) {
             var chatMenu = buildChatMenu(app);
             WatchUi.pushView(chatMenu, new ChatMenuDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :incomingPoints) {
+            WatchUi.pushView(buildIncomingPointsMenu(app), new IncomingPointsDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :sos) {
             var alertClient = app.getTakClient();
             if (alertClient.isAlerting()) {
@@ -617,10 +623,7 @@ class PointDropTypeMenuDelegate extends WatchUi.Menu2InputDelegate {
         var type = id == :dropHostile ? :hostile : id == :dropNeutral ? :neutral : id == :dropFriendly ? :friendly : :unknown;
         mapView.setTakClient(app.getTakClient());
         if (mapView.dropAtCurrentLocationAs(type)) {
-            WatchUi.showToast(app.text(:pointDropped), null);
             WatchUi.popView(WatchUi.SLIDE_DOWN);
-        } else {
-            WatchUi.showToast(app.text(:locationUnavailable), null);
         }
     }
 
@@ -1586,8 +1589,9 @@ class ClearPointsDelegate extends WatchUi.Menu2InputDelegate {
 
     function onSelect(item as WatchUi.MenuItem) as Void {
         if (item.getId() == :clear) {
-            app.getMapView().clearDroppedPoints();
-            WatchUi.showToast(app.text(:oldPointsCleared), null);
+            if (app.getMapView().clearDroppedPoints()) {
+                WatchUi.showToast(app.text(:oldPointsCleared), null);
+            }
         }
         WatchUi.popView(WatchUi.SLIDE_DOWN);
     }

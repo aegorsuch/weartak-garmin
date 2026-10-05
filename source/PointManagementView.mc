@@ -94,17 +94,17 @@ class PointDeletionConfirmationDelegate extends WatchUi.Menu2InputDelegate {
         var confirmed = id == :confirmClearLast || id == :confirmClearAll || id == :confirmDeleteDroppedMarker;
         if (confirmed) {
             if (deletion == :last) {
-                mapView.deleteLastPoint();
+                if (!mapView.deleteLastPoint()) { return; }
                 WatchUi.popView(WatchUi.SLIDE_DOWN);
                 WatchUi.popView(WatchUi.SLIDE_DOWN);
             } else if (deletion == :all) {
-                mapView.clearDroppedPoints();
+                if (!mapView.clearDroppedPoints()) { return; }
                 WatchUi.popView(WatchUi.SLIDE_DOWN);
                 WatchUi.popView(WatchUi.SLIDE_DOWN);
                 var list = buildDroppedMarkersMenu(mapView);
                 WatchUi.pushView(list, new DroppedMarkersMenuDelegate(mapView, list), WatchUi.SLIDE_LEFT);
             } else {
-                mapView.deletePoint(deletion as String);
+                if (!mapView.deletePoint(deletion as String)) { return; }
                 WatchUi.popView(WatchUi.SLIDE_DOWN);
                 WatchUi.popView(WatchUi.SLIDE_DOWN);
                 var list = buildDroppedMarkersMenu(mapView);

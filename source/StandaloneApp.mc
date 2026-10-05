@@ -10,6 +10,15 @@ import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
 
 class StandaloneApp extends Application.AppBase {
+    var incomingPointMenuItem as WatchUi.MenuItem? = null;
+
+    function refreshIncomingPointCount() as Void {
+        if (incomingPointMenuItem == null) { return; }
+        var count = getMapView().pendingIncomingPoints.size();
+        incomingPointMenuItem.setSubLabel(count > 0 ? count.toString() + " " + WatchUi.loadResource(Rez.Strings.IncomingPointNew) : null);
+        WatchUi.requestUpdate();
+    }
+
     const APP_VERSION = "5.8.0.3-d92c24d";
 
     private var view;
@@ -1299,8 +1308,8 @@ class StandaloneApp extends Application.AppBase {
         return sensorInfo;
     }
 
-    function onIncomingCot(uid, latitude, longitude, type, callSign, team, role) as Void {
-        getMapView().updateIncomingCot(uid, latitude, longitude, type, callSign, team, role);
+    function onIncomingCot(uid, latitude, longitude, type, callSign, team, role, metadata as Dictionary) as Void {
+        getMapView().updateIncomingCot(uid, latitude, longitude, type, callSign, team, role, metadata);
     }
 
     function onIncomingChat(message as Dictionary) as Void {

@@ -1,8 +1,10 @@
 import Toybox.Communications;
+import Toybox.Application;
 import Toybox.Lang;
 import Toybox.Position;
 import Toybox.System;
 import Toybox.Time;
+import Toybox.Timer;
 import Toybox.WatchUi;
 
 class PhoneRelayListener extends Communications.ConnectionListener {
@@ -23,6 +25,25 @@ class PhoneRelayListener extends Communications.ConnectionListener {
 }
 
 
+class PointReplyListener extends Communications.ConnectionListener {
+    var client;
+    var messageId as String;
+
+    function initialize(relayClient, id as String) {
+        ConnectionListener.initialize();
+        client = relayClient;
+        messageId = id;
+    }
+
+    function onComplete() as Void {
+        client.onPointReplyComplete(messageId);
+    }
+
+    function onError() as Void {
+        client.onPointReplyError(messageId);
+    }
+}
+
 // Relays watch input to ATAK; server connectivity, credentials, identity, and PLI stay on the phone.
 class TakClient {
     var status as Symbol = :idle;
@@ -37,12 +58,33 @@ class TakClient {
     var incomingCotCallback as Method? = null;
     var incomingChatCallback as Method? = null;
     var channelsCallback as Method? = null;
-    var pendingMarkerOperations = [];
     var verboseLoggingEnabled as Boolean = false;
     var lastRelayMessageType as String? = null;
     var lastRelayMessageTime as Time.Moment? = null;
+    var pointReplies as OfflineRelayQueue;
+    var pointReplyInFlight as String? = null;
+    var pointReplySequence as Number = 0;
+    var outboxTimer as Timer.Timer;
 
     function initialize() {
+        pointReplies = new OfflineRelayQueue();
+        var sequence = Application.Storage.getValue("pointReplySequence");
+        if (sequence instanceof Number) { pointReplySequence = sequence; }
+        pointReplies.restore(Application.Storage.getValue("pointReplies"), Time.now().value());
+        if (pointReplies.expiredOnRestore > 0) {
+            System.println("TAK offline events expired during restart");
+        }
+        savePointReplies();
+        var savedAlertUids = Application.Storage.getValue("automatedAlertUids");
+        if (savedAlertUids instanceof Dictionary) { automatedAlertUids = savedAlertUids; }
+        var savedAlert = Application.Storage.getValue("manualAlertState");
+        if (savedAlert instanceof Dictionary) {
+            alerting = savedAlert.get("active") == true;
+            var type = savedAlert.get("type");
+            if (type instanceof String) { alertType = type; }
+        }
+        outboxTimer = new Timer.Timer();
+        outboxTimer.start(method(:flushPointReplies), 5000, true);
         Communications.registerForPhoneAppMessages(method(:onPhoneMessage));
     }
 
@@ -54,11 +96,12 @@ class TakClient {
         if (alerting == value) {
             return;
         }
-        alerting = value;
-        if (!alerting) {
+        if (!value) {
+            if (!sendEmergency(:CANCEL)) { return; }
             alertType = "Manual Alert";
-            sendEmergency(:CANCEL);
         }
+        alerting = value;
+        saveOfflineValue("manualAlertState", {"active" => alerting, "type" => alertType});
         WatchUi.requestUpdate();
     }
 
@@ -71,9 +114,11 @@ class TakClient {
     }
 
     function activateManualAlert(type as String) as Boolean {
+        var previous = alertType;
         alertType = type;
+        if (!sendEmergency(:ALERT)) { alertType = previous; return false; }
         alerting = true;
-        sendEmergency(:ALERT);
+        saveOfflineValue("manualAlertState", {"active" => alerting, "type" => alertType});
         WatchUi.requestUpdate();
         return true;
     }
@@ -92,7 +137,6 @@ class TakClient {
     }
 
     function disconnect() as Void {
-        automatedAlertUids = {};
         automatedAlertSentAt = {};
         status = :idle;
         notifyStatusChanged();
@@ -105,7 +149,7 @@ class TakClient {
         }
         status = :connected;
         transmit("entity_sync_request", {"limit" => 50, "protocolVersion" => 1});
-        flushMarkerOperations();
+        flushPointReplies();
         notifyStatusChanged();
     }
 
@@ -113,61 +157,30 @@ class TakClient {
         if (status == :idle) {
             return;
         }
-        automatedAlertUids = {};
         automatedAlertSentAt = {};
         status = :failed;
         notifyStatusChanged();
         WatchUi.requestUpdate();
     }
 
-    function sendMarker(id as String, location as Position.Location, type as Symbol, label as String, remark as String) as Void {
-        if (!isConnected()) {
-            queueMarkerOperation({"op" => "upsert", "id" => id, "location" => location, "type" => type, "label" => label, "remark" => remark});
-            return;
-        }
-        transmitMarker(id, location, type, label, remark);
-    }
-
-    function deleteMarker(id as String) as Void {
-        if (!isConnected()) {
-            queueMarkerOperation({"op" => "delete", "id" => id});
-            return;
-        }
-        transmit("marker_delete", {"uid" => "garmin-marker-" + id});
-    }
-
-    function queueMarkerOperation(operation as Dictionary) as Void {
-        var id = operation.get("id").toString();
-        for (var index = pendingMarkerOperations.size() - 1; index >= 0; index--) {
-            if (pendingMarkerOperations[index].get("id").toString() == id) {
-                pendingMarkerOperations.remove(index);
-            }
-        }
-        pendingMarkerOperations.add(operation);
-    }
-
-    function transmitMarker(id as String, location as Position.Location, type as Symbol, label as String, remark as String) as Void {
-        var degrees = location.toDegrees();
+    function sendMarker(id as String, location as Position.Location?, type as Symbol, label as String, remark as String) as Boolean {
         var markerType = type == :hostile ? "a-h-G-T" : type == :friendly ? "a-f-G-T" : type == :neutral ? "a-n-G-T" : "a-u-G-T";
-        transmit("marker", {
+        var payload = {
             "uid" => "garmin-marker-" + id,
-            "lat" => degrees[0], "lon" => degrees[1], "type" => markerType,
+            "localId" => id, "type" => markerType,
             "title" => label, "remark" => remark, "tStart" => cotTimestamp(Time.now()),
-            "tStale" => cotTimestamp(Time.now().add(new Time.Duration(3600)))
-        });
+            "tStale" => cotTimestamp(Time.now().add(new Time.Duration(86400)))
+        };
+        if (location != null) {
+            var degrees = location.toDegrees();
+            payload.put("lat", degrees[0]);
+            payload.put("lon", degrees[1]);
+        }
+        return queueRelay("marker", payload, "marker-" + id);
     }
 
-    function flushMarkerOperations() as Void {
-        var operations = pendingMarkerOperations;
-        pendingMarkerOperations = [];
-        for (var i = 0; i < operations.size(); i++) {
-            var operation = operations[i] as Dictionary;
-            if (operation.get("op") == "delete") {
-                deleteMarker(operation.get("id").toString());
-            } else {
-                transmitMarker(operation.get("id").toString(), operation.get("location") as Position.Location, operation.get("type") as Symbol, operation.get("label").toString(), operation.get("remark").toString());
-            }
-        }
+    function deleteMarker(id as String) as Boolean {
+        return queueRelay("marker_delete", {"uid" => "garmin-marker-" + id}, "marker-" + id);
     }
 
     function sendSosEvent() as Void {
@@ -175,38 +188,32 @@ class TakClient {
     }
 
     function sendEmergency(state as Symbol) as Boolean {
-        if (!isConnected()) {
-            return false;
-        }
-        transmit("emergency", {
+        return queueRelay("emergency", {
             "uid" => "garmin-sos", "state" => state == :ALERT ? "ALERT" : "CANCEL",
             "alertType" => alertType,
             "tStart" => cotTimestamp(Time.now()),
-            "tStale" => cotTimestamp(Time.now().add(new Time.Duration(3600)))
-        });
-        return true;
+            "tStale" => cotTimestamp(Time.now().add(new Time.Duration(86400)))
+        }, "manual-alert");
     }
 
     function sendAutomatedAlert(category as String, description as String) as Boolean {
-        if (!isConnected()) {
-            return false;
-        }
         var now = Time.now();
         var uid = automatedAlertUids.get(category);
         if (uid == null) {
             automatedAlertSequence += 1;
             uid = "garmin-auto-" + now.value().toString() + "-" + automatedAlertSequence.toString();
             automatedAlertUids.put(category, uid);
-        } else if (now.value() - automatedAlertSentAt.get(category) < 240) {
+        } else if (automatedAlertSentAt.hasKey(category) && now.value() - automatedAlertSentAt.get(category) < 240) {
             return true;
         }
-        automatedAlertSentAt.put(category, now.value());
-        transmit("emergency", {
+        if (!saveOfflineValue("automatedAlertUids", automatedAlertUids)) { return false; }
+        var queued = queueRelay("emergency", {
             "uid" => uid, "state" => "ALERT", "catg" => category, "desc" => description,
             "tStart" => cotTimestamp(now),
-            "tStale" => cotTimestamp(now.add(new Time.Duration(300)))
-        });
-        return true;
+            "tStale" => cotTimestamp(now.add(new Time.Duration(86400)))
+        }, "auto-" + category);
+        if (queued) { automatedAlertSentAt.put(category, now.value()); }
+        return queued;
     }
 
     function clearAutomatedAlert(category as String) as Void {
@@ -214,22 +221,137 @@ class TakClient {
         if (uid == null) {
             return;
         }
-        if (isConnected()) {
-            transmit("emergency", {
+        if (!queueRelay("emergency", {
                 "uid" => uid, "state" => "CANCEL",
                 "tStart" => cotTimestamp(Time.now()),
-                "tStale" => cotTimestamp(Time.now().add(new Time.Duration(300)))
-            });
-        }
+                "tStale" => cotTimestamp(Time.now().add(new Time.Duration(86400)))
+            }, "auto-" + category)) { return; }
         automatedAlertUids.remove(category);
         automatedAlertSentAt.remove(category);
+        saveOfflineValue("automatedAlertUids", automatedAlertUids);
     }
 
     function sendChatReply(replyTo as String, text as String) as Void {
-        if (!isConnected()) {
-            return;
+        queueRelay("chat", {"replyTo" => replyTo, "text" => text}, null);
+    }
+
+    function queuePointReply(recipientUid as String, pointUid as String, text as String) as Boolean {
+        if (recipientUid.length() == 0) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyNoSender), null);
+            return false;
         }
-        transmit("chat", {"replyTo" => replyTo, "text" => text});
+        return queueRelay("chat", {
+            "recipientUid" => recipientUid,
+            "replyTo" => recipientUid, "pointUid" => pointUid,
+            "text" => text
+        }, null);
+    }
+
+    function queueRelay(msgType as String, payload as Dictionary, key as String?) as Boolean {
+        if (pointReplies.restoreFailed) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.OfflineStorageFailed), null);
+            return false;
+        }
+        expirePointReplies();
+        var textSize = 0;
+        var values = payload.values();
+        for (var i = 0; i < values.size(); i++) {
+            var value = values[i];
+            if (value instanceof String) { textSize += value.length(); }
+        }
+        if (textSize > 512) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.OfflineDetailsTooLong), null);
+            return false;
+        }
+        pointReplySequence += 1;
+        var now = Time.now().value();
+        var id = "garmin-event-" + now.toString() + "-" + pointReplySequence.toString();
+        payload.put("messageId", id);
+        payload.put("createdAt", now);
+        var previous = pointReplies.replies.slice(0, pointReplies.replies.size());
+        if (!pointReplies.add({"messageId" => id, "createdAt" => now,
+                "msgType" => msgType, "payload" => payload, "key" => key}, now)) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyQueueFull), null);
+            return false;
+        }
+        if (!savePointReplies()) { pointReplies.replies = previous; return false; }
+        WatchUi.showToast(WatchUi.loadResource(msgType.equals("marker") ? Rez.Strings.MarkerStored : Rez.Strings.PointReplyQueued), null);
+        flushPointReplies();
+        return true;
+    }
+
+    function savePointReplies() as Boolean {
+        if (pointReplies.restoreFailed) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.OfflineStorageFailed), null);
+            System.println("TAK offline queue unreadable; stored events not overwritten");
+            return false;
+        }
+        if (!saveOfflineValue("pointReplySequence", pointReplySequence)) { return false; }
+        return saveOfflineValue("pointReplies", pointReplies.replies);
+    }
+
+    function saveOfflineValue(key as String, value) as Boolean {
+        try {
+            Application.Storage.setValue(key, value);
+            return true;
+        } catch (error instanceof Lang.StorageFullException) {
+            System.println("TAK offline storage full: " + error.getErrorMessage());
+        } catch (error instanceof Application.ObjectStoreAccessException) {
+            System.println("TAK offline storage unavailable: " + error.getErrorMessage());
+        }
+        WatchUi.showToast(WatchUi.loadResource(Rez.Strings.OfflineStorageFailed), null);
+        return false;
+    }
+
+    function expirePointReplies() as Void {
+        if (pointReplies.expiredOnRestore > 0) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyExpired), null);
+            pointReplies.expiredOnRestore = 0;
+        }
+        if (pointReplies.expire(Time.now().value()) > 0) {
+            savePointReplies();
+            System.println("TAK relay: unsent point replies expired");
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyExpired), null);
+        }
+    }
+
+    function flushPointReplies() as Void {
+        if (pointReplies.restoreFailed) { return; }
+        expirePointReplies();
+        if (!isConnected() || pointReplyInFlight != null || pointReplies.replies.size() == 0) { return; }
+        var reply = null;
+        for (var i = 0; i < pointReplies.replies.size(); i++) {
+            var candidate = pointReplies.replies[i];
+            var payload = candidate.get("payload") as Dictionary;
+            if (candidate.get("msgType").equals("marker") && payload.get("lat") == null) { continue; }
+            reply = candidate;
+            break;
+        }
+        if (reply == null) { return; }
+        pointReplyInFlight = reply.get("messageId") as String;
+        lastRelayMessageType = "-> " + reply.get("msgType").toString();
+        lastRelayMessageTime = Time.now();
+        Communications.transmit({"msgType" => reply.get("msgType"), "payload" => reply.get("payload")}, null,
+            new PointReplyListener(self, pointReplyInFlight));
+    }
+
+    function onPointReplyComplete(id as String) as Void {
+        if (pointReplyInFlight == null || !pointReplyInFlight.equals(id)) { return; }
+        pointReplyInFlight = null;
+        // This acknowledges only the phone handoff, not TAK delivery.
+        var previous = pointReplies.replies.slice(0, pointReplies.replies.size());
+        pointReplies.remove(id);
+        if (!savePointReplies()) { pointReplies.replies = previous; return; }
+        WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyHandedOff), null);
+        flushPointReplies();
+    }
+
+    function onPointReplyError(id as String) as Void {
+        if (pointReplyInFlight == null || !pointReplyInFlight.equals(id)) { return; }
+        pointReplyInFlight = null;
+        System.println("TAK relay: point reply phone handoff failed; retained for reconnect");
+        WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyFailed), null);
+        onRelayTransmitError();
     }
 
     function setChannelsCallback(callback as Method?) as Void {
@@ -325,8 +447,10 @@ class TakClient {
                 uid.toString(), (latitude as Number).toFloat(), (longitude as Number).toFloat(), cotType.toString(),
                 callSign == null ? null : callSign.toString(),
                 team == null ? null : team.toString(),
-                role == null ? null : role.toString()
+                role == null ? null : role.toString(),
+                entity
             );
+            flushPointReplies();
         }
     }
 

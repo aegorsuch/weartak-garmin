@@ -8,6 +8,7 @@
             "args": [
                 "-O",
                 "3z",
+                "-r",
                 "-o",
                 "${workspaceFolder}\\WearTAK-Garmin.iq",
                 "-f",

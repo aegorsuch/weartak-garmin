@@ -119,4 +119,21 @@
     <string id="TextWeight">Weight</string>
     <string id="TrackingModeDynamic">Dynamic</string>
     <string id="TrackingModeStatic">Static</string>
+    <string id="IncomingPointNew">New</string>
+    <string id="IncomingPointNpos">Reply, stop and remove locally</string>
+    <string id="IncomingPointReceived">Incoming map point</string>
+    <string id="IncomingPointRemove">Remove locally</string>
+    <string id="IncomingPointRgr">Reply and start Bloodhound</string>
+    <string id="IncomingPointsEmpty">No incoming points</string>
+    <string id="IncomingPointsTitle">Compass</string>
+    <string id="IncomingPointUnavailable">Point no longer available</string>
+    <string id="PointReplyExpired">Unsent events expired after 24 hours</string>
+    <string id="PointReplyFailed">Handoff failed; event kept for retry</string>
+    <string id="PointReplyHandedOff">Handed to phone; TAK unconfirmed</string>
+    <string id="PointReplyNoSender">No sender supplied by companion</string>
+    <string id="PointReplyQueued">Event stored; will be sent when connected</string>
+    <string id="PointReplyQueueFull">Offline queue full; reconnect relay</string>
+    <string id="MarkerStored">Marker details stored and will be sent when connected and/or location is updated</string>
+    <string id="OfflineDetailsTooLong">Event details too long to store; shorten title, remark or chat</string>
+    <string id="OfflineStorageFailed">Unable to save offline events; storage full or unavailable</string>
 </resources>
