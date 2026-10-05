@@ -58,6 +58,7 @@ class TakClient {
     var incomingCotCallback as Method? = null;
     var incomingChatCallback as Method? = null;
     var channelsCallback as Method? = null;
+    var dataSync as DataSyncClient;
     var verboseLoggingEnabled as Boolean = false;
     var lastRelayMessageType as String? = null;
     var lastRelayMessageTime as Time.Moment? = null;
@@ -67,6 +68,7 @@ class TakClient {
     var outboxTimer as Timer.Timer;
 
     function initialize() {
+        dataSync = new DataSyncClient(self);
         pointReplies = new OfflineRelayQueue();
         var sequence = Application.Storage.getValue("pointReplySequence");
         if (sequence instanceof Number) { pointReplySequence = sequence; }
@@ -137,6 +139,7 @@ class TakClient {
     }
 
     function disconnect() as Void {
+        if (dataSync.requestId != null) { dataSync.fail(Rez.Strings.DataSyncRelayOff); }
         automatedAlertSentAt = {};
         status = :idle;
         notifyStatusChanged();
@@ -316,6 +319,9 @@ class TakClient {
     }
 
     function flushPointReplies() as Void {
+        if (dataSync.requestId != null && System.getTimer() - dataSync.requestedAt >= 65000) {
+            dataSync.fail(Rez.Strings.DataSyncTimeout);
+        }
         if (pointReplies.restoreFailed) { return; }
         expirePointReplies();
         if (!isConnected() || pointReplyInFlight != null || pointReplies.replies.size() == 0) { return; }
@@ -390,13 +396,18 @@ class TakClient {
         var envelope = message.data as Dictionary;
         var msgType = envelope.get("msgType");
         var payload = envelope.get("payload");
-        if (!(payload instanceof Dictionary)) {
+        if (!(msgType instanceof String) || !(payload instanceof Dictionary)) {
             return;
         }
         lastRelayMessageType = "<- " + msgType.toString();
         lastRelayMessageTime = Time.now();
         if (verboseLoggingEnabled) {
             System.println("TAK relay in: " + msgType.toString());
+        }
+        if (msgType.equals("missions_servers_response") || msgType.equals("missions_response")
+                || msgType.equals("missions_error")) {
+            dataSync.receive(msgType, payload);
+            return;
         }
         if (msgType == "chat" && incomingChatCallback != null) {
             incomingChatCallback.invoke(payload as Dictionary);

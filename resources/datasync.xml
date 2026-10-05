@@ -1,0 +1,16 @@
+<resources>
+    <string id="PluginsTitle">Plugins</string>
+    <string id="DataSyncTitle">DataSync</string>
+    <string id="DataSyncFeeds">Feeds</string>
+    <string id="DataSyncRelayOff">Connect TAK relay first</string>
+    <string id="DataSyncLoading">Loading DataSync...</string>
+    <string id="DataSyncEmpty">No servers or feeds</string>
+    <string id="DataSyncRefresh">Refresh</string>
+    <string id="DataSyncSubscribed">Subscribed</string>
+    <string id="DataSyncNotSubscribed">Not subscribed</string>
+    <string id="DataSyncPassword">Password protected</string>
+    <string id="DataSyncUnsupported">Update companion for DataSync</string>
+    <string id="DataSyncTimeout">No reply; check relay / DataSync support</string>
+    <string id="DataSyncHandoffFailed">Handoff failed; reconnect</string>
+    <string id="DataSyncInvalid">Invalid reply; refresh</string>
+</resources>

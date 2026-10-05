@@ -272,6 +272,55 @@ Failed handoffs remain queued; a failed relay must reconnect before replay.
 The current phone handoff still does not confirm TAK-server or recipient
 delivery. No direct Garmin Sit(x) data transport is introduced by this change.
 
+### DataSync watch-side preparation
+
+Open **Settings > Tool Preferences > Plugins > DataSync**, choose a TAK server,
+then select a feed to subscribe or unsubscribe, matching the iOS preferences
+workflow. Feeds are TAK Data Sync missions. Subscription labels change only
+after the companion returns a matching, authoritative response, never after a
+successful phone handoff. Refresh retries discovery or reloads the selected
+server. Password-protected feeds cannot be newly subscribed from the watch.
+
+This is watch-side preparation, **not operational DataSync**: the ATAK companion
+is unchanged and must implement the contract below. Unsupported versions,
+malformed responses, relay failures and a 65-second response timeout (checked
+by the existing five-second relay timer) display
+explicit errors. Requests are not placed in the offline outbox. Mission map
+items, persistent subscription caching, automatic mission refresh and mission
+item editing/deletion are not implemented in this phase. Ordinary received
+entities still use the existing map limits and are not persistent mission items.
+
+Messages use the existing `{msgType, payload}` envelope:
+
+| Watch request | Payload |
+| --- | --- |
+| `missions_servers_request` | `requestId`, `dataSyncVersion: 1`, `serverID: null`, `limit: 4` |
+| `missions_request` | `requestId`, `dataSyncVersion: 1`, stable `serverID`, `limit: 20` |
+| `mission_update` | The same fields plus `missionName` and Boolean `missionSubscribe` |
+
+The companion must echo the exact `requestId` and `dataSyncVersion: 1`.
+Discovery replies use `missions_servers_response` with `servers`; feed and
+subscription replies use `missions_response` with the exact `serverID` and
+`missions`. An error uses `missions_error` with `requestId` and a nonempty
+`error` string. Server IDs must remain stable across discovery/reconnections,
+not positional channel server indexes.
+
+Server rows contain only `id`, `name`, optional `state`, optional `error`.
+Feed rows contain only `name`, Boolean `subscribed`, Boolean
+`passwordProtected`, optional nonnegative integer `itemCount`, optional
+`error`. Names/IDs/state are bounded to 128 string units and errors to 256;
+IDs/feed names must be unique within a response. No credentials, certificates
+or map items belong in these snapshots. The watch rejects oversized lists and
+unknown row fields to bound retained data on low-memory devices. The companion
+must report an explicit error when a complete list exceeds four servers or
+20 feeds; it must not silently omit entries or claim a complete snapshot.
+Subscription responses must include the requested feed with the confirmed
+state; otherwise the watch retains the old state and reports an error.
+
+The new DataSync resource file provides English fallbacks in all locales
+pending translation. Simulator checks are included in the existing test build
+alongside point workflow/outbox checks.
+
 
 ## Platform limits
 

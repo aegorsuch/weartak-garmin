@@ -529,6 +529,7 @@ function profileSettingLabel(setting as Symbol, value) as String {
 function buildToolPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => app.text(:toolPreferences)});
     addMenuEntry(menu, app.text(:bloodhoundCompass), null, :bloodhoundCompass);
+    addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.PluginsTitle), null, :plugins);
     return menu;
 }
 
@@ -1517,6 +1518,12 @@ class ToolPreferencesDelegate extends WatchUi.Menu2InputDelegate {
         var id = item.getId();
         if (id == :bloodhoundCompass) {
             WatchUi.pushView(buildBloodhoundMenu(app), new BloodhoundDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :plugins) {
+            var plugins = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.PluginsTitle)});
+            addMenuEntry(plugins, WatchUi.loadResource(Rez.Strings.DataSyncTitle), null, :dataSync);
+            WatchUi.pushView(plugins, new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :dataSync) {
+            openDataSync(app);
         } else if (id == :clearPoints) {
             var confirmation = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.ConfirmClearPointsTitle)});
             confirmation.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelClearPoints), null, :clear, null));
