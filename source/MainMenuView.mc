@@ -24,13 +24,12 @@ function addToggleEntry(menu as WatchUi.Menu2, label as String, enabled as Boole
 
 function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => "WearTAK"});
-    if (app.isChatEnabled()) { addMenuEntry(menu, "Chat", null, :chat); }
+    addMenuEntry(menu, "Chat", null, :chat);
     addMenuEntry(menu, "Clear 2525D", null, :managePoints);
     addMenuEntry(menu, "Drop 2525D", null, :dropPoint);
     addMenuEntry(menu, manualAlertMenuLabel(app), null, :sos);
     addMenuEntry(menu, app.text(:map), null, :map);
-    var callsign = app.getCallsign();
-    addMenuEntry(menu, "Settings", callsign.length() == 0 ? null : callsign, :settings);
+    addMenuEntry(menu, "Settings", null, :settings);
     return menu;
 }
 
@@ -81,7 +80,7 @@ function buildDeveloperOptionsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function buildDevicePreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => "Callsign and Device Preferences"});
-    addMenuEntry(menu, "My Callsign", app.getCallsign().length() == 0 ? null : app.getCallsign(), :callsign);
+    addMenuEntry(menu, "My Callsign", null, :callsign);
     addMenuEntry(menu, "My Team", app.getMyTeamColor(), :myTeam);
     addMenuEntry(menu, "My Role", app.getMyRoleLabel(), :myRole);
     addMenuEntry(menu, app.text(:userMetrics), null, :userMetrics);
@@ -525,7 +524,6 @@ function profileSettingLabel(setting as Symbol, value) as String {
 
 function buildToolPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => app.text(:toolPreferences)});
-    addToggleEntry(menu, app.text(:chat), app.isChatEnabled(), :chatToggle);
     addMenuEntry(menu, app.text(:bloodhoundCompass), null, :bloodhoundCompass);
     return menu;
 }
@@ -1514,11 +1512,7 @@ class ToolPreferencesDelegate extends WatchUi.Menu2InputDelegate {
 
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
-        if (id == :chatToggle) {
-            app.setChatEnabled(!app.isChatEnabled());
-            item.setSubLabel(toolToggleLabel(app.isChatEnabled()));
-            WatchUi.requestUpdate();
-        } else if (id == :bloodhoundCompass) {
+        if (id == :bloodhoundCompass) {
             WatchUi.pushView(buildBloodhoundMenu(app), new BloodhoundDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :clearPoints) {
             var confirmation = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.ConfirmClearPointsTitle)});

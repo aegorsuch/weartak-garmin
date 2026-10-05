@@ -35,7 +35,6 @@ class StandaloneApp extends Application.AppBase {
     private var highPressureAlertsEnabled as Boolean = false;
     private var lowPressureThreshold as Number = 950;
     private var highPressureThreshold as Number = 2000;
-    private var chatEnabled as Boolean = true;
     private var bloodhoundCompassEnabled as Boolean = true;
     private var bloodhoundProximityVibrationEnabled as Boolean = true;
     private var bloodhoundProximityRadius as Number = 50;
@@ -545,7 +544,6 @@ class StandaloneApp extends Application.AppBase {
         highPressureAlertsEnabled = storedBoolean("highPressureAlertsEnabled", highPressureAlertsEnabled);
         lowPressureThreshold = storedNumber("lowPressureThreshold", lowPressureThreshold);
         highPressureThreshold = storedNumber("highPressureThreshold", highPressureThreshold);
-        chatEnabled = storedBoolean("chatEnabled", chatEnabled);
         bloodhoundCompassEnabled = storedBoolean("bloodhoundCompassEnabled", bloodhoundCompassEnabled);
         bloodhoundProximityVibrationEnabled = storedBoolean("bloodhoundProximityVibrationEnabled", bloodhoundProximityVibrationEnabled);
         bloodhoundProximityRadius = storedNumber("bloodhoundProximityRadius", bloodhoundProximityRadius);
@@ -726,15 +724,6 @@ class StandaloneApp extends Application.AppBase {
     function setHighPressureAlertsEnabled(enabled as Boolean) as Void {
         highPressureAlertsEnabled = enabled;
         Application.Storage.setValue("highPressureAlertsEnabled", enabled);
-    }
-
-    function isChatEnabled() as Boolean {
-        return chatEnabled;
-    }
-
-    function setChatEnabled(enabled as Boolean) as Void {
-        chatEnabled = enabled;
-        Application.Storage.setValue("chatEnabled", enabled);
     }
 
     function isBloodhoundCompassEnabled() as Boolean {
