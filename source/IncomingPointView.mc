@@ -24,7 +24,6 @@ class IncomingPointsMenu extends WatchUi.Menu2 {
         map.pruneIncomingEntities();
         map.markIncomingPointsSeen();
         addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.IncomingPointsRemoveAll), null, :removeAll, null));
-        addItem(new WatchUi.MenuItem(app.text(:bloodhoundCompass), null, :openCompass, null));
         var pointCount = 0;
         for (var i = map.incomingIds.size() - 1; i >= 0; i--) {
             var id = map.incomingIds[i] as String;
@@ -69,8 +68,6 @@ class IncomingPointsDelegate extends WatchUi.Menu2InputDelegate {
         if (id == :removeAll) {
             app.getMapView().removeAllIncomingPoints();
             WatchUi.switchToView(buildIncomingPointsMenu(app), new IncomingPointsDelegate(app), WatchUi.SLIDE_RIGHT);
-        } else if (id == :openCompass) {
-            WatchUi.pushView(new BloodhoundCompassView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
         } else if (id instanceof String) {
             app.getMapView().pruneIncomingEntities();
             if (!app.getMapView().incomingDetails.hasKey(id)) {

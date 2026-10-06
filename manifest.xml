@@ -60,6 +60,7 @@
             <iq:language>vie</iq:language>
             <iq:language>zhs</iq:language>
             <iq:language>zht</iq:language>
+            <iq:language>zsm</iq:language>
         </iq:languages>
         <iq:barrels/>
     </iq:application>

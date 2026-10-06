@@ -126,8 +126,9 @@ features currently available:
 	`callSign`/`callsign`, `team` or `__group.name`, and `role` or `__group.role`.
 - Track a selected point with Bloodhound range, true bearing, proximity radius,
 	vibration, and cancel controls.
-- Open **Bloodhound** from the main menu to browse incoming map points and open
-	the Bloodhound compass. The main-menu row counts new points; new or newly
+- Open **Bloodhound** from the main menu to browse incoming map points.
+	The list starts with **Remove All**, followed by received points.
+	The main-menu row counts new points; new or newly
 	revised points vibrate once. **RGR** queues a reply and starts Bloodhound;
 	**nPos** queues "In Position", stops tracking, and removes the point locally.
 	**Remove locally** does not delete a remote TAK marker. **Bloodhound** can
@@ -193,7 +194,7 @@ this build:
 	or start Bloodhound. Long-press the map to place the current default marker.
 	**Bloodhound** on the main menu lists received 2525D map items and shows a
 	new-item count. Select an item to navigate, send RGR/nPos, or remove it locally.
-	**Remove All Map Items** at the top clears all received points locally and stops
+	**Remove All** at the top clears all received points locally and stops
 	tracking a removed target; it leaves live users and your dropped markers intact.
 6. Select **Manual Alert** from the main menu and choose an alert type. It is
 	sent through an active Garmin relay; without one, its active state remains

@@ -25,7 +25,7 @@
     <string id="ChatUnknownSender">Tidak diketahui</string>
     <string id="IncomingPointsTitle">Kompas</string>
     <string id="IncomingPointsEmpty">Tiada titik peta diterima</string>
-    <string id="IncomingPointsRemoveAll">Buang Semua Item Peta</string>
+    <string id="IncomingPointsRemoveAll">Buang Semua</string>
     <string id="IncomingPointNew">Baharu</string>
     <string id="IncomingPointReceived">Titik peta diterima</string>
     <string id="IncomingPointUnavailable">Titik tidak lagi tersedia</string>

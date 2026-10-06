@@ -27,7 +27,7 @@
     <string id="ChatUnknownSender">Unknown</string>
     <string id="IncomingPointsTitle">Compass</string>
     <string id="IncomingPointsEmpty">No incoming points</string>
-    <string id="IncomingPointsRemoveAll">Remove All Map Items</string>
+    <string id="IncomingPointsRemoveAll">Remove All</string>
     <string id="IncomingPointNew">New</string>
     <string id="IncomingPointReceived">Incoming map point</string>
     <string id="IncomingPointUnavailable">Point no longer available</string>

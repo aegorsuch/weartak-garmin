@@ -338,14 +338,16 @@ function bloodhoundIncomingPointsMenu(logger) as Boolean {
     Test.assertEqual(map.incomingPointDetailLabel("cot-menu-point"), app.text(:neutralPoint) + " · 0 m");
     var menu = buildIncomingPointsMenu(app);
     Test.assertEqual(menu.getItem(0).getId(), :removeAll);
-    Test.assertEqual(menu.getItem(1).getId(), :openCompass);
-    Test.assertEqual(menu.getItem(2).getId(), "cot-menu-point");
-    Test.assertEqual(menu.getItem(2).getLabel(), "Checkpoint");
+    Test.assertEqual(menu.getItem(0).getLabel(), Toybox.WatchUi.loadResource(Rez.Strings.IncomingPointsRemoveAll));
+    Test.assertEqual(menu.getItem(1).getId(), "cot-menu-point");
+    Test.assertEqual(menu.getItem(1).getLabel(), "Checkpoint");
+    Test.assert(menu.getItem(2) == null);
     Test.assertEqual(map.pendingIncomingPoints.size(), 0);
     map.removeIncomingPoint("cot-menu-point", false);
     menu.onShow();
     Test.assertEqual(menu.getItem(0).getId(), :removeAll);
-    Test.assertEqual(menu.getItem(2).getId(), :empty);
+    Test.assertEqual(menu.getItem(1).getId(), :empty);
+    Test.assert(menu.getItem(2) == null);
     return true;
 }
 

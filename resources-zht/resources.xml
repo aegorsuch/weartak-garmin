@@ -25,7 +25,7 @@
     <string id="ChatUnknownSender">未知</string>
     <string id="IncomingPointsTitle">指南針</string>
     <string id="IncomingPointsEmpty">沒有收到地圖點</string>
-    <string id="IncomingPointsRemoveAll">移除所有地圖項目</string>
+    <string id="IncomingPointsRemoveAll">全部移除</string>
     <string id="IncomingPointNew">新</string>
     <string id="IncomingPointReceived">收到地圖點</string>
     <string id="IncomingPointUnavailable">地圖點已無法使用</string>
