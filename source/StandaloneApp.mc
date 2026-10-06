@@ -1,7 +1,6 @@
 import Toybox.Application;
 import Toybox.ActivityMonitor;
 import Toybox.Attention;
-import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.Position;
 import Toybox.Sensor;
@@ -166,23 +165,6 @@ class StandaloneApp extends Application.AppBase {
         }
         myTeamColor = value;
         Application.Storage.setValue("myTeamColor", myTeamColor);
-    }
-
-    function getMyTeamColorValue() as Number {
-        if (myTeamColor.equals("White")) { return Graphics.createColor(255, 255, 255, 255); }
-        else if (myTeamColor.equals("Yellow")) { return Graphics.createColor(255, 255, 255, 0); }
-        else if (myTeamColor.equals("Orange")) { return Graphics.createColor(255, 255, 165, 0); }
-        else if (myTeamColor.equals("Magenta")) { return Graphics.createColor(255, 255, 0, 255); }
-        else if (myTeamColor.equals("Red")) { return Graphics.createColor(255, 255, 0, 0); }
-        else if (myTeamColor.equals("Maroon")) { return Graphics.createColor(255, 128, 0, 0); }
-        else if (myTeamColor.equals("Purple")) { return Graphics.createColor(255, 128, 0, 128); }
-        else if (myTeamColor.equals("Dark Blue")) { return Graphics.createColor(255, 0, 0, 139); }
-        else if (myTeamColor.equals("Cyan")) { return Graphics.createColor(255, 0, 255, 255); }
-        else if (myTeamColor.equals("Teal")) { return Graphics.createColor(255, 0, 128, 128); }
-        else if (myTeamColor.equals("Green")) { return Graphics.createColor(255, 0, 128, 0); }
-        else if (myTeamColor.equals("Dark Green")) { return Graphics.createColor(255, 0, 100, 0); }
-        else if (myTeamColor.equals("Brown")) { return Graphics.createColor(255, 165, 42, 42); }
-        return Graphics.createColor(255, 0, 0, 255);
     }
 
     function isSupportedTeamColor(value as String) as Boolean {

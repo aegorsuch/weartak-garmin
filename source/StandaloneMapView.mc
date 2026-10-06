@@ -602,29 +602,11 @@ class StandaloneMapView extends WatchUi.MapView {
             var markerY = screen[1].toNumber();
             if (markerX < 0 || markerX >= screenWidth || markerY < 0 || markerY >= screenHeight) { continue; }
             var team = (details as Dictionary).get("team").toString();
-            var color = mapColorForTeam(team);
+            var color = teamColorValue(trimMapText(team));
             dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
             dc.fillCircle(markerX, markerY, 7);
             drawTeamDot(dc, markerX, markerY, color);
         }
-    }
-
-    function mapColorForTeam(team as String) as Number {
-        var color = trimMapText(team).toLower();
-        if (color.equals("white")) { return Graphics.createColor(255, 255, 255, 255); }
-        else if (color.equals("yellow")) { return Graphics.createColor(255, 255, 255, 0); }
-        else if (color.equals("orange")) { return Graphics.createColor(255, 255, 165, 0); }
-        else if (color.equals("magenta")) { return Graphics.createColor(255, 255, 0, 255); }
-        else if (color.equals("red")) { return Graphics.createColor(255, 255, 0, 0); }
-        else if (color.equals("maroon")) { return Graphics.createColor(255, 128, 0, 0); }
-        else if (color.equals("purple")) { return Graphics.createColor(255, 128, 0, 128); }
-        else if (color.equals("dark blue")) { return Graphics.createColor(255, 0, 0, 139); }
-        else if (color.equals("cyan")) { return Graphics.createColor(255, 0, 255, 255); }
-        else if (color.equals("teal")) { return Graphics.createColor(255, 0, 128, 128); }
-        else if (color.equals("green")) { return Graphics.createColor(255, 0, 128, 0); }
-        else if (color.equals("dark green")) { return Graphics.createColor(255, 0, 100, 0); }
-        else if (color.equals("brown")) { return Graphics.createColor(255, 165, 42, 42); }
-        return Graphics.createColor(255, 0, 0, 255);
     }
 
     function drawTeamOverlay(dc) as Void {
@@ -638,7 +620,7 @@ class StandaloneMapView extends WatchUi.MapView {
             return;
         }
 
-        var teamColor = application.getMyTeamColorValue();
+        var teamColor = teamColorValue(application.getMyTeamColor());
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
         dc.drawCircle(markerX, markerY, 8);
         drawTeamDot(dc, markerX, markerY, teamColor);
@@ -827,16 +809,27 @@ class StandaloneMapView extends WatchUi.MapView {
         var lonOrigin = (zone - 1) * 6 - 180 + 3;
         var lonOriginRad = Math.toRadians(lonOrigin);
         var eccPrimeSquared = eccSquared / (1 - eccSquared);
-        var n = a / Math.sqrt(1 - eccSquared * Math.sin(latRad) * Math.sin(latRad));
-        var t = Math.tan(latRad) * Math.tan(latRad);
-        var c = eccPrimeSquared * Math.cos(latRad) * Math.cos(latRad);
-        var aa = Math.cos(latRad) * (lonRad - lonOriginRad);
-        var m = a * ((1 - eccSquared / 4 - 3 * Math.pow(eccSquared, 2) / 64 - 5 * Math.pow(eccSquared, 3) / 256) * latRad
-            - (3 * eccSquared / 8 + 3 * Math.pow(eccSquared, 2) / 32 + 45 * Math.pow(eccSquared, 3) / 1024) * Math.sin(2 * latRad)
-            + (15 * Math.pow(eccSquared, 2) / 256 + 45 * Math.pow(eccSquared, 3) / 1024) * Math.sin(4 * latRad)
-            - (35 * Math.pow(eccSquared, 3) / 3072) * Math.sin(6 * latRad));
-        var easting = k0 * n * (aa + (1 - t + c) * Math.pow(aa, 3) / 6 + (5 - 18 * t + t * t + 72 * c - 58 * eccPrimeSquared) * Math.pow(aa, 5) / 120) + 500000;
-        var northing = k0 * (m + n * Math.tan(latRad) * (aa * aa / 2 + (5 - t + 9 * c + 4 * c * c) * Math.pow(aa, 4) / 24 + (61 - 58 * t + t * t + 600 * c - 330 * eccPrimeSquared) * Math.pow(aa, 6) / 720));
+        var sinLat = Math.sin(latRad);
+        var cosLat = Math.cos(latRad);
+        var tanLat = Math.tan(latRad);
+        var sin2Lat = Math.sin(2 * latRad);
+        var sin4Lat = Math.sin(4 * latRad);
+        var sin6Lat = Math.sin(6 * latRad);
+        var n = a / Math.sqrt(1 - eccSquared * sinLat * sinLat);
+        var t = tanLat * tanLat;
+        var c = eccPrimeSquared * cosLat * cosLat;
+        var aa = cosLat * (lonRad - lonOriginRad);
+        var ecc2 = Math.pow(eccSquared, 2);
+        var ecc3 = Math.pow(eccSquared, 3);
+        var m = a * ((1 - eccSquared / 4 - 3 * ecc2 / 64 - 5 * ecc3 / 256) * latRad
+            - (3 * eccSquared / 8 + 3 * ecc2 / 32 + 45 * ecc3 / 1024) * sin2Lat
+            + (15 * ecc2 / 256 + 45 * ecc3 / 1024) * sin4Lat
+            - (35 * ecc3 / 3072) * sin6Lat);
+        var aa2 = aa * aa;
+        var t2 = t * t;
+        var c2 = c * c;
+        var easting = k0 * n * (aa + (1 - t + c) * Math.pow(aa, 3) / 6 + (5 - 18 * t + t2 + 72 * c - 58 * eccPrimeSquared) * Math.pow(aa, 5) / 120) + 500000;
+        var northing = k0 * (m + n * tanLat * (aa2 / 2 + (5 - t + 9 * c + 4 * c2) * Math.pow(aa, 4) / 24 + (61 - 58 * t + t2 + 600 * c - 330 * eccPrimeSquared) * Math.pow(aa, 6) / 720));
         if (latitude < 0) {
             northing += 10000000;
         }
@@ -1818,4 +1811,22 @@ class PointTextPickerDelegate extends WatchUi.TextPickerDelegate {
     function onCancel() as Boolean {
         return true;
     }
+}
+
+function teamColorValue(team as String) as Number {
+    var color = team.toLower();
+    if (color.equals("white")) { return Graphics.createColor(255, 255, 255, 255); }
+    else if (color.equals("yellow")) { return Graphics.createColor(255, 255, 255, 0); }
+    else if (color.equals("orange")) { return Graphics.createColor(255, 255, 165, 0); }
+    else if (color.equals("magenta")) { return Graphics.createColor(255, 255, 0, 255); }
+    else if (color.equals("red")) { return Graphics.createColor(255, 255, 0, 0); }
+    else if (color.equals("maroon")) { return Graphics.createColor(255, 128, 0, 0); }
+    else if (color.equals("purple")) { return Graphics.createColor(255, 128, 0, 128); }
+    else if (color.equals("dark blue")) { return Graphics.createColor(255, 0, 0, 139); }
+    else if (color.equals("cyan")) { return Graphics.createColor(255, 0, 255, 255); }
+    else if (color.equals("teal")) { return Graphics.createColor(255, 0, 128, 128); }
+    else if (color.equals("green")) { return Graphics.createColor(255, 0, 128, 0); }
+    else if (color.equals("dark green")) { return Graphics.createColor(255, 0, 100, 0); }
+    else if (color.equals("brown")) { return Graphics.createColor(255, 165, 42, 42); }
+    return Graphics.createColor(255, 0, 0, 255);
 }

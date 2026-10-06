@@ -1,6 +1,7 @@
 import Toybox.Lang;
 import Toybox.Test;
 import Toybox.Application;
+import Toybox.Graphics;
 import Toybox.Time;
 
 (:test)
@@ -52,6 +53,21 @@ function nearestMapItemThreshold(logger) as Boolean {
     Test.assertEqual(relay.sentKind, "entity_sync_request");
     Test.assertEqual(relay.sentPayload.get("limit"), 999);
     Test.assertEqual(relay.sentPayload.get("protocolVersion"), 1);
+    return true;
+}
+
+(:test)
+function coordinateFormatting(logger) as Boolean {
+    var map = new StandaloneMapView();
+    Test.assertEqual(map.mgrsFromLatLon(38.8977, -77.0365), "18S UJ 23394 07395");
+    Test.assertEqual(map.mgrsFromLatLon(51.5074, -0.1278), "30U XC 99316 10164");
+    var sydney = map.mgrsFromLatLon(-33.8688, 151.2093);
+    Test.assertEqual(sydney, "56H LH 34370 50948");
+    Test.assertEqual(map.mgrsFromLatLon(60.0, 6.0), "32V LM 32705 55206");
+    Test.assertEqual(map.mgrsFromLatLon(78.0, 15.0), "33X WG 00000 58370");
+    Test.assertEqual(map.mgrsFromLatLon(85.0, 0.0), "MGRS unavailable");
+    Test.assertEqual(teamColorValue("Blue"), Graphics.createColor(255, 0, 0, 255));
+    Test.assertEqual(teamColorValue("dark blue"), Graphics.createColor(255, 0, 0, 139));
     return true;
 }
 
