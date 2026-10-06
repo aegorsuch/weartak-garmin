@@ -374,9 +374,9 @@ The app text is localized into the languages declared in `manifest.xml`:
 
 Arabic, Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish,
 French, German, Greek, Hebrew, Hungarian, Indonesian, Italian, Japanese,
-Korean, Latvian, Lithuanian, Norwegian Bokmal, Polish, Portuguese, Romanian,
-Russian, Slovak, Slovenian, Spanish, Swedish, Thai, Turkish, Ukrainian, and
-Vietnamese.
+Korean, Latvian, Lithuanian, Malay, Norwegian Bokmal, Polish, Portuguese,
+Romanian, Russian, Simplified Chinese, Slovak, Slovenian, Spanish, Swedish,
+Thai, Traditional Chinese, Turkish, Ukrainian, and Vietnamese.
 
 ### Maintaining translations
 

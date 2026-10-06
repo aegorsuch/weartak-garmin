@@ -298,6 +298,31 @@ class StandaloneMapView extends WatchUi.MapView {
         return title.length() > 0 ? title : details.get("uid") as String;
     }
 
+    function incomingPointDetailLabel(id as String) as String {
+        var details = incomingDetails.get(id);
+        var affiliation = :unknownPoint;
+        if (details instanceof Dictionary) {
+            var cotType = details.get("type");
+            if (cotType instanceof String && (cotType as String).length() >= 3) {
+                var code = (cotType as String).substring(2, 3);
+                if (code.equals("f") || code.equals("a")) { affiliation = :friendlyPoint; }
+                else if (code.equals("h") || code.equals("s") || code.equals("j") || code.equals("k")) {
+                    affiliation = :hostilePoint;
+                } else if (code.equals("n")) { affiliation = :neutralPoint; }
+            }
+        }
+        var label = application.text(affiliation);
+        var location = pointLocations.get(id);
+        if (currentPosition == null || location == null) { return label; }
+        return label + " · " + distanceMeters(currentPosition, location).format("%.0f") + " m";
+    }
+
+    function markIncomingPointsSeen() as Void {
+        if (pendingIncomingPoints.size() == 0) { return; }
+        pendingIncomingPoints = [];
+        application.refreshIncomingPointCount();
+    }
+
     function acknowledgeIncomingPoint(id as String) as Boolean {
         var details = incomingDetails.get(id);
         if (!(details instanceof Dictionary) || details.get("isPoint") != true) {

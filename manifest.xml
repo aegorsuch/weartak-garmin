@@ -42,6 +42,7 @@
             <iq:language>kor</iq:language>
             <iq:language>lav</iq:language>
             <iq:language>lit</iq:language>
+            <iq:language>may</iq:language>
             <iq:language>nl</iq:language>
             <iq:language>nob</iq:language>
             <iq:language>pol</iq:language>
@@ -57,6 +58,8 @@
             <iq:language>tur</iq:language>
             <iq:language>ukr</iq:language>
             <iq:language>vie</iq:language>
+            <iq:language>zhs</iq:language>
+            <iq:language>zht</iq:language>
         </iq:languages>
         <iq:barrels/>
     </iq:application>

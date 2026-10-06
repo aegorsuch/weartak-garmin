@@ -22,6 +22,7 @@ class IncomingPointsMenu extends WatchUi.Menu2 {
     function populate() as Void {
         var map = app.getMapView();
         map.pruneIncomingEntities();
+        map.markIncomingPointsSeen();
         addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.IncomingPointsRemoveAll), null, :removeAll, null));
         addItem(new WatchUi.MenuItem(app.text(:bloodhoundCompass), null, :openCompass, null));
         var pointCount = 0;
@@ -30,9 +31,7 @@ class IncomingPointsMenu extends WatchUi.Menu2 {
             var details = map.incomingDetails.get(id) as Dictionary;
             if (details.get("isPoint") != true) { continue; }
             pointCount += 1;
-            var status = map.pendingIncomingPoints.indexOf(id) != -1
-                ? WatchUi.loadResource(Rez.Strings.IncomingPointNew) : null;
-            addItem(new WatchUi.MenuItem(map.incomingPointTitle(id), status, id, null));
+            addItem(new WatchUi.MenuItem(map.incomingPointTitle(id), map.incomingPointDetailLabel(id), id, null));
         }
         if (pointCount == 0) {
             addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.IncomingPointsEmpty), null, :empty, null));

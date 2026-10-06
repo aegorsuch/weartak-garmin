@@ -316,13 +316,16 @@ function bloodhoundIncomingPointsMenu(logger) as Boolean {
     var mainMenu = buildMainMenu(app);
     Test.assertEqual(mainMenu.getItem(2).getLabel(), app.text(:bloodhound));
     Test.assertEqual(mainMenu.getItem(2).getId(), :incomingPoints);
+    map.currentPosition = new Toybox.Position.Location({:latitude => 38.0, :longitude => -77.0, :format => :degrees});
     map.updateIncomingCot("menu-point", 38.0, -77.0, "a-n-G", "Checkpoint", null, null,
         {"isPoint" => true, "time" => "revision-1"});
+    Test.assertEqual(map.incomingPointDetailLabel("cot-menu-point"), app.text(:neutralPoint) + " · 0 m");
     var menu = buildIncomingPointsMenu(app);
     Test.assertEqual(menu.getItem(0).getId(), :removeAll);
     Test.assertEqual(menu.getItem(1).getId(), :openCompass);
     Test.assertEqual(menu.getItem(2).getId(), "cot-menu-point");
     Test.assertEqual(menu.getItem(2).getLabel(), "Checkpoint");
+    Test.assertEqual(map.pendingIncomingPoints.size(), 0);
     map.removeIncomingPoint("cot-menu-point", false);
     menu.onShow();
     Test.assertEqual(menu.getItem(0).getId(), :removeAll);
