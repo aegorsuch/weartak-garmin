@@ -32,20 +32,20 @@ class TestEntitySyncRelay extends TestPointRelay {
 (:test)
 function nearestMapItemThreshold(logger) as Boolean {
     var nearest = new NearestMapItems();
-    Test.assertEqual(nearest.ids().size(), 0);
+    Test.assertEqual(nearest.pointIds.size(), 0);
     for (var i = 998; i >= 0; i--) { nearest.add(i.toString(), i); }
-    var ids = nearest.ids();
+    var ids = nearest.pointIds;
     Test.assertEqual(ids.size(), 99);
     for (var i = 0; i < 99; i++) { Test.assert(ids.indexOf(i.toString()) != -1); }
     nearest.add("far", 2000);
-    Test.assertEqual(nearest.ids().size(), 99);
-    Test.assert(nearest.ids().indexOf("far") == -1);
+    Test.assertEqual(nearest.pointIds.size(), 99);
+    Test.assert(nearest.pointIds.indexOf("far") == -1);
     nearest.add("closer", -1);
-    Test.assert(nearest.ids().indexOf("closer") != -1);
-    Test.assert(nearest.ids().indexOf("98") == -1);
+    Test.assert(nearest.pointIds.indexOf("closer") != -1);
+    Test.assert(nearest.pointIds.indexOf("98") == -1);
     var tied = new NearestMapItems();
     for (var i = 0; i < 999; i++) { tied.add(i.toString(), 0); }
-    Test.assertEqual(tied.ids().size(), 99);
+    Test.assertEqual(tied.pointIds.size(), 99);
     var relay = new TestEntitySyncRelay();
     relay.status = :connecting;
     relay.onRelayTransmitComplete();
@@ -76,7 +76,7 @@ function retainedMapEntitiesAndNearestDrawing(logger) as Boolean {
     Test.assertEqual(map.pointLocations.size(), 999);
     Test.assertEqual(map.markers.size(), 0);
     Test.assertEqual(map.markerArray().size(), 99);
-    Test.assertEqual(map.markers.size(), 99);
+    Test.assertEqual(map.markers.size(), 0);
     for (var i = 0; i < 99; i++) {
         Test.assert(map.drawnPointIds.indexOf("cot-nearest-" + i) != -1);
     }
@@ -134,7 +134,7 @@ function retainedMapEntitiesAndNearestDrawing(logger) as Boolean {
         map.updateIncomingCot("near-watch-" + i, 20.0 + i * 0.00001, 0.0, "a-n-G", null, null, null, {});
     }
     map.pointLocations.put("local-test", map.currentPosition);
-    map.markers.put("local-test", new StandaloneMapMarker(map.currentPosition));
+    map.markers.put("local-test", new Toybox.WatchUi.MapMarker(map.currentPosition));
     Test.assertEqual(map.markerArray().size(), 99);
     Test.assert(map.drawnPointIds.indexOf("local-test") != -1);
     Test.assert(map.drawnPointIds.indexOf("cot-center") == -1);
