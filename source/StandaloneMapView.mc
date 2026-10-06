@@ -325,6 +325,16 @@ class StandaloneMapView extends WatchUi.MapView {
         return true;
     }
 
+    function removeAllIncomingPoints() as Void {
+        for (var i = incomingIds.size() - 1; i >= 0; i--) {
+            var id = incomingIds[i] as String;
+            var details = incomingDetails.get(id);
+            if (details instanceof Dictionary && details.get("isPoint") == true) {
+                removeIncomingPoint(id, true);
+            }
+        }
+    }
+
     function removeIncomingPoint(id as String, dismiss as Boolean) as Void {
         var details = incomingDetails.get(id);
         if (dismiss && details instanceof Dictionary) {

@@ -26,7 +26,7 @@ function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => "WearTAK"});
     addMenuEntry(menu, "Chat", null, :chat);
     addMenuEntry(menu, "Clear 2525D", null, :managePoints);
-    var compassItem = new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.IncomingPointsTitle), null, :incomingPoints, null);
+    var compassItem = new WatchUi.MenuItem(app.text(:bloodhound), null, :incomingPoints, null);
     menu.addItem(compassItem);
     app.incomingPointMenuItem = compassItem;
     app.refreshIncomingPointCount();

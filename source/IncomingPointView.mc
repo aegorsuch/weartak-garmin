@@ -9,7 +9,7 @@ class IncomingPointsMenu extends WatchUi.Menu2 {
     var app as StandaloneApp;
 
     function initialize(application as StandaloneApp) {
-        Menu2.initialize({:title => WatchUi.loadResource(Rez.Strings.IncomingPointsTitle)});
+        Menu2.initialize({:title => application.text(:bloodhound)});
         app = application;
         populate();
     }
@@ -22,6 +22,7 @@ class IncomingPointsMenu extends WatchUi.Menu2 {
     function populate() as Void {
         var map = app.getMapView();
         map.pruneIncomingEntities();
+        addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.IncomingPointsRemoveAll), null, :removeAll, null));
         addItem(new WatchUi.MenuItem(app.text(:bloodhoundCompass), null, :openCompass, null));
         var pointCount = 0;
         for (var i = map.incomingIds.size() - 1; i >= 0; i--) {
@@ -66,7 +67,10 @@ class IncomingPointsDelegate extends WatchUi.Menu2InputDelegate {
 
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
-        if (id == :openCompass) {
+        if (id == :removeAll) {
+            app.getMapView().removeAllIncomingPoints();
+            WatchUi.switchToView(buildIncomingPointsMenu(app), new IncomingPointsDelegate(app), WatchUi.SLIDE_RIGHT);
+        } else if (id == :openCompass) {
             WatchUi.pushView(new BloodhoundCompassView(app), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
         } else if (id instanceof String) {
             app.getMapView().pruneIncomingEntities();

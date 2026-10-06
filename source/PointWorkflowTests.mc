@@ -310,6 +310,68 @@ function incomingPointClassification(logger) as Boolean {
 }
 
 (:test)
+function bloodhoundIncomingPointsMenu(logger) as Boolean {
+    var app = Application.getApp() as StandaloneApp;
+    var map = app.getMapView();
+    var mainMenu = buildMainMenu(app);
+    Test.assertEqual(mainMenu.getItem(2).getLabel(), app.text(:bloodhound));
+    Test.assertEqual(mainMenu.getItem(2).getId(), :incomingPoints);
+    map.updateIncomingCot("menu-point", 38.0, -77.0, "a-n-G", "Checkpoint", null, null,
+        {"isPoint" => true, "time" => "revision-1"});
+    var menu = buildIncomingPointsMenu(app);
+    Test.assertEqual(menu.getItem(0).getId(), :removeAll);
+    Test.assertEqual(menu.getItem(1).getId(), :openCompass);
+    Test.assertEqual(menu.getItem(2).getId(), "cot-menu-point");
+    Test.assertEqual(menu.getItem(2).getLabel(), "Checkpoint");
+    map.removeIncomingPoint("cot-menu-point", false);
+    menu.onShow();
+    Test.assertEqual(menu.getItem(0).getId(), :removeAll);
+    Test.assertEqual(menu.getItem(2).getId(), :empty);
+    return true;
+}
+
+(:test)
+function bulkIncomingPointRemoval(logger) as Boolean {
+    var map = new StandaloneMapView();
+    map.setApplication(Application.getApp() as StandaloneApp);
+    map.entityPruneTimer.stop();
+    var localPointCount = map.pointOrder.size();
+    map.updateIncomingCot("bulk-first", 38.0, -77.0, "a-n-G", "First", null, null,
+        {"isPoint" => true, "time" => "revision-1"});
+    map.updateIncomingCot("bulk-user", 38.0, -77.0, "a-f-G-U-C", "User", null, null, {});
+    map.updateIncomingCot("bulk-last", 38.0, -77.0, "a-f-G", "Last", null, null,
+        {"isPoint" => true, "time" => "revision-1"});
+    map.bloodhoundPointId = "cot-bulk-first";
+    map.bloodhoundProximityNotified = true;
+    map.markersDirty = false;
+    map.removeAllIncomingPoints();
+    Test.assertEqual(map.incomingIds.size(), 1);
+    Test.assertEqual(map.incomingIds[0], "cot-bulk-user");
+    Test.assert(map.pointLocations.hasKey("cot-bulk-user"));
+    Test.assert(!map.pointLocations.hasKey("cot-bulk-first"));
+    Test.assert(!map.pointLocations.hasKey("cot-bulk-last"));
+    Test.assert(!map.incomingDetails.hasKey("cot-bulk-first"));
+    Test.assert(!map.incomingLastSeen.hasKey("cot-bulk-last"));
+    Test.assertEqual(map.pendingIncomingPoints.size(), 0);
+    Test.assertEqual(map.pointOrder.size(), localPointCount);
+    Test.assert(!map.isBloodhoundActive());
+    Test.assert(!map.bloodhoundProximityNotified);
+    Test.assert(map.markersDirty);
+    Test.assertEqual(map.dismissedIncomingPoints.size(), 2);
+    map.updateIncomingCot("bulk-first", 38.0, -77.0, "a-n-G", "First", null, null,
+        {"isPoint" => true, "time" => "revision-1"});
+    Test.assert(!map.pointLocations.hasKey("cot-bulk-first"));
+    map.updateIncomingCot("bulk-first", 38.0, -77.0, "a-n-G", "First", null, null,
+        {"isPoint" => true, "time" => "revision-2"});
+    Test.assert(map.pointLocations.hasKey("cot-bulk-first"));
+    map.removeAllIncomingPoints();
+    map.removeAllIncomingPoints();
+    Test.assertEqual(map.incomingIds.size(), 1);
+    Test.assertEqual(map.pendingIncomingPoints.size(), 0);
+    return true;
+}
+
+(:test)
 function incomingPointWorkflow(logger) as Boolean {
     var app = Application.getApp() as StandaloneApp;
     var map = app.getMapView();
