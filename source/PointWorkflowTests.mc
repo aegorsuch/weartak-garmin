@@ -4,6 +4,145 @@ import Toybox.Application;
 import Toybox.Time;
 
 (:test)
+class TestMapPositionInfo {
+    var position;
+    var accuracy = Toybox.Position.QUALITY_USABLE;
+
+    function initialize(location) {
+        position = location;
+    }
+}
+
+(:test)
+class TestEntitySyncRelay extends TestPointRelay {
+    var sentKind as String = "";
+    var sentPayload as Dictionary = {};
+
+    function initialize() {
+        TestPointRelay.initialize();
+        pointReplies.replies = [];
+    }
+
+    function transmit(kind as String, payload as Dictionary) as Void {
+        sentKind = kind;
+        sentPayload = payload;
+    }
+}
+
+(:test)
+function nearestMapItemThreshold(logger) as Boolean {
+    var nearest = new NearestMapItems();
+    Test.assertEqual(nearest.ids().size(), 0);
+    for (var i = 998; i >= 0; i--) { nearest.add(i.toString(), i); }
+    var ids = nearest.ids();
+    Test.assertEqual(ids.size(), 99);
+    for (var i = 0; i < 99; i++) { Test.assert(ids.indexOf(i.toString()) != -1); }
+    nearest.add("far", 2000);
+    Test.assertEqual(nearest.ids().size(), 99);
+    Test.assert(nearest.ids().indexOf("far") == -1);
+    nearest.add("closer", -1);
+    Test.assert(nearest.ids().indexOf("closer") != -1);
+    Test.assert(nearest.ids().indexOf("98") == -1);
+    var tied = new NearestMapItems();
+    for (var i = 0; i < 999; i++) { tied.add(i.toString(), 0); }
+    Test.assertEqual(tied.ids().size(), 99);
+    var relay = new TestEntitySyncRelay();
+    relay.status = :connecting;
+    relay.onRelayTransmitComplete();
+    Test.assertEqual(relay.sentKind, "entity_sync_request");
+    Test.assertEqual(relay.sentPayload.get("limit"), 999);
+    Test.assertEqual(relay.sentPayload.get("protocolVersion"), 1);
+    return true;
+}
+
+(:test)
+function retainedMapEntitiesAndNearestDrawing(logger) as Boolean {
+    var map = new StandaloneMapView();
+    map.setApplication(Application.getApp() as StandaloneApp);
+    map.entityPruneTimer.stop();
+    map.markers = {};
+    map.pointLocations = {};
+    map.pointDetails = {};
+    map.pointOrder = [];
+    map.hiddenMapTeams = [];
+    map.hiddenMapRoles = [];
+    map.currentPosition = new Toybox.Position.Location({
+        :latitude => 0.0, :longitude => 0.0, :format => :degrees});
+    for (var i = 0; i < 999; i++) {
+        map.updateIncomingCot("nearest-" + i, i * 0.00001, 0.0, "a-f-G-U-C",
+            "User", i < 100 ? "Red" : "Blue", null, {});
+    }
+    Test.assertEqual(map.incomingIds.size(), 999);
+    Test.assertEqual(map.pointLocations.size(), 999);
+    Test.assertEqual(map.markers.size(), 0);
+    Test.assertEqual(map.markerArray().size(), 99);
+    Test.assertEqual(map.markers.size(), 99);
+    for (var i = 0; i < 99; i++) {
+        Test.assert(map.drawnPointIds.indexOf("cot-nearest-" + i) != -1);
+    }
+    Test.assert(map.drawnPointIds.indexOf("cot-nearest-99") == -1);
+    map.hiddenMapTeams = ["red"];
+    Test.assertEqual(map.markerArray().size(), 99);
+    for (var i = 100; i < 199; i++) {
+        Test.assert(map.drawnPointIds.indexOf("cot-nearest-" + i) != -1);
+    }
+    var groups = map.incomingUserGroups(true);
+    for (var i = 0; i < groups.size(); i++) {
+        Test.assertEqual(groups[i].get("count"), groups[i].get("key").equals("red") ? 100 : 899);
+    }
+    Test.assertEqual(map.pointLocations.size(), 999);
+    map.hiddenMapTeams = [];
+    var moved = new Toybox.Position.Location({
+        :latitude => 0.00998, :longitude => 0.0, :format => :degrees});
+    map.markersDirty = false;
+    map.updatePosition(new TestMapPositionInfo(moved));
+    Test.assert(map.markersDirty);
+    Test.assertEqual(map.markerArray().size(), 99);
+    for (var i = 900; i < 999; i++) {
+        Test.assert(map.drawnPointIds.indexOf("cot-nearest-" + i) != -1);
+    }
+    map.updateIncomingCot("nearest-0", 0.02, 0.0, "a-f-G-U-C", "Updated", "Red", null, {});
+    Test.assertEqual(map.incomingIds.size(), 999);
+    map.bloodhoundPointId = "cot-nearest-0";
+    map.updateIncomingCot("overflow", 0.0, 0.0, "a-f-G-U-C", null, null, null, {});
+    Test.assertEqual(map.incomingIds.size(), 999);
+    Test.assert(!map.pointLocations.hasKey("cot-nearest-0"));
+    Test.assert(map.pointLocations.hasKey("cot-overflow"));
+    Test.assert(!map.isBloodhoundActive());
+    map.incomingLastSeen.put("cot-overflow", Time.now().value() - 301);
+    Test.assert(map.pruneIncomingEntities());
+    Test.assertEqual(map.incomingIds.size(), 998);
+    map.setMapMarker(map.markerArray());
+    map.clear();
+    map.incomingIds = [];
+    map.incomingDetails = {};
+    map.incomingLastSeen = {};
+    map.pointLocations = {};
+    map.markers = {};
+    map.drawnPointIds = [];
+    Test.assertEqual(map.markerArray().size(), 0);
+    map.currentPosition = null;
+    map.centerOn(null);
+    map.updateIncomingCot("far", 20.0, 0.0, "a-n-G", null, null, null, {});
+    map.updateIncomingCot("center", 0.0, 0.0, "a-n-G", null, null, null, {});
+    Test.assertEqual(map.markerArray().size(), 2);
+    Test.assertEqual(map.pointAtScreen(map.screenWidth / 2, map.screenHeight / 2), "cot-center");
+    // With 99 nearer items, the remote point at map center must not remain tappable.
+    map.currentPosition = new Toybox.Position.Location({
+        :latitude => 20.0, :longitude => 0.0, :format => :degrees});
+    for (var i = 0; i < 99; i++) {
+        map.updateIncomingCot("near-watch-" + i, 20.0 + i * 0.00001, 0.0, "a-n-G", null, null, null, {});
+    }
+    map.pointLocations.put("local-test", map.currentPosition);
+    map.markers.put("local-test", new StandaloneMapMarker(map.currentPosition));
+    Test.assertEqual(map.markerArray().size(), 99);
+    Test.assert(map.drawnPointIds.indexOf("local-test") != -1);
+    Test.assert(map.drawnPointIds.indexOf("cot-center") == -1);
+    Test.assert(map.pointAtScreen(map.screenWidth / 2, map.screenHeight / 2) == null);
+    return true;
+}
+
+(:test)
 class TestPointRelay extends TakClient {
     var accept as Boolean = true;
     var lastReply as String = "";

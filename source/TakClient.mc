@@ -151,7 +151,7 @@ class TakClient {
             return;
         }
         status = :connected;
-        transmit("entity_sync_request", {"limit" => 50, "protocolVersion" => 1});
+        transmit("entity_sync_request", {"limit" => MapItemLimits.RETAINED_LIMIT, "protocolVersion" => 1});
         flushPointReplies();
         notifyStatusChanged();
     }

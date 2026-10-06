@@ -47,6 +47,7 @@ class StandaloneMapView extends WatchUi.MapView {
     var entityPruneTimer;
     var mapAreaDirty = true;
     var markersDirty = true;
+    var drawnPointIds as Array<String> = [];
 
     function initialize() {
         WatchUi.MapView.initialize();
@@ -176,6 +177,7 @@ class StandaloneMapView extends WatchUi.MapView {
             return;
         }
         currentPosition = info.position;
+        markersDirty = true;
         if (info.accuracy >= Position.QUALITY_USABLE) { resolvePendingPoints(info.position); }
         evaluateBloodhoundProximity();
 
@@ -253,6 +255,7 @@ class StandaloneMapView extends WatchUi.MapView {
             var currentInfo = Position.getInfo();
             if (currentInfo != null && currentInfo.position != null) {
                 currentPosition = currentInfo.position;
+                markersDirty = true;
             }
         }
         bloodhoundProximityNotified = false;
@@ -273,13 +276,9 @@ class StandaloneMapView extends WatchUi.MapView {
         var notify = isPoint && (previous == null
             || (revision.length() > 0 && !revision.equals(previous.get("revision"))));
         var location = new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees});
-        var marker = new StandaloneMapMarker(location);
-        var icon = cotType.find("a-h-") != null ? iconForType(:hostile) : cotType.find("a-f-") != null ? iconForType(:friendly) : cotType.find("a-n-") != null ? iconForType(:neutral) : iconForType(:unknown);
-        marker.setIcon(icon, icon.getWidth() / 2, icon.getHeight() / 2);
-        marker.setLabel(callSign == null || trimMapText(callSign).length() == 0 ? uid : trimMapText(callSign));
-        if (!markers.hasKey(markerId)) {
+        if (!incomingDetails.hasKey(markerId)) {
             incomingIds.add(markerId);
-            if (incomingIds.size() > 50) {
+            if (incomingIds.size() > MapItemLimits.RETAINED_LIMIT) {
                 removeIncomingPoint(incomingIds[0], false);
             }
         }
@@ -292,7 +291,7 @@ class StandaloneMapView extends WatchUi.MapView {
             "isPoint" => isPoint, "senderUID" => incomingPointSender(metadata),
             "revision" => revision
         });
-        markers.put(markerId, marker);
+        markers.remove(markerId);
         pointLocations.put(markerId, location);
         if (notify) {
             if (pendingIncomingPoints.indexOf(markerId) == -1) { pendingIncomingPoints.add(markerId); }
@@ -342,7 +341,7 @@ class StandaloneMapView extends WatchUi.MapView {
     function removeIncomingPoint(id as String, dismiss as Boolean) as Void {
         var details = incomingDetails.get(id);
         if (dismiss && details instanceof Dictionary) {
-            if (dismissedIncomingPoints.size() >= 50) {
+            if (dismissedIncomingPoints.size() >= MapItemLimits.RETAINED_LIMIT) {
                 dismissedIncomingPoints.remove(dismissedIncomingPoints.keys()[0]);
             }
             dismissedIncomingPoints.put(id, {"revision" => details.get("revision"), "removedAt" => Time.now().value()});
@@ -508,12 +507,14 @@ class StandaloneMapView extends WatchUi.MapView {
     function applyMapVisibleArea() as Void {
         setMapVisibleArea(mapTopLeft, mapBottomRight);
         mapAreaDirty = false;
+        if (currentPosition == null) { markersDirty = true; }
     }
 
     function onUpdate(dc) {
         if (mapAreaDirty) {
             setMapVisibleArea(mapTopLeft, mapBottomRight);
             mapAreaDirty = false;
+            if (currentPosition == null) { markersDirty = true; }
         }
         if (markersDirty) {
             var currentMarkers = markerArray();
@@ -570,8 +571,8 @@ class StandaloneMapView extends WatchUi.MapView {
     function drawIncomingUserOverlays(dc) as Void {
         var topLeft = mapTopLeft.toDegrees();
         var bottomRight = mapBottomRight.toDegrees();
-        for (var index = 0; index < incomingIds.size(); index++) {
-            var markerId = incomingIds[index] as String;
+        for (var index = 0; index < drawnPointIds.size(); index++) {
+            var markerId = drawnPointIds[index];
             var details = incomingDetails.get(markerId);
             if (!(details instanceof Dictionary) || details.get("isPoint") == true || !isUserCotType((details as Dictionary).get("type").toString()) || !isIncomingUserVisible(markerId)) { continue; }
             var location = pointLocations.get(markerId);
@@ -1053,13 +1054,40 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function markerArray() as Array {
-        var result = [];
-        var ids = markers.keys();
+        for (var index = 0; index < drawnPointIds.size(); index++) {
+            if (incomingDetails.hasKey(drawnPointIds[index])) { markers.remove(drawnPointIds[index]); }
+        }
+        var origin = currentPosition;
+        if (origin == null) {
+            var topLeft = mapTopLeft.toDegrees();
+            var bottomRight = mapBottomRight.toDegrees();
+            origin = new Position.Location({
+                :latitude => (topLeft[0] + bottomRight[0]) / 2,
+                :longitude => (topLeft[1] + bottomRight[1]) / 2,
+                :format => :degrees
+            });
+        }
+        var nearest = new NearestMapItems();
+        var ids = pointLocations.keys();
         for (var i = 0; i < ids.size(); i++) {
             var markerId = ids[i].toString();
-            if (!markerId.substring(0, 4).equals("cot-") || isIncomingUserVisible(markerId)) {
-                result.add(markers.get(ids[i]));
+            if (incomingDetails.hasKey(markerId) && !isIncomingUserVisible(markerId)) { continue; }
+            nearest.add(markerId, distanceMeters(origin, pointLocations.get(markerId)));
+        }
+        drawnPointIds = nearest.ids();
+        var result = [];
+        for (var i = 0; i < drawnPointIds.size(); i++) {
+            var markerId = drawnPointIds[i];
+            if (incomingDetails.hasKey(markerId)) {
+                var details = incomingDetails.get(markerId) as Dictionary;
+                var cotType = details.get("type") as String;
+                var marker = new StandaloneMapMarker(pointLocations.get(markerId));
+                var icon = cotType.find("a-h-") != null ? iconForType(:hostile) : cotType.find("a-f-") != null ? iconForType(:friendly) : cotType.find("a-n-") != null ? iconForType(:neutral) : iconForType(:unknown);
+                marker.setIcon(icon, icon.getWidth() / 2, icon.getHeight() / 2);
+                marker.setLabel(incomingPointTitle(markerId));
+                markers.put(markerId, marker);
             }
+            result.add(markers.get(markerId));
         }
         return result;
     }
@@ -1067,8 +1095,9 @@ class StandaloneMapView extends WatchUi.MapView {
     function pointAtScreen(x, y) {
         var topLeft = mapTopLeft.toDegrees();
         var bottomRight = mapBottomRight.toDegrees();
-        var keys = pointLocations.keys();
+        var keys = drawnPointIds;
         for (var i = 0; i < keys.size(); i++) {
+            if (!pointLocations.hasKey(keys[i])) { continue; }
             if (incomingDetails.hasKey(keys[i]) && !isIncomingUserVisible(keys[i].toString())) { continue; }
             var location = pointLocations.get(keys[i]).toDegrees();
             var markerX = (location[1] - topLeft[1]) / (bottomRight[1] - topLeft[1]) * screenWidth;
@@ -1255,6 +1284,7 @@ class StandaloneMapView extends WatchUi.MapView {
             return false;
         }
         currentPosition = info.position;
+        markersDirty = true;
         var previous = pointLocations.get(id);
         pointLocations.put(id, info.position);
         if (!updatePoint(id, pointDetails.get(id) as Dictionary)) {

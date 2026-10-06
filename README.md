@@ -227,9 +227,21 @@ does not infer the sender from the marker UID.
 `time` (or `tStart`) identifies a point revision. Repeated snapshots of the
 same revision do not notify again. A newer revision can notify again after
 RGR or local removal. Without a revision, repeated snapshots cannot be
-distinguished from a deliberate resend. The existing 50-entity/five-minute
-inactivity limits remain in place; expired or evicted targets also stop
+distinguished from a deliberate resend. The watch retains up to 999 relayed
+entities in memory and requests that limit from the companion. At capacity,
+the oldest admitted entity is evicted; updates to existing entities do not
+consume another slot. The five-minute inactivity limit remains; expired or evicted targets also stop
 Bloodhound. A locally removed revision is suppressed for five minutes.
+
+The map draws at most the 99 nearest visible items, including local saved
+markers, relative to the watch location (or map center before a location is
+available). Selection refreshes on location, entity, marker, and filter changes.
+Hidden team/role groups do not consume drawing slots. User overlays and map
+hit testing use the same selection; undrawn entities remain available for
+incoming-point workflows, group counts, and Bloodhound. Native remote map
+markers are allocated only for the selected items. Relayed entities are not
+persisted across app restarts. The companion must honor the requested limit;
+mission-item DataSync support is still not implemented.
 
 Point replies use the existing `chat` envelope with `text`, `replyTo` and
 additional `recipientUid`, `pointUid`, `messageId`, and `createdAt` fields.
