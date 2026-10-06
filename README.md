@@ -69,8 +69,9 @@ The app opens to a native, scrollable Connect IQ menu. The Garmin-to-ATAK phone
 relay depends on the companion's Garmin Connect IQ receiver. These are the watch
 features currently available:
 
-- The alphabetical main menu contains Chat (when enabled), Clear 2525D,
-	Drop 2525D, Manual Alert, Map, and Settings.
+- Bloodhound is always first in the main menu unless explicitly requested
+	otherwise. The remaining items, including new additions, stay alphabetized:
+	Chat (when enabled), Clear 2525D, Drop 2525D, Manual Alert, Map, and Settings.
 - Open TAK Relay inside Network Preferences. ATAK Relay is the currently
 	integrated option; iTAK and TAK Aware are marked Teaming, and WearTAK
 	Companion is marked Developing. BLE relay status means a phone message was

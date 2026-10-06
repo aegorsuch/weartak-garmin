@@ -24,12 +24,13 @@ function addToggleEntry(menu as WatchUi.Menu2, label as String, enabled as Boole
 
 function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => "WearTAK"});
-    addMenuEntry(menu, "Chat", null, :chat);
-    addMenuEntry(menu, "Clear 2525D", null, :managePoints);
     var compassItem = new WatchUi.MenuItem(app.text(:bloodhound), null, :incomingPoints, null);
     menu.addItem(compassItem);
     app.incomingPointMenuItem = compassItem;
     app.refreshIncomingPointCount();
+    // Keep Bloodhound first; add remaining entries in alphabetical order.
+    addMenuEntry(menu, "Chat", null, :chat);
+    addMenuEntry(menu, "Clear 2525D", null, :managePoints);
     addMenuEntry(menu, "Drop 2525D", null, :dropPoint);
     addMenuEntry(menu, manualAlertMenuLabel(app), null, :sos);
     addMenuEntry(menu, app.text(:map), null, :map);
