@@ -4,6 +4,7 @@ import Toybox.WatchUi;
 function buildChatMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleChat)});
     var messages = app.getChatMessages();
+    menu.addItem(new WatchUi.MenuItem("Send", null, :send, null));
     menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.ChatEmpty), null, :empty, null));
     for (var index = messages.size() - 1; index >= 0; index--) {
         var message = messages[index] as Dictionary;
@@ -24,7 +25,10 @@ class ChatMenuDelegate extends WatchUi.Menu2InputDelegate {
 
     function onSelect(item as WatchUi.MenuItem) as Void {
         var index = item.getId();
-        if (index == :empty) {
+        if (index == :send) {
+            WatchUi.pushView(new WatchUi.TextPicker(""), new ChatTextPickerDelegate(app), WatchUi.SLIDE_UP);
+            return;
+        } else if (index == :empty) {
             openMapForUserSelection();
             return;
         }
@@ -78,5 +82,26 @@ class QuickReplyDelegate extends WatchUi.Menu2InputDelegate {
 
     function onBack() as Void {
         WatchUi.popView(WatchUi.SLIDE_DOWN);
+    }
+}
+
+class ChatTextPickerDelegate extends WatchUi.TextPickerDelegate {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        TextPickerDelegate.initialize();
+        app = application;
+    }
+
+    function onTextEntered(value as String, changed as Boolean) as Boolean {
+        if (changed && value.length() > 0) {
+            app.sendChatMessage(value);
+        }
+        WatchUi.popView(WatchUi.SLIDE_DOWN);
+        return true;
+    }
+
+    function onCancel() as Boolean {
+        return true;
     }
 }

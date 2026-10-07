@@ -71,7 +71,7 @@ features currently available:
 
 - Bloodhound is always first in the main menu unless explicitly requested
 	otherwise. The remaining items, including new additions, stay alphabetized:
-	Chat (when enabled), Clear 2525D, Drop 2525D, Manual Alert, Map, and Settings.
+	Chat, Clear 2525D, Drop 2525D, Manual Alert, Map, and Settings.
 - Open TAK Relay inside Network Preferences. ATAK Relay is the currently
 	integrated option; iTAK and TAK Aware are marked Teaming, and WearTAK
 	Companion is marked Developing. BLE relay status means a phone message was
@@ -102,13 +102,23 @@ features currently available:
 	with its subrole under Callsign and Device Preferences. The team color is used
 	for the self marker and Bloodhound direction arrow; tracked point icons remain
 	unchanged.
+- Use **Chat** to view received messages, choose quick replies, or select
+	**Send** to compose and broadcast a message to All Chat Rooms.
 - Configure Dynamic or Constant Reporting intervals, Wi-Fi battery-saving
-	preferences, and Physiological Monitoring under Reporting Strategy. These
-	settings are intended for standalone Sit(x) use when no phone is connected.
-	Physiological Monitoring controls heart-rate sampling; reporting intervals
-	and Wi-Fi preferences are currently stored only and do not change transmitted
-	PLI because direct Sit(x) PLI transport and active Wi-Fi SSID detection are
-	not implemented on Garmin.
+	preferences, and Physiological Monitoring under Reporting Strategy. Reporting
+	intervals control Garmin-to-companion PLI updates when the ATAK relay is
+	connected; direct Sit(x) PLI transport is not implemented on Garmin.
+	Physiological Monitoring controls heart-rate sampling. When the ATAK relay is
+	connected, Garmin sends PLI updates using the selected reporting strategy;
+	CoT stale time is twice the active interval plus 15 seconds. Dynamic mode uses
+	the stationary, on-foot, vehicle, and alerting intervals according to current
+	movement/speed and alert state. Wi-Fi preferences are stored only because
+	active SSID detection is not implemented on Garmin. The adjacent BATDOK toggle
+	enables the AMIST vital-sign section in companion-generated PLI when a heart
+	rate sample is available.
+- Unlock Developer Options by tapping the version row eight times within
+	1.5 seconds. Developer Options includes the Network Preferences admin lock;
+	when locked, Network Preferences cannot be opened from Settings.
 - View point details as native scrollable rows for marker type/drop time,
 	distance, bearing, latitude/longitude, and MGRS, followed by Bloodhound,
 	title, remark, marker-type, move, delete, and back actions.
@@ -415,8 +425,8 @@ not a present guarantee.
 	them, change point type, and delete them.
 2. **ATAK relay plumbing** - planned: expand the watch-to-phone integration
 	beyond the current local point workflow.
-3. **Chat and messaging** - planned: support incoming and outgoing ATAK chat
-	messaging.
+3. **Chat and messaging** - implemented: view received messages, send broadcast
+	chat, and reply to received messages with quick replies.
 4. **SOS and emergency actions** - planned: full confirmed emergency flows.
 5. **Operational overlays and entity sync** - planned: broader map data,
 	mission-aware entity integration, and multi-user workflow support.
@@ -487,24 +497,23 @@ the private `developer_key.der` file.
 
 ## Releasing
 
-Releases are built and published manually; there is no CI automation. Publish
-the nine device-specific `.prg` files for direct USB installation. The `.iq`
-bundle covers all nine supported products (fenix6, fenix6pro, fenix6s,
-fenix6spro, fenix6xpro, fenix7x, fenix847mm, fenix8solar47mm, and
-fenix8solar51mm) for Garmin's distribution workflow.
+Releases are built and published manually; there is no CI automation. The
+maintainer's local direct-install build is only for `fenix7x`, written to the
+Desktop. GitHub releases likewise include only that device-specific `.prg`;
+other products and the `.iq` bundle are not published in these personal
+releases.
 
 1. Bump `APP_VERSION` in `source/StandaloneApp.mc` to the new version, including
 	the short source commit hash (for example, `5.8.0.3-0c54201`), and
    commit it (consistent with the government repo being canonical, merge this
    into `develop` first as described above).
-2. Build each device-specific `.prg` with the Garmin Connect IQ SDK, selecting
-	its product with `-d` (for example, `-d fenix6`) and name the output
-	`WearTAK-Garmin-{product}-{APP_VERSION}.prg`. Build
-	`WearTAK-Garmin.iq` as well when preparing the Garmin distribution package.
+2. Build only `fenix7x` with the Garmin Connect IQ SDK and name the output
+	`WearTAK-Garmin-fenix7x-{APP_VERSION}.prg`. Save the release build on the
+	Desktop; remove superseded Garmin release binaries from the project root.
 3. Tag the release commit `v{APP_VERSION}`, matching `APP_VERSION` exactly.
 4. Push the tag and create a release from it on `origin`
-	(git.tak.gov/core/weartak-core/weartak-garmin), attaching the nine `.prg`
-	files and the `.iq` package when needed.
+	(git.tak.gov/core/weartak-core/weartak-garmin), attaching the `fenix7x`
+	`.prg` only.
 5. Mirror the same release to `github`
 	(https://github.com/aegorsuch/weartak-garmin): push the tag there and
-	create a release attaching the same build artifacts.
+	create a release attaching the same `fenix7x` `.prg` only.

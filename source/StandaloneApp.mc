@@ -26,6 +26,7 @@ class StandaloneApp extends Application.AppBase {
     private var versionTapCount as Number = 0;
     private var devModeEnabled as Boolean = false;
     private var verboseLoggingEnabled as Boolean = false;
+    private var networkPreferencesLocked as Boolean = false;
     private var chatMessages = [];
     private var sensorInfo;
     private var exertionPercent as Number = 0;
@@ -34,7 +35,10 @@ class StandaloneApp extends Application.AppBase {
     private var lastStepTime as Number? = null;
     private var lastGpsMovementTime as Number? = null;
     private var lastGpsFixTime as Number? = null;
+    private var lastGpsSpeed as Number? = null;
     private var lastHeartRateSampleTime as Number? = null;
+    private var lastPliSentTime as Number? = null;
+    private var lastVersionTapTime as Number? = null;
     private var locationServices as Boolean = true;
     private var physiologicalAlertsEnabled as Boolean = false;
     private var batteryAlertsEnabled as Boolean = false;
@@ -43,7 +47,6 @@ class StandaloneApp extends Application.AppBase {
     private var highPressureAlertsEnabled as Boolean = false;
     private var lowPressureThreshold as Number = 950;
     private var highPressureThreshold as Number = 2000;
-    private var bloodhoundCompassEnabled as Boolean = true;
     private var bloodhoundProximityVibrationEnabled as Boolean = true;
     private var bloodhoundProximityRadius as Number = 50;
     private var bloodhoundProximityIntensity as String = "Single Burst";
@@ -96,6 +99,7 @@ class StandaloneApp extends Application.AppBase {
     private var knownWifiNetworks as Array = [];
     private var selectedWifiNetworks as Array = [];
     private var physiologicalMonitoringEnabled as Boolean = true;
+    private var batdokCotEnabled as Boolean = true;
     private var bloodType as String = "Unknown";
     private var userType as String = "N/A";
     private var allergies as Array = ["N/A"];
@@ -181,6 +185,7 @@ class StandaloneApp extends Application.AppBase {
     function setDynamicReportingEnabled(enabled as Boolean) as Void {
         dynamicReportingEnabled = enabled;
         Application.Storage.setValue("dynamicReportingEnabled", enabled);
+        lastPliSentTime = null;
     }
 
     function getReportingInterval(setting as Symbol) as Number {
@@ -209,6 +214,7 @@ class StandaloneApp extends Application.AppBase {
             constantReportingInterval = seconds;
         }
         Application.Storage.setValue(key, seconds);
+        lastPliSentTime = null;
     }
 
     function getSaveBatteryOnWifiMode() as String {
@@ -261,6 +267,26 @@ class StandaloneApp extends Application.AppBase {
         return physiologicalMonitoringEnabled;
     }
 
+    function isNetworkPreferencesLocked() as Boolean {
+        return networkPreferencesLocked;
+    }
+
+    function setNetworkPreferencesLocked(locked as Boolean) as Void {
+        networkPreferencesLocked = locked;
+        Application.Storage.setValue("networkPreferencesLocked", locked);
+    }
+
+    function isBatdokCotEnabled() as Boolean {
+        return batdokCotEnabled;
+    }
+
+    function setBatdokCotEnabled(enabled as Boolean) as Void {
+        batdokCotEnabled = enabled;
+        Application.Storage.setValue("batdokCotEnabled", enabled);
+        lastPliSentTime = null;
+        sendPliIfDue();
+    }
+
     function setPhysiologicalMonitoringEnabled(enabled as Boolean) as Void {
         physiologicalMonitoringEnabled = enabled;
         Application.Storage.setValue("physiologicalMonitoringEnabled", enabled);
@@ -279,6 +305,8 @@ class StandaloneApp extends Application.AppBase {
         takClient.clearAutomatedAlert("Low resting heart rate");
         takClient.clearAutomatedAlert("High exertion");
         applyPhysiologicalMonitoring();
+        lastPliSentTime = null;
+        sendPliIfDue();
     }
 
     function applyPhysiologicalMonitoring() as Void {
@@ -324,23 +352,27 @@ class StandaloneApp extends Application.AppBase {
         return sitxClient;
     }
 
-    // Returns true the moment the 7th consecutive tap unlocks dev mode.
+    // Returns true when eight taps within 1.5 seconds toggle developer mode.
     function registerVersionTap() as Boolean {
+        var now = System.getTimer();
+        if (lastVersionTapTime != null && now - lastVersionTapTime > 1500) {
+            versionTapCount = 0;
+        }
+        lastVersionTapTime = now;
         versionTapCount += 1;
-        if (versionTapCount < 7) {
+        if (versionTapCount < 8) {
             return false;
         }
         versionTapCount = 0;
-        if (devModeEnabled) {
-            return false;
-        }
-        devModeEnabled = true;
-        Application.Storage.setValue("devModeEnabled", true);
+        lastVersionTapTime = null;
+        devModeEnabled = !devModeEnabled;
+        Application.Storage.setValue("devModeEnabled", devModeEnabled);
         return true;
     }
 
     function resetVersionTapCount() as Void {
         versionTapCount = 0;
+        lastVersionTapTime = null;
     }
 
     function isDevModeEnabled() as Boolean {
@@ -519,6 +551,8 @@ class StandaloneApp extends Application.AppBase {
         knownWifiNetworks = storedStringArray("knownWifiNetworks");
         selectedWifiNetworks = storedStringArray("selectedWifiNetworks");
         physiologicalMonitoringEnabled = storedBoolean("physiologicalMonitoringEnabled", physiologicalMonitoringEnabled);
+        batdokCotEnabled = storedBoolean("batdokCotEnabled", batdokCotEnabled);
+        networkPreferencesLocked = storedBoolean("networkPreferencesLocked", networkPreferencesLocked);
         myRoleCategory = storedString("myRoleCategory", myRoleCategory);
         myRole = storedString("myRole", myRole);
         if (!isValidMyRole(myRoleCategory, myRole)) {
@@ -535,7 +569,6 @@ class StandaloneApp extends Application.AppBase {
         highPressureAlertsEnabled = storedBoolean("highPressureAlertsEnabled", highPressureAlertsEnabled);
         lowPressureThreshold = storedNumber("lowPressureThreshold", lowPressureThreshold);
         highPressureThreshold = storedNumber("highPressureThreshold", highPressureThreshold);
-        bloodhoundCompassEnabled = storedBoolean("bloodhoundCompassEnabled", bloodhoundCompassEnabled);
         bloodhoundProximityVibrationEnabled = storedBoolean("bloodhoundProximityVibrationEnabled", bloodhoundProximityVibrationEnabled);
         bloodhoundProximityRadius = storedNumber("bloodhoundProximityRadius", bloodhoundProximityRadius);
         bloodhoundProximityIntensity = storedString("bloodhoundProximityIntensity", bloodhoundProximityIntensity);
@@ -715,15 +748,6 @@ class StandaloneApp extends Application.AppBase {
     function setHighPressureAlertsEnabled(enabled as Boolean) as Void {
         highPressureAlertsEnabled = enabled;
         Application.Storage.setValue("highPressureAlertsEnabled", enabled);
-    }
-
-    function isBloodhoundCompassEnabled() as Boolean {
-        return bloodhoundCompassEnabled;
-    }
-
-    function setBloodhoundCompassEnabled(enabled as Boolean) as Void {
-        bloodhoundCompassEnabled = enabled;
-        Application.Storage.setValue("bloodhoundCompassEnabled", enabled);
     }
 
     function isBloodhoundProximityVibrationEnabled() as Boolean {
@@ -929,12 +953,16 @@ class StandaloneApp extends Application.AppBase {
             return;
         }
         takClient.updatePosition(info);
+        if (info.speed != null) {
+            lastGpsSpeed = info.speed;
+        }
         if (info.position != null && info.speed != null) {
             lastGpsFixTime = Time.now().value();
             if (info.speed > 0.8) {
                 lastGpsMovementTime = lastGpsFixTime;
             }
         }
+        sendPliIfDue();
         if (view != null) {
             view.updatePosition(info);
         }
@@ -943,6 +971,7 @@ class StandaloneApp extends Application.AppBase {
     function onSensor(info as Sensor.Info) as Void {
         sensorInfo = info;
         var now = Time.now().value();
+        sendPliIfDue();
         if (!physiologicalMonitoringEnabled) {
             evaluatePressureAlerts();
             evaluateImmersionAlerts();
@@ -980,6 +1009,25 @@ class StandaloneApp extends Application.AppBase {
         return (lastStepTime != null && now - lastStepTime <= 60)
             || (lastGpsMovementTime != null && lastGpsFixTime != null
                 && now - lastGpsMovementTime <= 60 && now - lastGpsFixTime <= 60);
+    }
+
+    function sendPliIfDue() as Void {
+        if (!takClient.isConnected()) { return; }
+        var interval = getActiveReportingInterval();
+        var now = Time.now().value();
+        if (lastPliSentTime != null && now - lastPliSentTime < interval) { return; }
+        var age = Gregorian.info(Time.now(), Time.FORMAT_SHORT).year - birthYear;
+        if (age < 0) { age = 0; }
+        takClient.sendPli(interval, callsign, myRole, myTeamColor, getHeartRate(), age, batdokCotEnabled);
+        lastPliSentTime = now;
+    }
+
+    function getActiveReportingInterval() as Number {
+        if (!dynamicReportingEnabled) { return constantReportingInterval; }
+        if (takClient.isAlerting()) { return whileAlertingReportingInterval; }
+        if (!isMoving()) { return stationaryReportingInterval; }
+        if (lastGpsSpeed != null && lastGpsSpeed > 5.5) { return vehicleReportingInterval; }
+        return onFootReportingInterval;
     }
 
     function hasMotionInfo() as Boolean {
@@ -1307,6 +1355,10 @@ class StandaloneApp extends Application.AppBase {
 
     function sendChatReply(replyTo as String, text as String) as Void {
         takClient.sendChatReply(replyTo, text);
+    }
+
+    function sendChatMessage(text as String) as Void {
+        takClient.sendChatMessage(text, callsign);
     }
 
     function getMapView() as StandaloneMapView {

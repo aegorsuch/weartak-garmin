@@ -94,6 +94,26 @@ class TakClient {
         lastPosition = info;
     }
 
+    function sendPli(intervalSeconds as Number, callsign as String, role as String, team as String,
+            heartRate as Number?, age as Number, includeBatdok as Boolean) as Void {
+        var now = Time.now();
+        var payload = {
+            "tStart" => cotTimestamp(now),
+            "tStale" => cotTimestamp(now.add(new Time.Duration(intervalSeconds * 2 + 15))),
+            "callsign" => callsign,
+            "role" => role,
+            "team" => team,
+            "remarks" => "WearTAK Garmin PLI",
+            "age" => age,
+            "includeBatdok" => includeBatdok
+        };
+        if (heartRate != null) { payload.put("hr", heartRate); }
+        if (lastPosition != null && lastPosition.speed != null) {
+            payload.put("speed", lastPosition.speed);
+        }
+        transmit("pli", payload);
+    }
+
     function setAlerting(value as Boolean) as Void {
         if (alerting == value) {
             return;
@@ -236,6 +256,15 @@ class TakClient {
 
     function sendChatReply(replyTo as String, text as String) as Void {
         queueRelay("chat", {"replyTo" => replyTo, "text" => text}, null);
+    }
+
+    function sendChatMessage(text as String, senderCallsign as String) as Void {
+        queueRelay("chat", {
+            "roomUid" => "All Chat Rooms",
+            "roomTitle" => "All Chat Rooms",
+            "msg" => text,
+            "cs" => senderCallsign.length() == 0 ? "Garmin" : senderCallsign
+        }, null);
     }
 
     function queuePointReply(recipientUid as String, pointUid as String, text as String) as Boolean {

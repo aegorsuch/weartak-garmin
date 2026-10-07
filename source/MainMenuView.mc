@@ -64,7 +64,7 @@ function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => app.text(:settings)});
     var entries = [
         {:label => "Callsign and Device Preferences", :subLabel => null, :id => :devicePreferences},
-        {:label => app.text(:networkPreferences), :subLabel => null, :id => :networkPreferences},
+        {:label => app.text(:networkPreferences), :subLabel => app.isNetworkPreferencesLocked() ? "Locked" : null, :id => :networkPreferences},
         {:label => app.text(:alertingPreferences), :subLabel => null, :id => :alertingPreferences},
         {:label => app.text(:toolPreferences), :subLabel => null, :id => :toolPreferences},
         {:label => "Version " + app.getAppVersion(), :subLabel => null, :id => :appVersion}
@@ -78,6 +78,7 @@ function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function buildDeveloperOptionsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = new WatchUi.Menu2({:title => "Developer Options"});
+    addToggleEntry(menu, "Network Preferences Lock", app.isNetworkPreferencesLocked(), :networkPreferencesLockToggle);
     addMenuEntry(menu, "Verbose Logging", toolToggleLabel(app.isVerboseLoggingEnabled()), :verboseLoggingToggle);
     addMenuEntry(menu, "Diagnostics", null, :diagnostics);
     return menu;
@@ -100,6 +101,7 @@ function buildReportingStrategyMenu(app as StandaloneApp) as WatchUi.Menu2 {
     addMenuEntry(menu, "Constant Reporting", !app.isDynamicReportingEnabled() ? "Selected" : null, :constantReporting);
     addMenuEntry(menu, "Save Battery on WiFi", app.getSaveBatteryOnWifiMode(), :saveBatteryOnWifi);
     addToggleEntry(menu, "Physiological Monitoring", app.isPhysiologicalMonitoringEnabled(), :physiologicalMonitoring);
+    addToggleEntry(menu, "BATDOK", app.isBatdokCotEnabled(), :batdokCot);
     return menu;
 }
 
@@ -678,6 +680,10 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             var deviceMenu = buildDevicePreferencesMenu(app);
             WatchUi.pushView(deviceMenu, new DevicePreferencesDelegate(app, deviceMenu), WatchUi.SLIDE_LEFT);
         } else if (id == :networkPreferences) {
+            if (app.isNetworkPreferencesLocked()) {
+                WatchUi.showToast("Network settings are locked", null);
+                return;
+            }
             var networkMenu = buildNetworkPreferencesMenu(app);
             WatchUi.pushView(networkMenu, new NetworkPreferencesDelegate(app, networkMenu), WatchUi.SLIDE_LEFT);
         } else if (id == :environment) {
@@ -688,10 +694,11 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :toolPreferences) {
             WatchUi.pushView(buildToolPreferencesMenu(app), new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :developerOptions) {
-            WatchUi.pushView(buildDeveloperOptionsMenu(app), new DeveloperOptionsDelegate(app), WatchUi.SLIDE_LEFT);
+            var developerMenu = buildDeveloperOptionsMenu(app);
+            WatchUi.pushView(developerMenu, new DeveloperOptionsDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :appVersion) {
             if (app.registerVersionTap()) {
-                WatchUi.showToast("Developer mode enabled", null);
+                WatchUi.showToast("Developer mode " + (app.isDevModeEnabled() ? "enabled" : "disabled"), null);
                 WatchUi.switchToView(buildSettingsMenu(app), new SettingsMenuDelegate(app), WatchUi.SLIDE_LEFT);
             }
         }
@@ -708,7 +715,12 @@ class DeveloperOptionsDelegate extends WatchUi.Menu2InputDelegate {
 
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
-        if (id == :verboseLoggingToggle) {
+        if (id == :networkPreferencesLockToggle) {
+            var locked = !app.isNetworkPreferencesLocked();
+            app.setNetworkPreferencesLocked(locked);
+            item.setSubLabel(toolToggleLabel(locked));
+            WatchUi.switchToView(buildSettingsMenu(app), new SettingsMenuDelegate(app), WatchUi.SLIDE_RIGHT);
+        } else if (id == :verboseLoggingToggle) {
             app.setVerboseLoggingEnabled(!app.isVerboseLoggingEnabled());
             item.setSubLabel(toolToggleLabel(app.isVerboseLoggingEnabled()));
             WatchUi.requestUpdate();
@@ -781,6 +793,11 @@ class ReportingStrategyDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :physiologicalMonitoring) {
             var enabled = !app.isPhysiologicalMonitoringEnabled();
             app.setPhysiologicalMonitoringEnabled(enabled);
+            item.setSubLabel(toolToggleLabel(enabled));
+            WatchUi.requestUpdate();
+        } else if (id == :batdokCot) {
+            var enabled = !app.isBatdokCotEnabled();
+            app.setBatdokCotEnabled(enabled);
             item.setSubLabel(toolToggleLabel(enabled));
             WatchUi.requestUpdate();
         }
@@ -1549,11 +1566,7 @@ class BloodhoundDelegate extends WatchUi.Menu2InputDelegate {
 
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
-        if (id == :bloodhoundCompassToggle) {
-            app.setBloodhoundCompassEnabled(!app.isBloodhoundCompassEnabled());
-            item.setSubLabel(toolToggleLabel(app.isBloodhoundCompassEnabled()));
-            WatchUi.requestUpdate();
-        } else if (id == :bloodhoundProximityVibrationToggle) {
+        if (id == :bloodhoundProximityVibrationToggle) {
             app.setBloodhoundProximityVibrationEnabled(!app.isBloodhoundProximityVibrationEnabled());
             item.setSubLabel(toolToggleLabel(app.isBloodhoundProximityVibrationEnabled()));
             WatchUi.requestUpdate();
