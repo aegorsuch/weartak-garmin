@@ -114,8 +114,8 @@ features currently available:
 	the stationary, on-foot, vehicle, and alerting intervals according to current
 	movement/speed and alert state. Wi-Fi preferences are stored only because
 	active SSID detection is not implemented on Garmin. The adjacent BATDOK toggle
-	enables the AMIST vital-sign section in companion-generated PLI when a heart
-	rate sample is available.
+	adds an `includeBatdok` flag to Garmin PLI messages. The companion must consume
+	that flag to add AMIST; the current companion implementation does not yet do so.
 - Unlock Developer Options by tapping the version row eight times within
 	1.5 seconds. Developer Options includes the Network Preferences admin lock;
 	when locked, Network Preferences cannot be opened from Settings.
