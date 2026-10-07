@@ -469,6 +469,10 @@ class TakClient {
         var latitude = entity.get("lat");
         var longitude = entity.get("lon");
         var cotType = entity.get("type");
+        if (uid != null && cotType instanceof String && isIncomingAlertCleared(cotType, entity)) {
+            incomingCotCallback.invoke(uid.toString(), null, null, cotType, null, null, null, entity);
+            return;
+        }
         if (uid != null && latitude != null && longitude != null && cotType != null) {
             var callSign = entity.get("callSign");
             if (callSign == null) { callSign = entity.get("callsign"); }

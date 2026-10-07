@@ -175,4 +175,5 @@
     <string id="TextWarningLength">警告时长</string>
     <string id="TextWarningThreshold">警告阈值</string>
     <string id="TextWeight">体重</string>
+    <string id="IncomingAlertLabel">Alert</string>
 </resources>

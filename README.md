@@ -138,7 +138,9 @@ features currently available:
 - Track a selected point with Bloodhound range, true bearing, proximity radius,
 	vibration, and cancel controls.
 - Open **Bloodhound** from the main menu to browse incoming map points.
-	The list starts with **Remove All**, followed by received points.
+	Active remote alerts appear first with an **(Alert)** prefix, followed by
+	**Remove All** and received points. Alerts disappear when their cancellation
+	arrives or they expire; clearing a tracked alert also stops Bloodhound.
 	The main-menu row counts new points; new or newly
 	revised points vibrate once. **RGR** queues a reply and starts Bloodhound;
 	**nPos** queues "In Position", stops tracking, and removes the point locally.
@@ -205,8 +207,9 @@ this build:
 	or start Bloodhound. Long-press the map to place the current default marker.
 	**Bloodhound** on the main menu lists received 2525D map items and shows a
 	new-item count. Select an item to navigate, send RGR/nPos, or remove it locally.
-	**Remove All** at the top clears all received points locally and stops
-	tracking a removed target; it leaves live users and your dropped markers intact.
+	Active remote alerts appear at the top, labeled **(Alert)**, and can be tracked.
+	**Remove All** below the alerts clears all received points locally and stops
+	tracking a removed target; it leaves active alerts, live users, and your dropped markers intact.
 6. Select **Manual Alert** from the main menu and choose an alert type. It is
 	sent through an active Garmin relay; without one, its active state remains
 	local. Select **Manual Alert (Active)** to clear it.
@@ -230,6 +233,18 @@ is available. Deletion uses a `marker_delete` envelope with the Garmin marker UI
 for example `garmin-marker-point-1`; full ATAK handling remains future work.
 
 ### Incoming-point workflow and reply handoff
+
+Remote alerts use the same `entity`/`entities` relay. CoT types beginning
+`b-a-`, `isAlert: true`, or an `emergency` dictionary identify alerts.
+They are shown above regular points with an **(Alert)** title prefix, including
+while the picker is open. Cancellation uses the same alert UID with CoT type
+`b-a-o-can`, `state: "CANCEL"`, `active: false`, or
+`emergency: {cancel: true}` (also accepts `"true"`); cancellation does not
+require coordinates. A normal non-alert update to the same UID removes its
+alert status but retains the map entity. Alert cancellation/expiry stops
+tracking that target. The companion must forward alert and cancellation
+metadata; the watch cannot discover alerts that the companion does not relay.
+Alerts support Bloodhound without point-specific RGR/nPos replies.
 
 The watch accepts point metadata in an `entity` payload or each entry in
 `entities`. A Boolean `isPoint` is authoritative. Otherwise, a
@@ -497,23 +512,23 @@ the private `developer_key.der` file.
 
 ## Releasing
 
-Releases are built and published manually; there is no CI automation. The
-maintainer's local direct-install build is only for `fenix7x`, written to the
-Desktop. GitHub releases likewise include only that device-specific `.prg`;
-other products and the `.iq` bundle are not published in these personal
-releases.
+Releases are built and published manually; there is no CI automation. Build
+device-specific `.prg` files for every product declared in the manifest.
+The maintainer's `fenix7x` direct-install build is also written to the Desktop,
+replacing the superseded Fenix 7X release. Publish the device-specific PRGs;
+do not publish debug files or the `.iq` bundle.
 
 1. Bump `APP_VERSION` in `source/StandaloneApp.mc` to the new version, including
 	the short source commit hash (for example, `5.8.0.3-0c54201`), and
    commit it (consistent with the government repo being canonical, merge this
    into `develop` first as described above).
-2. Build only `fenix7x` with the Garmin Connect IQ SDK and name the output
-	`WearTAK-Garmin-fenix7x-{APP_VERSION}.prg`. Save the release build on the
-	Desktop; remove superseded Garmin release binaries from the project root.
+2. Build every supported product with the Garmin Connect IQ SDK and name each
+	output `WearTAK-Garmin-{DEVICE}-{APP_VERSION}.prg`. Save the `fenix7x`
+	release build on the Desktop; remove superseded Garmin release binaries.
 3. Tag the release commit `v{APP_VERSION}`, matching `APP_VERSION` exactly.
 4. Push the tag and create a release from it on `origin`
-	(git.tak.gov/core/weartak-core/weartak-garmin), attaching the `fenix7x`
-	`.prg` only.
+	(git.tak.gov/core/weartak-core/weartak-garmin), attaching the device-specific
+	`.prg` files.
 5. Mirror the same release to `github`
 	(https://github.com/aegorsuch/weartak-garmin): push the tag there and
-	create a release attaching the same `fenix7x` `.prg` only.
+	create a release attaching the same device-specific `.prg` files.

@@ -352,6 +352,85 @@ function bloodhoundIncomingPointsMenu(logger) as Boolean {
     Test.assertEqual(menu.getItem(0).getId(), :removeAll);
     Test.assertEqual(menu.getItem(1).getId(), :empty);
     Test.assert(menu.getItem(2) == null);
+    menu.onHide();
+    return true;
+}
+
+(:test)
+function bloodhoundRemoteAlerts(logger) as Boolean {
+    var app = Application.getApp() as StandaloneApp;
+    var map = app.getMapView();
+    Test.assert(isIncomingAlert("b-a-o-tbl", {}));
+    Test.assert(isIncomingAlert("a-f-G-U-C", {"emergency" => {"type" => "911 Alert"}}));
+    Test.assert(isIncomingAlert("a-f-G-U-C", {"isAlert" => true}));
+    Test.assert(!isIncomingAlert("a-f-G-U-C", {}));
+    Test.assert(isIncomingAlertCleared("b-a-o-can", {}));
+    Test.assert(isIncomingAlertCleared("b-a-o-tbl", {"emergency" => {"cancel" => "true"}}));
+    Test.assert(isIncomingAlertCleared("a-f-G-U-C", {"isAlert" => true, "active" => false}));
+    Test.assert(isIncomingAlertCleared("b-a-o-tbl", {"state" => "CANCEL"}));
+    Test.assert(!isIncomingAlertCleared("b-a-o-tbl", {"emergency" => {"cancel" => false}}));
+    Test.assert(!isIncomingAlertCleared("a-f-G-U-C", {"active" => false}));
+    map.updateIncomingCot("alert-point", 38.0, -77.0, "a-n-G", "Checkpoint", null, null,
+        {"isPoint" => true});
+    var menu = buildIncomingPointsMenu(app);
+    menu.onShow();
+    map.updateIncomingCot("alert-first", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null, {});
+    map.updateIncomingCot("alert-second", 38.0, -77.0, "a-f-G-U-C", "Patrol", null, null,
+        {"isPoint" => true, "emergency" => {"type" => "911 Alert"}});
+    Test.assertEqual(menu.getItem(0).getId(), "cot-alert-second");
+    Test.assertEqual(menu.getItem(0).getLabel(), "(" + Toybox.WatchUi.loadResource(Rez.Strings.IncomingAlertLabel) + ") Patrol");
+    Test.assertEqual(menu.getItem(1).getId(), "cot-alert-first");
+    Test.assertEqual(menu.getItem(2).getId(), :removeAll);
+    Test.assertEqual(menu.getItem(3).getId(), "cot-alert-point");
+    Test.assert(menu.getItem(4) == null);
+    Test.assertEqual(map.pendingIncomingPoints.size(), 0);
+    var actions = buildIncomingPointActions(map, "cot-alert-second");
+    Test.assertEqual(actions.getItem(1).getId(), :track);
+    map.toggleBloodhound("cot-alert-second");
+    var relay = new TestPointRelay();
+    relay.incomingCotCallback = app.method(:onIncomingCot);
+    relay.forwardEntity({"uid" => "alert-second", "type" => "a-f-G-U-C",
+        "emergency" => {"cancel" => true}});
+    Test.assert(!map.incomingDetails.hasKey("cot-alert-second"));
+    Test.assert(!map.isBloodhoundActive());
+    Test.assertEqual(menu.getItem(0).getId(), "cot-alert-first");
+    map.removeAllIncomingPoints();
+    Test.assert(map.incomingDetails.hasKey("cot-alert-first"));
+    Test.assert(!map.incomingDetails.hasKey("cot-alert-point"));
+    map.toggleBloodhound("cot-alert-first");
+    relay.forwardEntity({"uid" => "alert-first", "type" => "b-a-o-can"});
+    Test.assert(!map.isBloodhoundActive());
+    Test.assertEqual(menu.getItem(0).getId(), :removeAll);
+    Test.assertEqual(menu.getItem(1).getId(), :empty);
+    map.updateIncomingCot("alert-first", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null, {});
+    map.removeIncomingPoint("cot-alert-first", true);
+    relay.forwardEntity({"uid" => "alert-first", "type" => "b-a-o-can"});
+    Test.assert(!map.dismissedIncomingPoints.hasKey("cot-alert-first"));
+    map.updateIncomingCot("alert-first", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null, {});
+    Test.assertEqual(menu.getItem(0).getId(), "cot-alert-first");
+    map.toggleBloodhound("cot-alert-first");
+    map.incomingLastSeen.put("cot-alert-first", Time.now().value() - 301);
+    map.pruneIncomingEntities();
+    Test.assert(!map.isBloodhoundActive());
+    Test.assertEqual(menu.getItem(1).getId(), :empty);
+    map.updateIncomingCot("alert-user", 38.0, -77.0, "a-f-G-U-C", "User", null, null,
+        {"isAlert" => true});
+    map.toggleBloodhound("cot-alert-user");
+    map.updateIncomingCot("alert-user", 38.0, -77.0, "a-f-G-U-C", "User", null, null, {});
+    Test.assert(map.incomingDetails.hasKey("cot-alert-user"));
+    Test.assert(!map.isBloodhoundActive());
+    Test.assertEqual(menu.getItem(1).getId(), :empty);
+    map.removeIncomingPoint("cot-alert-user", false);
+    menu.onHide();
+    map.updateIncomingCot("alert-notify", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-1"});
+    Test.assertEqual(map.pendingIncomingPoints.size(), 1);
+    map.markIncomingPointsSeen();
+    map.updateIncomingCot("alert-notify", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-1"});
+    Test.assertEqual(map.pendingIncomingPoints.size(), 0);
+    relay.forwardEntity({"uid" => "alert-notify", "type" => "b-a-o-tbl", "state" => "CANCEL"});
+    Test.assert(!map.incomingDetails.hasKey("cot-alert-notify"));
     return true;
 }
 

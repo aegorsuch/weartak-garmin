@@ -1,5 +1,23 @@
 import Toybox.Lang;
 
+function isIncomingAlert(cotType as String, metadata as Dictionary) as Boolean {
+    return cotType.find("b-a-") == 0 || metadata.get("isAlert") == true
+        || metadata.get("emergency") instanceof Dictionary;
+}
+
+function isIncomingAlertCleared(cotType as String, metadata as Dictionary) as Boolean {
+    if (!isIncomingAlert(cotType, metadata)) { return false; }
+    var state = metadata.get("state");
+    if (cotType.equals("b-a-o-can") || metadata.get("active") == false
+            || (state instanceof String && state.equals("CANCEL"))) { return true; }
+    var emergency = metadata.get("emergency");
+    if (emergency instanceof Dictionary) {
+        var cancel = emergency.get("cancel");
+        return cancel == true || (cancel instanceof String && cancel.equals("true"));
+    }
+    return false;
+}
+
 function isIncomingMapPoint(cotType as String, metadata as Dictionary) as Boolean {
     var explicitPoint = metadata.get("isPoint");
     if (explicitPoint instanceof Boolean) { return explicitPoint; }

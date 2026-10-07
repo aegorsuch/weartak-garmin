@@ -30,6 +30,7 @@
     <string id="IncomingPointsRemoveAll">Remove All</string>
     <string id="IncomingPointNew">New</string>
     <string id="IncomingPointReceived">Incoming map point</string>
+    <string id="IncomingAlertLabel">Alert</string>
     <string id="IncomingPointUnavailable">Point no longer available</string>
     <string id="IncomingPointRgr">Reply and start Bloodhound</string>
     <string id="IncomingPointNpos">Reply, stop and remove locally</string>

@@ -124,4 +124,5 @@
     <string id="OfflineDetailsTooLong">Event details too long to store; shorten title, remark or chat</string>
     <string id="OfflineStorageFailed">Unable to save offline events; storage full or unavailable</string>
     <string id="IncomingPointsRemoveAll">Remove All</string>
+    <string id="IncomingAlertLabel">Alert</string>
 </resources>

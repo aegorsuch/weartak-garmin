@@ -7,6 +7,7 @@ function buildIncomingPointsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 class IncomingPointsMenu extends WatchUi.Menu2 {
     var app as StandaloneApp;
+    var refreshing as Boolean = false;
 
     function initialize(application as StandaloneApp) {
         Menu2.initialize({:title => application.text(:bloodhound)});
@@ -15,16 +16,44 @@ class IncomingPointsMenu extends WatchUi.Menu2 {
     }
 
     function onShow() as Void {
+        app.incomingPointsMenu = self;
+        refresh();
+    }
+
+    function onHide() as Void {
+        if (app.incomingPointsMenu == self) { app.incomingPointsMenu = null; }
+    }
+
+    function refresh() as Void {
+        if (refreshing) { return; }
+        refreshing = true;
+        var focusedItem = mFocus == null ? null : getItem(mFocus);
+        var focusedId = focusedItem == null ? null : focusedItem.getId();
         while (getItem(0) != null) { deleteItem(0); }
         populate();
+        for (var i = 0; getItem(i) != null; i++) {
+            var item = getItem(i);
+            if (item != null && item.getId() == focusedId) {
+                setFocus(i);
+                break;
+            }
+        }
+        refreshing = false;
     }
 
     function populate() as Void {
         var map = app.getMapView();
         map.pruneIncomingEntities();
         map.markIncomingPointsSeen();
-        addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.IncomingPointsRemoveAll), null, :removeAll, null));
         var pointCount = 0;
+        for (var alertIndex = map.incomingIds.size() - 1; alertIndex >= 0; alertIndex--) {
+            var alertId = map.incomingIds[alertIndex] as String;
+            var alertDetails = map.incomingDetails.get(alertId) as Dictionary;
+            if (alertDetails.get("isAlert") != true) { continue; }
+            pointCount += 1;
+            addItem(new WatchUi.MenuItem(map.incomingPointTitle(alertId), map.incomingPointDetailLabel(alertId), alertId, null));
+        }
+        addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.IncomingPointsRemoveAll), null, :removeAll, null));
         for (var i = map.incomingIds.size() - 1; i >= 0; i--) {
             var id = map.incomingIds[i] as String;
             var details = map.incomingDetails.get(id) as Dictionary;

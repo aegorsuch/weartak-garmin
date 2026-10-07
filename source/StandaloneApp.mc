@@ -10,11 +10,14 @@ import Toybox.WatchUi;
 
 class StandaloneApp extends Application.AppBase {
     var incomingPointMenuItem as WatchUi.MenuItem? = null;
+    var incomingPointsMenu as IncomingPointsMenu? = null;
 
     function refreshIncomingPointCount() as Void {
-        if (incomingPointMenuItem == null) { return; }
-        var count = getMapView().pendingIncomingPoints.size();
-        incomingPointMenuItem.setSubLabel(count > 0 ? count.toString() + " " + WatchUi.loadResource(Rez.Strings.IncomingPointNew) : null);
+        if (incomingPointMenuItem != null) {
+            var count = getMapView().pendingIncomingPoints.size();
+            incomingPointMenuItem.setSubLabel(count > 0 ? count.toString() + " " + WatchUi.loadResource(Rez.Strings.IncomingPointNew) : null);
+        }
+        if (incomingPointsMenu != null) { incomingPointsMenu.refresh(); }
         WatchUi.requestUpdate();
     }
 

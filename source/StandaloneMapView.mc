@@ -253,7 +253,13 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function updateIncomingCot(uid as String, latitude, longitude, cotType as String, callSign as String?, team as String?, role as String?, metadata as Dictionary) as Void {
         var markerId = "cot-" + uid;
-        var isPoint = isIncomingMapPoint(cotType, metadata);
+        if (isIncomingAlertCleared(cotType, metadata)) {
+            dismissedIncomingPoints.remove(markerId);
+            removeIncomingPoint(markerId, false);
+            return;
+        }
+        var isAlert = isIncomingAlert(cotType, metadata);
+        var isPoint = !isAlert && isIncomingMapPoint(cotType, metadata);
         var revision = incomingPointRevision(metadata);
         if (dismissedIncomingPoints.hasKey(markerId)) {
             var dismissed = dismissedIncomingPoints.get(markerId) as Dictionary;
@@ -261,8 +267,13 @@ class StandaloneMapView extends WatchUi.MapView {
             dismissedIncomingPoints.remove(markerId);
         }
         var previous = incomingDetails.get(markerId);
-        var notify = isPoint && (previous == null
+        var notify = (isPoint || isAlert) && (previous == null
+            || (isAlert && previous.get("isAlert") != true)
             || (revision.length() > 0 && !revision.equals(previous.get("revision"))));
+        if (previous instanceof Dictionary && previous.get("isAlert") == true && !isAlert) {
+            pendingIncomingPoints.remove(markerId);
+            if (isBloodhoundTarget(markerId)) { toggleBloodhound(markerId); }
+        }
         var location = new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees});
         if (!incomingDetails.hasKey(markerId)) {
             incomingIds.add(markerId);
@@ -276,14 +287,16 @@ class StandaloneMapView extends WatchUi.MapView {
             "callSign" => callSign == null ? "" : trimMapText(callSign),
             "team" => team == null ? "" : trimMapText(team),
             "role" => role == null ? "" : trimMapText(role),
-            "isPoint" => isPoint, "senderUID" => incomingPointSender(metadata),
+            "isPoint" => isPoint, "isAlert" => isAlert,
+            "senderUID" => incomingPointSender(metadata),
             "revision" => revision
         });
         pointLocations.put(markerId, location);
         if (notify) {
             if (pendingIncomingPoints.indexOf(markerId) == -1) { pendingIncomingPoints.add(markerId); }
             Attention.vibrate([new Attention.VibeProfile(80, 250)]);
-            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.IncomingPointReceived), null);
+            WatchUi.showToast(isAlert ? incomingPointTitle(markerId)
+                : WatchUi.loadResource(Rez.Strings.IncomingPointReceived), null);
         }
         application.refreshIncomingPointCount();
         pruneIncomingEntities();
@@ -295,7 +308,9 @@ class StandaloneMapView extends WatchUi.MapView {
         var details = incomingDetails.get(id);
         if (!(details instanceof Dictionary)) { return id; }
         var title = details.get("callSign") as String;
-        return title.length() > 0 ? title : details.get("uid") as String;
+        title = title.length() > 0 ? title : details.get("uid") as String;
+        return details.get("isAlert") == true
+            ? "(" + WatchUi.loadResource(Rez.Strings.IncomingAlertLabel) + ") " + title : title;
     }
 
     function incomingPointDetailLabel(id as String) as String {
