@@ -5,6 +5,33 @@ import Toybox.Graphics;
 import Toybox.Time;
 
 (:test)
+function sharedMenuConstruction(logger) as Boolean {
+    var menu = createMenu("Shared menu");
+    addMenuEntry(menu, "Symbol", null, :symbolItem);
+    addMenuEntry(menu, "Number", "Selected", 3);
+    addMenuEntry(menu, "String", null, "remote-user");
+    Test.assertEqual(menu.getItem(0).getLabel(), "Symbol");
+    Test.assertEqual(menu.getItem(0).getId(), :symbolItem);
+    Test.assertEqual(menu.getItem(1).getId(), 3);
+    Test.assertEqual(menu.getItem(1).getSubLabel(), "Selected");
+    Test.assertEqual(menu.getItem(2).getId(), "remote-user");
+    var app = Application.getApp() as StandaloneApp;
+    Test.assertEqual(app.text(Rez.Strings.TextBloodhound),
+        Toybox.WatchUi.loadResource(Rez.Strings.TextBloodhound));
+    var settings = buildSettingsMenu(app);
+    var ids = [:devicePreferences, :networkPreferences, :alertingPreferences, :toolPreferences, :appVersion];
+    for (var index = 0; index < ids.size(); index++) {
+        Test.assertEqual(settings.getItem(index).getId(), ids[index]);
+    }
+    if (app.isDevModeEnabled()) {
+        Test.assertEqual(settings.getItem(5).getId(), :developerOptions);
+    } else {
+        Test.assert(settings.getItem(5) == null);
+    }
+    return true;
+}
+
+(:test)
 class TestMapPositionInfo {
     var position;
     var accuracy = Toybox.Position.QUALITY_USABLE;
@@ -330,7 +357,7 @@ function bloodhoundIncomingPointsMenu(logger) as Boolean {
     var app = Application.getApp() as StandaloneApp;
     var map = app.getMapView();
     var mainMenu = buildMainMenu(app);
-    Test.assertEqual(mainMenu.getItem(0).getLabel(), app.text(:bloodhound));
+    Test.assertEqual(mainMenu.getItem(0).getLabel(), app.text(Rez.Strings.TextBloodhound));
     var mainMenuIds = [:incomingPoints, :chat, :managePoints, :dropPoint, :sos, :map, :settings];
     for (var i = 0; i < mainMenuIds.size(); i++) {
         Test.assertEqual(mainMenu.getItem(i).getId(), mainMenuIds[i]);
@@ -339,7 +366,7 @@ function bloodhoundIncomingPointsMenu(logger) as Boolean {
     map.currentPosition = new Toybox.Position.Location({:latitude => 38.0, :longitude => -77.0, :format => :degrees});
     map.updateIncomingCot("menu-point", 38.0, -77.0, "a-n-G", "Checkpoint", null, null,
         {"isPoint" => true, "time" => "revision-1"});
-    Test.assertEqual(map.incomingPointDetailLabel("cot-menu-point"), app.text(:neutralPoint) + " · 0 m");
+    Test.assertEqual(map.incomingPointDetailLabel("cot-menu-point"), app.text(Rez.Strings.TextObstaclePoint) + " · 0 m");
     var menu = buildIncomingPointsMenu(app);
     Test.assertEqual(menu.getItem(0).getId(), :removeAll);
     Test.assertEqual(menu.getItem(0).getLabel(), Toybox.WatchUi.loadResource(Rez.Strings.IncomingPointsRemoveAll));

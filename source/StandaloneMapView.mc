@@ -200,7 +200,7 @@ class StandaloneMapView extends WatchUi.MapView {
         if (application.isBloodhoundProximityVibrationEnabled()) {
             vibrateForProximity(application.getBloodhoundProximityIntensity());
         }
-        WatchUi.showToast(application.text(:proximity), null);
+        WatchUi.showToast(application.text(Rez.Strings.TextProximity), null);
     }
 
     function vibrateForProximity(intensity as String) as Void {
@@ -231,7 +231,7 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function showSelfMenu() as Void {
         if (currentPosition != null) {
-            showCoordinateMenu(application.text(:self), currentPosition);
+            showCoordinateMenu(application.text(Rez.Strings.TextSelf), currentPosition);
         }
     }
 
@@ -315,15 +315,15 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function incomingPointDetailLabel(id as String) as String {
         var details = incomingDetails.get(id);
-        var affiliation = :unknownPoint;
+        var affiliation = Rez.Strings.TextUnknownPoint;
         if (details instanceof Dictionary) {
             var cotType = details.get("type");
             if (cotType instanceof String && (cotType as String).length() >= 3) {
                 var code = (cotType as String).substring(2, 3);
-                if (code.equals("f") || code.equals("a")) { affiliation = :friendlyPoint; }
+                if (code.equals("f") || code.equals("a")) { affiliation = Rez.Strings.TextFriendlyPoint; }
                 else if (code.equals("h") || code.equals("s") || code.equals("j") || code.equals("k")) {
-                    affiliation = :hostilePoint;
-                } else if (code.equals("n")) { affiliation = :neutralPoint; }
+                    affiliation = Rez.Strings.TextHostilePoint;
+                } else if (code.equals("n")) { affiliation = Rez.Strings.TextObstaclePoint; }
             }
         }
         var label = application.text(affiliation);
@@ -680,13 +680,13 @@ class StandaloneMapView extends WatchUi.MapView {
         dc.drawRectangle(4, panelTop, screenWidth - 8, panelHeight);
             dc.drawText(screenWidth / 2, panelTop + 4, Graphics.FONT_XTINY, title, Graphics.TEXT_JUSTIFY_CENTER);
         if (currentPosition == null) {
-                dc.drawText(screenWidth / 2, panelTop + 30, Graphics.FONT_XTINY, application.text(:waitingForLocation), Graphics.TEXT_JUSTIFY_CENTER);
+                dc.drawText(screenWidth / 2, panelTop + 30, Graphics.FONT_XTINY, application.text(Rez.Strings.TextWaitingForLocation), Graphics.TEXT_JUSTIFY_CENTER);
         } else {
             var target = pointLocations.get(bloodhoundPointId);
             var rangeMeters = distanceMeters(currentPosition, target).toNumber();
             var bearing = bearingDegrees(currentPosition, target).toNumber();
-            dc.drawText(screenWidth / 2, panelTop + 22, Graphics.FONT_XTINY, application.text(:range) + " " + rangeMeters.toString() + " m", Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(screenWidth / 2, panelTop + 40, Graphics.FONT_XTINY, application.text(:bearing) + " " + bearing.toString() + " deg", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(screenWidth / 2, panelTop + 22, Graphics.FONT_XTINY, application.text(Rez.Strings.TextRange) + " " + rangeMeters.toString() + " m", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(screenWidth / 2, panelTop + 40, Graphics.FONT_XTINY, application.text(Rez.Strings.TextBearing) + " " + bearing.toString() + " deg", Graphics.TEXT_JUSTIFY_CENTER);
         }
     }
 
@@ -699,8 +699,8 @@ class StandaloneMapView extends WatchUi.MapView {
             showPointTypeMenu(bloodhoundPointId);
             return;
         }
-        var menu = new WatchUi.Menu2({:title => application.text(:bloodhoundCompass)});
-        menu.addItem(new WatchUi.MenuItem(application.text(:cancelBloodhound), null, :cancelBloodhound, null));
+        var menu = createMenu(application.text(Rez.Strings.TextBloodhoundCompass));
+        addMenuEntry(menu, application.text(Rez.Strings.TextStopBloodhound), null, :cancelBloodhound);
         WatchUi.pushView(menu, new BloodhoundCancelDelegate(self), WatchUi.SLIDE_UP);
     }
 
@@ -766,11 +766,11 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function showCoordinateMenu(title as String, location) as Void {
-        var menu = new WatchUi.Menu2({:title => title});
+        var menu = createMenu(title);
         var degrees = location.toDegrees();
-        menu.addItem(new WatchUi.MenuItem("Lat: " + degrees[0].format("%.5f"), null, :coordinates, null));
-        menu.addItem(new WatchUi.MenuItem("Lon: " + degrees[1].format("%.5f"), null, :coordinates, null));
-        menu.addItem(new WatchUi.MenuItem(mgrsLabel(location), null, :coordinates, null));
+        addMenuEntry(menu, "Lat: " + degrees[0].format("%.5f"), null, :coordinates);
+        addMenuEntry(menu, "Lon: " + degrees[1].format("%.5f"), null, :coordinates);
+        addMenuEntry(menu, mgrsLabel(location), null, :coordinates);
         WatchUi.pushView(menu, new CoordinateMenuDelegate(), WatchUi.SLIDE_UP);
     }
 
@@ -1163,13 +1163,13 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function defaultPointTitle(type as Symbol) as String {
         if (type == :friendly) {
-            return application.text(:friendlyPoint);
+            return application.text(Rez.Strings.TextFriendlyPoint);
         } else if (type == :hostile) {
-            return application.text(:hostilePoint);
+            return application.text(Rez.Strings.TextHostilePoint);
         } else if (type == :neutral) {
-            return application.text(:neutralPoint);
+            return application.text(Rez.Strings.TextObstaclePoint);
         }
-        return application.text(:unknownPoint);
+        return application.text(Rez.Strings.TextUnknownPoint);
     }
 
     function updatePointText(id, field, value) {
@@ -1223,12 +1223,12 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function getPointTypeLabel(id) as String {
         if (pointDetails.hasKey(id) == false) {
-            return application.text(:unknownPoint);
+            return application.text(Rez.Strings.TextUnknownPoint);
         }
         var details = pointDetails.get(id) as Dictionary;
         var type = details.get("type");
         if (type == null) {
-            return application.text(:unknownPoint);
+            return application.text(Rez.Strings.TextUnknownPoint);
         }
         return defaultPointTitle(type as Symbol);
     }
@@ -1299,7 +1299,7 @@ class StandaloneMapView extends WatchUi.MapView {
     function movePointToCurrentLocation(id) as Boolean {
         var info = Position.getInfo();
         if (info == null || info.position == null || pointDetails.hasKey(id) == false) {
-            WatchUi.showToast(application.text(:locationUnavailable), null);
+            WatchUi.showToast(application.text(Rez.Strings.TextLocationUnavailable), null);
             return false;
         }
         currentPosition = info.position;
@@ -1480,25 +1480,25 @@ class StandaloneMapView extends WatchUi.MapView {
 }
 
 function buildMapLayersMenu(mapView as StandaloneMapView) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Layers Menu"});
+    var menu = createMenu("Layers Menu");
     addMenuEntry(menu, "Map Buttons", mapView.areMapButtonsVisible() ? "On" : "Off", :mapButtonsToggle);
     var teams = mapView.incomingUserGroups(true);
-    menu.addItem(new WatchUi.MenuItem("Team Colors (" + teams.size().toString() + ")", null, :teamColorsHeading, null));
+    addMenuEntry(menu, "Team Colors (" + teams.size().toString() + ")", null, :teamColorsHeading);
     for (var teamIndex = 0; teamIndex < teams.size(); teamIndex++) {
         var team = teams[teamIndex] as Dictionary;
         var teamName = team.get("name").toString();
         var teamCount = team.get("count") as Number;
-        menu.addItem(new WatchUi.MenuItem(teamName + " (" + teamCount.toString() + ")", mapView.isMapGroupHiddenForKind(true, teamName) ? "Hidden" : "Shown", teamIndex, null));
+        addMenuEntry(menu, teamName + " (" + teamCount.toString() + ")", mapView.isMapGroupHiddenForKind(true, teamName) ? "Hidden" : "Shown", teamIndex);
     }
     var roles = mapView.incomingUserGroups(false);
-    menu.addItem(new WatchUi.MenuItem("Default Roles (" + roles.size().toString() + ")", null, :defaultRolesHeading, null));
+    addMenuEntry(menu, "Default Roles (" + roles.size().toString() + ")", null, :defaultRolesHeading);
     for (var roleIndex = 0; roleIndex < roles.size(); roleIndex++) {
         var role = roles[roleIndex] as Dictionary;
         var roleName = role.get("name").toString();
         var roleCount = role.get("count") as Number;
-        menu.addItem(new WatchUi.MenuItem(roleName + " (" + roleCount.toString() + ")", mapView.isMapGroupHiddenForKind(false, roleName) ? "Hidden" : "Shown", 1000 + roleIndex, null));
+        addMenuEntry(menu, roleName + " (" + roleCount.toString() + ")", mapView.isMapGroupHiddenForKind(false, roleName) ? "Hidden" : "Shown", 1000 + roleIndex);
     }
-    menu.addItem(new WatchUi.MenuItem("Back", null, :layersBack, null));
+    addMenuEntry(menu, "Back", null, :layersBack);
     return menu;
 }
 
@@ -1665,19 +1665,19 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
 
 function buildPointDetailsMenu(mapView as StandaloneMapView, pointId as String) as WatchUi.Menu2 {
     var title = mapView.getPointText(pointId, "title");
-    var menu = new WatchUi.Menu2({:title => title});
-    menu.addItem(new WatchUi.MenuItem(mapView.getPointTypeShortLabel(pointId), "Dropped " + mapView.getPointDropTime(pointId), :pointSummary, null));
-    menu.addItem(new WatchUi.MenuItem("Distance", mapView.getPointDistanceLabel(pointId), :pointDistance, null));
+    var menu = createMenu(title);
+    addMenuEntry(menu, mapView.getPointTypeShortLabel(pointId), "Dropped " + mapView.getPointDropTime(pointId), :pointSummary);
+    addMenuEntry(menu, "Distance", mapView.getPointDistanceLabel(pointId), :pointDistance);
     var bearing = mapView.getPointBearingDegrees(pointId);
-    menu.addItem(new WatchUi.MenuItem("Bearing", bearing.format("%03d") + " deg " + mapView.getPointCardinalDirection(pointId), :pointBearing, null));
-    menu.addItem(new WatchUi.MenuItem("Coordinates", mapView.getPointLatitudeLabel(pointId) + ", " + mapView.getPointLongitudeLabel(pointId), :pointCoordinates, null));
-    menu.addItem(new WatchUi.MenuItem("MGRS", mapView.getPointMGRSLabel(pointId), :pointMGRS, null));
-    menu.addItem(new WatchUi.MenuItem(mapView.isBloodhoundTarget(pointId) ? "Stop Bloodhound" : "Bloodhound", null, :pointBloodhound, null));
-    menu.addItem(new WatchUi.MenuItem("Change Title", null, :pointTitle, null));
-    menu.addItem(new WatchUi.MenuItem(mapView.getPointText(pointId, "remark").equals("") ? "Add Remark" : "Change Remark", null, :pointRemark, null));
-    menu.addItem(new WatchUi.MenuItem("Change Marker", null, :pointType, null));
-    menu.addItem(new WatchUi.MenuItem("Move to Current Location", null, :pointMove, null));
-    menu.addItem(new WatchUi.MenuItem("Delete Marker", null, :pointDelete, null));
+    addMenuEntry(menu, "Bearing", bearing.format("%03d") + " deg " + mapView.getPointCardinalDirection(pointId), :pointBearing);
+    addMenuEntry(menu, "Coordinates", mapView.getPointLatitudeLabel(pointId) + ", " + mapView.getPointLongitudeLabel(pointId), :pointCoordinates);
+    addMenuEntry(menu, "MGRS", mapView.getPointMGRSLabel(pointId), :pointMGRS);
+    addMenuEntry(menu, mapView.isBloodhoundTarget(pointId) ? "Stop Bloodhound" : "Bloodhound", null, :pointBloodhound);
+    addMenuEntry(menu, "Change Title", null, :pointTitle);
+    addMenuEntry(menu, mapView.getPointText(pointId, "remark").equals("") ? "Add Remark" : "Change Remark", null, :pointRemark);
+    addMenuEntry(menu, "Change Marker", null, :pointType);
+    addMenuEntry(menu, "Move to Current Location", null, :pointMove);
+    addMenuEntry(menu, "Delete Marker", null, :pointDelete);
     return menu;
 }
 
@@ -1706,11 +1706,11 @@ class PointDetailsMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :pointRemark) {
             WatchUi.pushView(new WatchUi.TextPicker(mapView.getPointText(pointId, "remark")), new PointTextPickerDelegate(mapView, pointId, "remark"), WatchUi.SLIDE_UP);
         } else if (id == :pointType) {
-            var typeMenu = new WatchUi.Menu2({:title => "Change Marker"});
-            typeMenu.addItem(new WatchUi.MenuItem("Unknown", null, :unknown, null));
-            typeMenu.addItem(new WatchUi.MenuItem("Hostile", null, :hostile, null));
-            typeMenu.addItem(new WatchUi.MenuItem("Friendly", null, :friendly, null));
-            typeMenu.addItem(new WatchUi.MenuItem("Neutral", null, :neutral, null));
+            var typeMenu = createMenu("Change Marker");
+            addMenuEntry(typeMenu, "Unknown", null, :unknown);
+            addMenuEntry(typeMenu, "Hostile", null, :hostile);
+            addMenuEntry(typeMenu, "Friendly", null, :friendly);
+            addMenuEntry(typeMenu, "Neutral", null, :neutral);
             WatchUi.pushView(typeMenu, new PointTypeMenuDelegate(mapView, pointId), WatchUi.SLIDE_LEFT);
         } else if (id == :pointMove) {
             if (!mapView.movePointToCurrentLocation(pointId)) { return; }
@@ -1789,7 +1789,7 @@ class PointTypeMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :neutral) {
             view.changePointType(pointId, :neutral, "Neutral 2525D point");
         } else {
-            view.changePointType(pointId, :unknown, view.application.text(:unknownPoint));
+            view.changePointType(pointId, :unknown, view.application.text(Rez.Strings.TextUnknownPoint));
         }
         WatchUi.popView(WatchUi.SLIDE_DOWN);
         WatchUi.popView(WatchUi.SLIDE_DOWN);

@@ -2,18 +2,18 @@ import Toybox.Lang;
 import Toybox.WatchUi;
 
 function buildSosMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:manualAlert)});
+    var menu = createMenu(app.text(Rez.Strings.TextManualAlert));
     var client = app.getTakClient();
     if (client.isAlerting()) {
-        menu.addItem(new WatchUi.MenuItem(app.text(:clearManualAlert) + " (" + app.alertTypeLabel(client.getAlertType()) + " " + app.text(:active) + ")", null, :clear, null));
+        addMenuEntry(menu, app.text(Rez.Strings.TextClearManualAlert) + " (" + app.alertTypeLabel(client.getAlertType()) + " " + app.text(Rez.Strings.TextActive) + ")", null, :clear);
     } else {
-        menu.addItem(new WatchUi.MenuItem(app.text(:gateRunner), null, :gateRunner, null));
-        menu.addItem(new WatchUi.MenuItem(app.text(:gunshot), null, :gunshot, null));
-        menu.addItem(new WatchUi.MenuItem(app.text(:gunshotInjury), null, :gunshotInjury, null));
-        menu.addItem(new WatchUi.MenuItem(app.text(:injury), null, :injury, null));
-        menu.addItem(new WatchUi.MenuItem(app.text(:uas), null, :uas, null));
-        menu.addItem(new WatchUi.MenuItem(app.text(:vehicle), null, :vehicle, null));
-        menu.addItem(new WatchUi.MenuItem(app.text(:cancel), null, :cancel, null));
+        addMenuEntry(menu, app.text(Rez.Strings.TextGateRunner), null, :gateRunner);
+        addMenuEntry(menu, app.text(Rez.Strings.TextGunshot), null, :gunshot);
+        addMenuEntry(menu, app.text(Rez.Strings.TextGunshotInjury), null, :gunshotInjury);
+        addMenuEntry(menu, app.text(Rez.Strings.TextInjury), null, :injury);
+        addMenuEntry(menu, app.text(Rez.Strings.TextUas), null, :uas);
+        addMenuEntry(menu, app.text(Rez.Strings.TextVehicle), null, :vehicle);
+        addMenuEntry(menu, app.text(Rez.Strings.TextCancel), null, :cancel);
     }
     return menu;
 }
@@ -36,7 +36,7 @@ class SosMenuDelegate extends WatchUi.Menu2InputDelegate {
             var client = app.getTakClient();
             app.refreshPliForUserAction();
             if (!client.activateManualAlert(alertTypeFor(id))) {
-                var message = client.isConnected() ? app.text(:locationUnavailable) : client.statusText();
+                var message = client.isConnected() ? app.text(Rez.Strings.TextLocationUnavailable) : client.statusText();
                 WatchUi.showToast(message, null);
             }
         }

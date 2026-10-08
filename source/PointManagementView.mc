@@ -2,10 +2,10 @@ import Toybox.Lang;
 import Toybox.WatchUi;
 
 function buildDroppedMarkersMenu(mapView as StandaloneMapView) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Dropped Markers"});
+    var menu = createMenu("Dropped Markers");
     var ids = mapView.getOrderedPointIds();
     if (ids.size() == 0) {
-        menu.addItem(new WatchUi.MenuItem("No dropped markers", null, :noDroppedMarkers, null));
+        addMenuEntry(menu, "No dropped markers", null, :noDroppedMarkers);
     } else {
         for (var index = 0; index < ids.size(); index++) {
             var id = ids[index] as String;
@@ -13,9 +13,9 @@ function buildDroppedMarkersMenu(mapView as StandaloneMapView) as WatchUi.Menu2 
             var sublabel = mapView.getPointTypeShortLabel(id) + " | " + mapView.getPointLocalTime(id);
             menu.addItem(new WatchUi.MenuItem(title, sublabel, index, mapView.getPointIcon(id)));
         }
-        menu.addItem(new WatchUi.MenuItem("Clear All Markers", null, :clearAllMarkers, null));
+        addMenuEntry(menu, "Clear All Markers", null, :clearAllMarkers);
     }
-    menu.addItem(new WatchUi.MenuItem("Back", null, :backDroppedMarkers, null));
+    addMenuEntry(menu, "Back", null, :backDroppedMarkers);
     return menu;
 }
 
@@ -34,19 +34,19 @@ class DroppedMarkersMenuDelegate extends WatchUi.Menu2InputDelegate {
         if (id == :backDroppedMarkers) {
             WatchUi.popView(WatchUi.SLIDE_DOWN);
         } else if (id == :clearAllMarkers) {
-            var confirm = new WatchUi.Menu2({:title => "Clear All Markers?"});
-            confirm.addItem(new WatchUi.MenuItem("Clear All Markers", null, :confirmClearAll, null));
-            confirm.addItem(new WatchUi.MenuItem("Cancel", null, :cancelClearAll, null));
+            var confirm = createMenu("Clear All Markers?");
+            addMenuEntry(confirm, "Clear All Markers", null, :confirmClearAll);
+            addMenuEntry(confirm, "Cancel", null, :cancelClearAll);
             WatchUi.pushView(confirm, new PointDeletionConfirmationDelegate(mapView, :all), WatchUi.SLIDE_UP);
         } else if (id instanceof Number) {
             var ids = mapView.getOrderedPointIds();
             var index = id as Number;
             if (index >= 0 && index < ids.size()) {
                 var pointId = ids[index] as String;
-                var actionMenu = new WatchUi.Menu2({:title => mapView.getPointText(pointId, "title")});
-                actionMenu.addItem(new WatchUi.MenuItem("Edit...", null, :editDroppedMarker, null));
-                actionMenu.addItem(new WatchUi.MenuItem("Delete Marker", null, :deleteDroppedMarker, null));
-                actionMenu.addItem(new WatchUi.MenuItem("Back", null, :backDroppedMarkerAction, null));
+                var actionMenu = createMenu(mapView.getPointText(pointId, "title"));
+                addMenuEntry(actionMenu, "Edit...", null, :editDroppedMarker);
+                addMenuEntry(actionMenu, "Delete Marker", null, :deleteDroppedMarker);
+                addMenuEntry(actionMenu, "Back", null, :backDroppedMarkerAction);
                 WatchUi.pushView(actionMenu, new DroppedMarkerActionDelegate(mapView, pointId, actionMenu), WatchUi.SLIDE_LEFT);
             }
         }
@@ -69,9 +69,9 @@ class DroppedMarkerActionDelegate extends WatchUi.Menu2InputDelegate {
         if (item.getId() == :editDroppedMarker) {
             mapView.showPointTypeMenu(pointId);
         } else if (item.getId() == :deleteDroppedMarker) {
-            var confirm = new WatchUi.Menu2({:title => "Delete Marker?"});
-            confirm.addItem(new WatchUi.MenuItem("Delete Marker", null, :confirmDeleteDroppedMarker, null));
-            confirm.addItem(new WatchUi.MenuItem("Cancel", null, :cancelDeleteDroppedMarker, null));
+            var confirm = createMenu("Delete Marker?");
+            addMenuEntry(confirm, "Delete Marker", null, :confirmDeleteDroppedMarker);
+            addMenuEntry(confirm, "Cancel", null, :cancelDeleteDroppedMarker);
             WatchUi.pushView(confirm, new PointDeletionConfirmationDelegate(mapView, pointId), WatchUi.SLIDE_UP);
         } else if (item.getId() == :backDroppedMarkerAction) {
             WatchUi.popView(WatchUi.SLIDE_DOWN);

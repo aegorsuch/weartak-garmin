@@ -483,6 +483,14 @@ if ($LASTEXITCODE -eq 0) {
 }
 ```
 
+Menu construction is shared across devices, and localized labels use resource
+IDs directly rather than an eagerly initialized symbol-to-resource dictionary.
+These optimizations preserve the same features and translations for every target.
+The non-Pro Fenix 6 and 6S can compile after these changes, but remain unsupported:
+the Fenix 6 simulator still runs out of memory while loading the application,
+and Garmin's native `WatchUi.MapView` is unavailable on both non-Pro models.
+Compilation alone is not sufficient to add them to a release.
+
 ## Git workflow
 
 The government repository (`origin`) is the canonical repository. New work starts
@@ -527,8 +535,9 @@ do not publish debug files or the `.iq` bundle.
 
 Version `5.8.0.6-120b3a7` publishes seven device builds: Fenix 6 Pro,
 6S Pro, 6X Pro, 7X, 8 (47 mm), 8 Solar (47 mm), and 8 Solar (51 mm).
-The non-Pro Fenix 6 and Fenix 6S builds exceed their 128 KiB application
-memory limit and are not included in this release.
+The non-Pro Fenix 6 and Fenix 6S are not included: although the optimized app
+compiles, loading still exceeds runtime memory on Fenix 6, and neither model
+supports Garmin's native map API.
 
 1. Bump `APP_VERSION` in `source/StandaloneApp.mc` to the new version, including
 	the short source commit hash (for example, `5.8.0.3-0c54201`), and

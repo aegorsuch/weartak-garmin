@@ -3,15 +3,12 @@ import Toybox.Communications;
 import Toybox.System;
 import Toybox.WatchUi;
 
-function addMenuEntry(menu as WatchUi.Menu2, label as String, subLabel, id as Symbol) as Void {
-    menu.addItem(new WatchUi.MenuItem(label, subLabel, id, null));
+function createMenu(title as String) as WatchUi.Menu2 {
+    return new WatchUi.Menu2({:title => title});
 }
 
-function addMenuEntries(menu as WatchUi.Menu2, entries as Array) as Void {
-    for (var i = 0; i < entries.size(); i++) {
-        var entry = entries[i] as Dictionary;
-        addMenuEntry(menu, entry[:label] as String, entry[:subLabel], entry[:id] as Symbol);
-    }
+function addMenuEntry(menu as WatchUi.Menu2, label as String, subLabel, id) as Void {
+    menu.addItem(new WatchUi.MenuItem(label, subLabel, id, null));
 }
 
 function addLabelValueEntry(menu as WatchUi.Menu2, label as String, value as String, id as Symbol) as Void {
@@ -23,8 +20,8 @@ function addToggleEntry(menu as WatchUi.Menu2, label as String, enabled as Boole
 }
 
 function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "WearTAK"});
-    var compassItem = new WatchUi.MenuItem(app.text(:bloodhound), null, :incomingPoints, null);
+    var menu = createMenu("WearTAK");
+    var compassItem = new WatchUi.MenuItem(app.text(Rez.Strings.TextBloodhound), null, :incomingPoints, null);
     menu.addItem(compassItem);
     app.incomingPointMenuItem = compassItem;
     app.refreshIncomingPointCount();
@@ -33,51 +30,48 @@ function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
     addMenuEntry(menu, "Clear 2525D", null, :managePoints);
     addMenuEntry(menu, "Drop 2525D", null, :dropPoint);
     addMenuEntry(menu, manualAlertMenuLabel(app), null, :sos);
-    addMenuEntry(menu, app.text(:map), null, :map);
+    addMenuEntry(menu, app.text(Rez.Strings.TextMap), null, :map);
     addMenuEntry(menu, "Settings", null, :settings);
     return menu;
 }
 
 function buildPointDropTypeMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Drop 2525D"});
+    var menu = createMenu("Drop 2525D");
     var defaultType = app.getMapView().getDefaultPointType();
     var hostileLabel = defaultType == :hostile ? "Selected default" : null;
     var neutralLabel = defaultType == :neutral ? "Selected default" : null;
     var friendlyLabel = defaultType == :friendly ? "Selected default" : null;
     var unknownLabel = defaultType == :unknown ? "Selected default" : null;
-    menu.addItem(new WatchUi.MenuItem("Hostile", hostileLabel, :dropHostile, null));
-    menu.addItem(new WatchUi.MenuItem("Neutral", neutralLabel, :dropNeutral, null));
-    menu.addItem(new WatchUi.MenuItem("Friendly", friendlyLabel, :dropFriendly, null));
-    menu.addItem(new WatchUi.MenuItem("Unknown", unknownLabel, :dropUnknown, null));
-    menu.addItem(new WatchUi.MenuItem("Cancel", null, :cancelPointDrop, null));
+    addMenuEntry(menu, "Hostile", hostileLabel, :dropHostile);
+    addMenuEntry(menu, "Neutral", neutralLabel, :dropNeutral);
+    addMenuEntry(menu, "Friendly", friendlyLabel, :dropFriendly);
+    addMenuEntry(menu, "Unknown", unknownLabel, :dropUnknown);
+    addMenuEntry(menu, "Cancel", null, :cancelPointDrop);
     return menu;
 }
 
 function buildPointManagementMenu() as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Clear 2525D"});
-    menu.addItem(new WatchUi.MenuItem("Dropped Markers", null, :droppedMarkers, null));
-    menu.addItem(new WatchUi.MenuItem("Clear Last Marker", null, :clearLastMarker, null));
+    var menu = createMenu("Clear 2525D");
+    addMenuEntry(menu, "Dropped Markers", null, :droppedMarkers);
+    addMenuEntry(menu, "Clear Last Marker", null, :clearLastMarker);
     return menu;
 }
 
 function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:settings)});
-    var entries = [
-        {:label => "Callsign and Device Preferences", :subLabel => null, :id => :devicePreferences},
-        {:label => app.text(:networkPreferences), :subLabel => app.isNetworkPreferencesLocked() ? "Locked" : null, :id => :networkPreferences},
-        {:label => app.text(:alertingPreferences), :subLabel => null, :id => :alertingPreferences},
-        {:label => app.text(:toolPreferences), :subLabel => null, :id => :toolPreferences},
-        {:label => "Version " + app.getAppVersion(), :subLabel => null, :id => :appVersion}
-    ];
+    var menu = createMenu(app.text(Rez.Strings.TextSettings));
+    addMenuEntry(menu, "Callsign and Device Preferences", null, :devicePreferences);
+    addMenuEntry(menu, app.text(Rez.Strings.TextNetworkPreferences), app.isNetworkPreferencesLocked() ? "Locked" : null, :networkPreferences);
+    addMenuEntry(menu, app.text(Rez.Strings.TextAlertingPreferences), null, :alertingPreferences);
+    addMenuEntry(menu, app.text(Rez.Strings.TextToolPreferences), null, :toolPreferences);
+    addMenuEntry(menu, "Version " + app.getAppVersion(), null, :appVersion);
     if (app.isDevModeEnabled()) {
-        entries.add({:label => "Developer Options", :subLabel => null, :id => :developerOptions});
+        addMenuEntry(menu, "Developer Options", null, :developerOptions);
     }
-    addMenuEntries(menu, entries);
     return menu;
 }
 
 function buildDeveloperOptionsMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Developer Options"});
+    var menu = createMenu("Developer Options");
     addToggleEntry(menu, "Network Preferences Lock", app.isNetworkPreferencesLocked(), :networkPreferencesLockToggle);
     addMenuEntry(menu, "Verbose Logging", toolToggleLabel(app.isVerboseLoggingEnabled()), :verboseLoggingToggle);
     addMenuEntry(menu, "Diagnostics", null, :diagnostics);
@@ -85,18 +79,18 @@ function buildDeveloperOptionsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 }
 
 function buildDevicePreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Callsign and Device Preferences"});
+    var menu = createMenu("Callsign and Device Preferences");
     addMenuEntry(menu, "My Callsign", null, :callsign);
     addMenuEntry(menu, "My Team", app.getMyTeamColor(), :myTeam);
     addMenuEntry(menu, "My Role", app.getMyRoleLabel(), :myRole);
-    addMenuEntry(menu, app.text(:userMetrics), null, :userMetrics);
+    addMenuEntry(menu, app.text(Rez.Strings.TextUserMetrics), null, :userMetrics);
     addMenuEntry(menu, "----------------", null, :devicePreferencesSeparator);
     addMenuEntry(menu, "Reporting Strategy", app.isDynamicReportingEnabled() ? "Dynamic" : "Static", :reportingStrategy);
     return menu;
 }
 
 function buildReportingStrategyMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Reporting Strategy"});
+    var menu = createMenu("Reporting Strategy");
     addMenuEntry(menu, "Dynamic Reporting", app.isDynamicReportingEnabled() ? "Selected" : null, :dynamicReporting);
     addMenuEntry(menu, "Constant Reporting", !app.isDynamicReportingEnabled() ? "Selected" : null, :constantReporting);
     addMenuEntry(menu, "Save Battery on WiFi", app.getSaveBatteryOnWifiMode(), :saveBatteryOnWifi);
@@ -106,7 +100,7 @@ function buildReportingStrategyMenu(app as StandaloneApp) as WatchUi.Menu2 {
 }
 
 function buildDynamicReportingMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Dynamic Reporting"});
+    var menu = createMenu("Dynamic Reporting");
     addLabelValueEntry(menu, "Stationary Reporting Interval", app.getReportingInterval(:stationary).toString() + " seconds", :intervalStationary);
     addLabelValueEntry(menu, "On Foot Reporting Interval", app.getReportingInterval(:onFoot).toString() + " seconds", :intervalOnFoot);
     addLabelValueEntry(menu, "Vehicle Reporting Interval", app.getReportingInterval(:vehicle).toString() + " seconds", :intervalVehicle);
@@ -115,7 +109,7 @@ function buildDynamicReportingMenu(app as StandaloneApp) as WatchUi.Menu2 {
 }
 
 function buildConstantReportingMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Constant Reporting"});
+    var menu = createMenu("Constant Reporting");
     addLabelValueEntry(menu, "Constant Reporting Interval", app.getReportingInterval(:constant).toString() + " seconds", :intervalConstant);
     return menu;
 }
@@ -130,32 +124,32 @@ function reportingIntervalSetting(id as Symbol) as Symbol {
 
 function buildReportingIntervalValuesMenu(app as StandaloneApp, setting as Symbol) as WatchUi.Menu2 {
     var title = setting == :stationary ? "Stationary Interval" : setting == :onFoot ? "On Foot Interval" : setting == :vehicle ? "Vehicle Interval" : setting == :whileAlerting ? "While Alerting Interval" : "Constant Interval";
-    var menu = new WatchUi.Menu2({:title => title});
+    var menu = createMenu(title);
     var values = [5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600];
     var current = app.getReportingInterval(setting);
     for (var index = 0; index < values.size(); index++) {
         var value = values[index] as Number;
-        menu.addItem(new WatchUi.MenuItem(value.toString() + " seconds", value == current ? "Selected" : null, value, null));
+        addMenuEntry(menu, value.toString() + " seconds", value == current ? "Selected" : null, value);
     }
     return menu;
 }
 
 function buildSaveBatteryOnWifiMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Save Battery on WiFi"});
+    var menu = createMenu("Save Battery on WiFi");
     var mode = app.getSaveBatteryOnWifiMode();
-    menu.addItem(new WatchUi.MenuItem("All WiFi Connections", mode.equals("All WiFi Connections") ? "Selected" : null, :wifiAll, null));
-    menu.addItem(new WatchUi.MenuItem("No WiFi Connections", mode.equals("No WiFi Connections") ? "Selected" : null, :wifiNone, null));
-    menu.addItem(new WatchUi.MenuItem("Some WiFi Connections", mode.equals("Some WiFi Connections") ? "Selected" : null, :wifiSome, null));
+    addMenuEntry(menu, "All WiFi Connections", mode.equals("All WiFi Connections") ? "Selected" : null, :wifiAll);
+    addMenuEntry(menu, "No WiFi Connections", mode.equals("No WiFi Connections") ? "Selected" : null, :wifiNone);
+    addMenuEntry(menu, "Some WiFi Connections", mode.equals("Some WiFi Connections") ? "Selected" : null, :wifiSome);
     return menu;
 }
 
 function buildWifiNetworkMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "Selected WiFi Networks"});
-    menu.addItem(new WatchUi.MenuItem("Add WiFi Network (enter name)", null, :addWifiNetwork, null));
+    var menu = createMenu("Selected WiFi Networks");
+    addMenuEntry(menu, "Add WiFi Network (enter name)", null, :addWifiNetwork);
     var networks = app.getKnownWifiNetworks();
     for (var index = 0; index < networks.size(); index++) {
         var ssid = networks[index] as String;
-        menu.addItem(new WatchUi.MenuItem(ssid, app.isWifiNetworkSelected(ssid) ? "Selected" : "Not selected", ssid, null));
+        addMenuEntry(menu, ssid, app.isWifiNetworkSelected(ssid) ? "Selected" : "Not selected", ssid);
     }
     return menu;
 }
@@ -195,20 +189,20 @@ function teamMenuIdForColor(color as String) as Symbol {
 }
 
 function buildMyTeamMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "My Team"});
+    var menu = createMenu("My Team");
     var colors = ["White", "Yellow", "Orange", "Magenta", "Red", "Maroon", "Purple", "Dark Blue", "Blue", "Cyan", "Teal", "Green", "Dark Green", "Brown"];
     for (var index = 0; index < colors.size(); index++) {
         var color = colors[index] as String;
         var subLabel = color.equals(app.getMyTeamColor()) ? "Selected" : null;
-        menu.addItem(new WatchUi.MenuItem(color, subLabel, teamMenuIdForColor(color), null));
+        addMenuEntry(menu, color, subLabel, teamMenuIdForColor(color));
     }
     return menu;
 }
 
 function buildMyRoleCategoryMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "My Role"});
-    menu.addItem(new WatchUi.MenuItem("MIL", app.getMyRoleCategory().equals("MIL") ? "Selected" : null, :myRoleMil, null));
-    menu.addItem(new WatchUi.MenuItem("LEO", app.getMyRoleCategory().equals("LEO") ? "Selected" : null, :myRoleLeo, null));
+    var menu = createMenu("My Role");
+    addMenuEntry(menu, "MIL", app.getMyRoleCategory().equals("MIL") ? "Selected" : null, :myRoleMil);
+    addMenuEntry(menu, "LEO", app.getMyRoleCategory().equals("LEO") ? "Selected" : null, :myRoleLeo);
     return menu;
 }
 
@@ -220,25 +214,25 @@ function myRoleOptions(category as String) as Array<String> {
 }
 
 function buildMyRoleOptionsMenu(app as StandaloneApp, category as String) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => category + " Roles"});
+    var menu = createMenu(category + " Roles");
     var roles = myRoleOptions(category);
     for (var index = 0; index < roles.size(); index++) {
         var role = roles[index] as String;
         var subLabel = app.getMyRoleCategory().equals(category) && app.getMyRole().equals(role) ? "Selected" : null;
-        menu.addItem(new WatchUi.MenuItem(role, subLabel, index, null));
+        addMenuEntry(menu, role, subLabel, index);
     }
     return menu;
 }
 
 function buildNetworkPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:networkPreferences)});
+    var menu = createMenu(app.text(Rez.Strings.TextNetworkPreferences));
     addMenuEntry(menu, "TAK Relay", null, :takRelayMenu);
     addMenuEntry(menu, "Sit(x) TAK", app.getSitxClient().networkStatusLabel(), :sitxDeviceApi);
     return menu;
 }
 
 function buildTakRelayMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "TAK Relay"});
+    var menu = createMenu("TAK Relay");
     var client = app.getTakClient();
     addToggleEntry(menu, "ATAK Relay", client.status == :connecting || client.isConnected(), :atakRelayToggle);
     addMenuEntry(menu, "iTAK", "Teaming", :itakRelay);
@@ -256,34 +250,34 @@ function openTakChannels(app as StandaloneApp) as Void {
 }
 
 function buildChannelServersMenu(servers as Array, emptyLabel as String) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => "TAK Channels"});
+    var menu = createMenu("TAK Channels");
     if (servers.size() == 0) {
         var statusId = emptyLabel.equals("TAK Relay Off") ? :channelRelayOff : :channelStatus;
-        menu.addItem(new WatchUi.MenuItem(emptyLabel, null, statusId, null));
+        addMenuEntry(menu, emptyLabel, null, statusId);
     }
     for (var index = 0; index < servers.size(); index++) {
         var server = servers[index] as Dictionary;
         var label = server.get("name") == null ? "TAK Server" : server.get("name").toString();
-        menu.addItem(new WatchUi.MenuItem(label, null, server.get("serverIndex"), null));
+        addMenuEntry(menu, label, null, server.get("serverIndex"));
     }
-    menu.addItem(new WatchUi.MenuItem("Back", null, :backChannels, null));
+    addMenuEntry(menu, "Back", null, :backChannels);
     return menu;
 }
 
 function buildChannelsMenu(serverName as String, channels as Array) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => serverName});
+    var menu = createMenu(serverName);
     for (var index = 0; index < channels.size(); index++) {
         var channel = channels[index] as Dictionary;
         var subLabel = channel.get("direction").toString() + " | " + (channel.get("active") == true ? "Active" : "Inactive");
-        menu.addItem(new WatchUi.MenuItem(channel.get("name").toString(), subLabel, channel.get("bitpos"), null));
+        addMenuEntry(menu, channel.get("name").toString(), subLabel, channel.get("bitpos"));
     }
-    menu.addItem(new WatchUi.MenuItem("Back", null, :backChannels, null));
+    addMenuEntry(menu, "Back", null, :backChannels);
     return menu;
 }
 
 function buildSitxDeviceApiMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var client = app.getSitxClient();
-    var menu = new WatchUi.Menu2({:title => "Sit(x) TAK"});
+    var menu = createMenu("Sit(x) TAK");
     addToggleEntry(menu, "TAK", client.isTakEnabled(), :sitxEnabledToggle);
     var organization = client.getOrganizationAddress();
     addMenuEntry(menu, "Address", organization.length() == 0 ? "Not set" : organization, :sitxApiHost);
@@ -297,7 +291,7 @@ function buildSitxDeviceApiMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function buildSitxGroupsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var client = app.getSitxClient();
-    var menu = new WatchUi.Menu2({:title => "Select TAK Group"});
+    var menu = createMenu("Select TAK Group");
     var groups = client.getGroups();
     if (groups.size() == 0) {
         addMenuEntry(menu, "No permitted TAK groups", null, :sitxNoGroups);
@@ -305,7 +299,7 @@ function buildSitxGroupsMenu(app as StandaloneApp) as WatchUi.Menu2 {
         for (var index = 0; index < groups.size(); index++) {
             var group = groups[index] as SitxGroup;
             var label = group.flowTag.equals(client.getSelectedGroupFlowTag()) ? "Selected" : null;
-            menu.addItem(new WatchUi.MenuItem(group.name, label, index, null));
+            addMenuEntry(menu, group.name, label, index);
         }
     }
     addMenuEntry(menu, "Back", null, :sitxGroupBack);
@@ -313,75 +307,75 @@ function buildSitxGroupsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 }
 
 function buildAlertingPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:alertingPreferences)});
-    addMenuEntry(menu, app.text(:physiologicalAlerts), null, :physiologicalAlerts);
-    addMenuEntry(menu, app.text(:environmentalAlerts), null, :environmentalAlerts);
-    addMenuEntry(menu, app.text(:batteryAlerts), batteryAlertsLabel(app), :batteryAlertsToggle);
+    var menu = createMenu(app.text(Rez.Strings.TextAlertingPreferences));
+    addMenuEntry(menu, app.text(Rez.Strings.TextPhysiologicalAlerts), null, :physiologicalAlerts);
+    addMenuEntry(menu, app.text(Rez.Strings.TextEnvironmentalAlerts), null, :environmentalAlerts);
+    addMenuEntry(menu, app.text(Rez.Strings.TextBatteryAlerts), batteryAlertsLabel(app), :batteryAlertsToggle);
     return menu;
 }
 
 function buildEnvironmentalAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:environmentalAlerts)});
-    addMenuEntry(menu, app.text(:immersionAlerts), immersionAlertsLabel(app), :immersionAlertsToggle);
-    addMenuEntry(menu, app.text(:atmPressureAlerts), null, :atmPressureAlerts);
+    var menu = createMenu(app.text(Rez.Strings.TextEnvironmentalAlerts));
+    addMenuEntry(menu, app.text(Rez.Strings.TextImmersionAlerts), immersionAlertsLabel(app), :immersionAlertsToggle);
+    addMenuEntry(menu, app.text(Rez.Strings.TextAtmPressureAlerts), null, :atmPressureAlerts);
     return menu;
 }
 
 function buildAtmPressureAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:atmPressureTitle)});
-    addMenuEntry(menu, app.text(:lowPressureAlert), pressureAlertsLabel(app.isLowPressureAlertsEnabled()), :lowPressureAlertsToggle);
-    addLabelValueEntry(menu, app.text(:pressureThreshold), app.getAlertSetting(:lowPressureThreshold).toString() + " hPa", :lowPressureThreshold);
-    addMenuEntry(menu, app.text(:highPressureAlert), pressureAlertsLabel(app.isHighPressureAlertsEnabled()), :highPressureAlertsToggle);
-    addLabelValueEntry(menu, app.text(:pressureThreshold), app.getAlertSetting(:highPressureThreshold).toString() + " hPa", :highPressureThreshold);
+    var menu = createMenu(app.text(Rez.Strings.TextAtmPressureAlerts));
+    addMenuEntry(menu, app.text(Rez.Strings.TextLowPressureAlert), pressureAlertsLabel(app.isLowPressureAlertsEnabled()), :lowPressureAlertsToggle);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextPressureThreshold), app.getAlertSetting(:lowPressureThreshold).toString() + " hPa", :lowPressureThreshold);
+    addMenuEntry(menu, app.text(Rez.Strings.TextHighPressureAlert), pressureAlertsLabel(app.isHighPressureAlertsEnabled()), :highPressureAlertsToggle);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextPressureThreshold), app.getAlertSetting(:highPressureThreshold).toString() + " hPa", :highPressureThreshold);
     return menu;
 }
 
 function buildPhysiologicalAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:physiologicalAlerts)});
-    addMenuEntry(menu, app.text(:physiologicalAlerts), physiologicalAlertsLabel(app), :physiologicalAlertsToggle);
-    addMenuEntry(menu, app.text(:restingHeartRateAlerts), null, :restingHeartRateAlerts);
-    addMenuEntry(menu, app.text(:exertionAlerts), null, :exertionAlerts);
+    var menu = createMenu(app.text(Rez.Strings.TextPhysiologicalAlerts));
+    addMenuEntry(menu, app.text(Rez.Strings.TextPhysiologicalAlerts), physiologicalAlertsLabel(app), :physiologicalAlertsToggle);
+    addMenuEntry(menu, app.text(Rez.Strings.TextRestingHeartRateAlerts), null, :restingHeartRateAlerts);
+    addMenuEntry(menu, app.text(Rez.Strings.TextExertionAlerts), null, :exertionAlerts);
     return menu;
 }
 
 function buildRestingHeartRateMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:restingHeartRateTitle)});
-    addMenuEntry(menu, app.text(:highRestingHeartRate), null, :highHeading);
-    addLabelValueEntry(menu, app.text(:highHrThreshold), app.getAlertSetting(:highThreshold).toString() + " bpm", :highThreshold);
-    addLabelValueEntry(menu, app.text(:warningLength), app.getAlertSetting(:highWarning).toString() + " minutes", :highWarning);
-    addLabelValueEntry(menu, app.text(:alertLength), app.getAlertSetting(:highAlert).toString() + " minutes", :highAlert);
-    addMenuEntry(menu, app.text(:lowRestingHeartRate), null, :lowHeading);
-    addLabelValueEntry(menu, app.text(:lowHrThreshold), app.getAlertSetting(:lowThreshold).toString() + " bpm", :lowThreshold);
-    addLabelValueEntry(menu, app.text(:warningLength), app.getAlertSetting(:lowWarning).toString() + " minutes", :lowWarning);
-    addLabelValueEntry(menu, app.text(:alertLength), app.getAlertSetting(:lowAlert).toString() + " minutes", :lowAlert);
+    var menu = createMenu(app.text(Rez.Strings.TextRestingHeartRateAlerts));
+    addMenuEntry(menu, app.text(Rez.Strings.TextHighRestingHeartRate), null, :highHeading);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextHighHrThreshold), app.getAlertSetting(:highThreshold).toString() + " bpm", :highThreshold);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextWarningLength), app.getAlertSetting(:highWarning).toString() + " minutes", :highWarning);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextAlertLength), app.getAlertSetting(:highAlert).toString() + " minutes", :highAlert);
+    addMenuEntry(menu, app.text(Rez.Strings.TextLowRestingHeartRate), null, :lowHeading);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextLowHrThreshold), app.getAlertSetting(:lowThreshold).toString() + " bpm", :lowThreshold);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextWarningLength), app.getAlertSetting(:lowWarning).toString() + " minutes", :lowWarning);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextAlertLength), app.getAlertSetting(:lowAlert).toString() + " minutes", :lowAlert);
     return menu;
 }
 
 function buildExertionAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:exertionTitle)});
-    addLabelValueEntry(menu, app.text(:warningThreshold), app.getAlertSetting(:exertionWarningThreshold).toString() + "%", :exertionWarningThreshold);
-    addLabelValueEntry(menu, app.text(:warningLength), app.getAlertSetting(:exertionWarningLength).toString() + " seconds", :exertionWarningLength);
-    addLabelValueEntry(menu, app.text(:alertThreshold), app.getAlertSetting(:exertionAlertThreshold).toString() + "%", :exertionAlertThreshold);
-    addLabelValueEntry(menu, app.text(:alertLength), app.getAlertSetting(:exertionAlertLength).toString() + " seconds", :exertionAlertLength);
+    var menu = createMenu(app.text(Rez.Strings.TextExertionAlerts));
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextWarningThreshold), app.getAlertSetting(:exertionWarningThreshold).toString() + "%", :exertionWarningThreshold);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextWarningLength), app.getAlertSetting(:exertionWarningLength).toString() + " seconds", :exertionWarningLength);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextAlertThreshold), app.getAlertSetting(:exertionAlertThreshold).toString() + "%", :exertionAlertThreshold);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextAlertLength), app.getAlertSetting(:exertionAlertLength).toString() + " seconds", :exertionAlertLength);
     return menu;
 }
 
 function buildUserMetricsMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:myUserMetrics)});
-    addMenuEntry(menu, app.text(:medicalProfile), null, :medicalProfile);
-    addMenuEntry(menu, app.text(:gaitTracking), null, :gaitTracking);
+    var menu = createMenu(app.text(Rez.Strings.TextMyUserMetrics));
+    addMenuEntry(menu, app.text(Rez.Strings.TextMedicalProfile), null, :medicalProfile);
+    addMenuEntry(menu, app.text(Rez.Strings.TextGaitTracking), null, :gaitTracking);
     return menu;
 }
 
 function buildMedicalProfileMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:medicalProfile)});
-    addLabelValueEntry(menu, app.text(:birthYear), app.getUserMetric(:birthYear).toString(), :birthYear);
-    addLabelValueEntry(menu, app.text(:height), formatHeightInFeetAndInches(app.getUserMetric(:height)), :height);
-    addLabelValueEntry(menu, app.text(:weight), app.getUserMetric(:weight).toString() + " lb", :weight);
-    addLabelValueEntry(menu, app.text(:sex), app.getUserMetric(:sex), :sex);
-    addLabelValueEntry(menu, app.text(:bloodType), app.getUserMetric(:bloodType), :bloodType);
-    addLabelValueEntry(menu, app.text(:allergies), app.allergiesLabel(), :allergies);
-    addLabelValueEntry(menu, app.text(:userType), app.getUserMetric(:userType), :userType);
+    var menu = createMenu(app.text(Rez.Strings.TextMedicalProfile));
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextBirthYear), app.getUserMetric(:birthYear).toString(), :birthYear);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextHeight), formatHeightInFeetAndInches(app.getUserMetric(:height)), :height);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextWeight), app.getUserMetric(:weight).toString() + " lb", :weight);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextSex), app.getUserMetric(:sex), :sex);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextBloodType), app.getUserMetric(:bloodType), :bloodType);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextAllergies), app.allergiesLabel(), :allergies);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextUserType), app.getUserMetric(:userType), :userType);
     return menu;
 }
 
@@ -390,20 +384,20 @@ function allergyOptions() as Array {
 }
 
 function buildGaitTrackingMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:gaitTracking)});
-    addLabelValueEntry(menu, app.text(:uniformWaistSize), app.getUserMetric(:uniformWaistSize).toString() + " in", :uniformWaistSize);
-    addLabelValueEntry(menu, app.text(:strideLength), app.getUserMetric(:strideLength).toString() + " in", :strideLength);
-    addLabelValueEntry(menu, app.text(:uniformPantsLength), app.getUserMetric(:uniformPantsLength).toString() + " in", :uniformPantsLength);
-    addLabelValueEntry(menu, app.text(:loadoutWeight), app.getUserMetric(:loadoutWeight).toString() + " lbs", :loadoutWeight);
+    var menu = createMenu(app.text(Rez.Strings.TextGaitTracking));
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextUniformWaistSize), app.getUserMetric(:uniformWaistSize).toString() + " in", :uniformWaistSize);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextStrideLength), app.getUserMetric(:strideLength).toString() + " in", :strideLength);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextUniformPantsLength), app.getUserMetric(:uniformPantsLength).toString() + " in", :uniformPantsLength);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextLoadoutWeight), app.getUserMetric(:loadoutWeight).toString() + " lbs", :loadoutWeight);
     return menu;
 }
 
 function buildAllergiesMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:allergies)});
+    var menu = createMenu(app.text(Rez.Strings.TextAllergies));
     var options = allergyOptions();
     for (var i = 0; i < options.size(); i++) {
         var allergy = options[i] as String;
-        menu.addItem(new WatchUi.MenuItem(allergy, app.isAllergySelected(allergy) ? app.text(:allergyEnabled) : app.text(:allergyDisabled), allergy, null));
+        addMenuEntry(menu, allergy, app.isAllergySelected(allergy) ? app.text(Rez.Strings.TextAllergyEnabled) : app.text(Rez.Strings.TextAllergyDisabled), allergy);
     }
     return menu;
 }
@@ -440,15 +434,15 @@ function alertSettingLabel(setting as Symbol, value as Number) as String {
 function buildAlertValueMenu(app as StandaloneApp, setting as Symbol, parentItem as WatchUi.MenuItem) as WatchUi.Menu2 {
     var title;
     if (setting == :highThreshold || setting == :lowThreshold) {
-        title = app.text(:heartRateThreshold);
+        title = app.text(Rez.Strings.TextHeartRateThreshold);
     } else if (setting == :exertionWarningThreshold) {
-        title = app.text(:warningThreshold);
+        title = app.text(Rez.Strings.TextWarningThreshold);
     } else if (setting == :exertionAlertThreshold) {
-        title = app.text(:alertThreshold);
+        title = app.text(Rez.Strings.TextAlertThreshold);
     } else {
-        title = app.text(:alertDuration);
+        title = app.text(Rez.Strings.TextAlertDuration);
     }
-    var menu = new WatchUi.Menu2({:title => title});
+    var menu = createMenu(title);
     if (setting == :highThreshold) {
         addAlertValues(menu, 80, 200, 5);
     } else if (setting == :lowThreshold) {
@@ -466,14 +460,14 @@ function buildAlertValueMenu(app as StandaloneApp, setting as Symbol, parentItem
 function addAlertValues(menu as WatchUi.Menu2, first as Number, last as Number, step as Number) as Void {
     var value = first;
     while (value <= last) {
-        menu.addItem(new WatchUi.MenuItem(value.toString(), null, value, null));
+        addMenuEntry(menu, value.toString(), null, value);
         value += step;
     }
 }
 
 function buildProfileValueMenu(app as StandaloneApp, setting as Symbol) as WatchUi.Menu2 {
     var title = setting == :birthYear ? "Birth Year" : setting == :height ? "Height" : setting == :weight ? "Weight" : setting == :sex ? "Sex" : setting == :bloodType ? "Blood Type" : setting == :uniformWaistSize ? "Uniform Waist Size" : setting == :strideLength ? "Stride Length" : setting == :uniformPantsLength ? "Uniform Pants Length" : setting == :loadoutWeight ? "Loadout Weight" : "User Type";
-    var menu = new WatchUi.Menu2({:title => title});
+    var menu = createMenu(title);
     if (setting == :birthYear) {
         addProfileNumberValues(menu, 1920, 2026, 1);
     } else if (setting == :height) {
@@ -499,14 +493,14 @@ function buildProfileValueMenu(app as StandaloneApp, setting as Symbol) as Watch
 function addProfileNumberValues(menu as WatchUi.Menu2, first as Number, last as Number, step as Number) as Void {
     var value = first;
     while (value <= last) {
-        menu.addItem(new WatchUi.MenuItem(value.toString(), null, value, null));
+        addMenuEntry(menu, value.toString(), null, value);
         value += step;
     }
 }
 
 function addProfileStringValues(menu as WatchUi.Menu2, values as Array) as Void {
     for (var i = 0; i < values.size(); i++) {
-        menu.addItem(new WatchUi.MenuItem(values[i], null, values[i], null));
+        addMenuEntry(menu, values[i], null, values[i]);
     }
 }
 
@@ -531,28 +525,28 @@ function profileSettingLabel(setting as Symbol, value) as String {
 }
 
 function buildToolPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:toolPreferences)});
-    addMenuEntry(menu, app.text(:bloodhoundCompass), null, :bloodhoundCompass);
+    var menu = createMenu(app.text(Rez.Strings.TextToolPreferences));
+    addMenuEntry(menu, app.text(Rez.Strings.TextBloodhoundCompass), null, :bloodhoundCompass);
     addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.PluginsTitle), null, :plugins);
     return menu;
 }
 
 function buildBloodhoundMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:navigationTitle)});
-    addToggleEntry(menu, app.text(:proximityVibration), app.isBloodhoundProximityVibrationEnabled(), :bloodhoundProximityVibrationToggle);
-    addLabelValueEntry(menu, app.text(:proximityRadius), app.getBloodhoundProximityRadius().toString() + " meters", :bloodhoundProximityRadius);
-    addLabelValueEntry(menu, app.text(:proximityIntensity), app.getBloodhoundProximityIntensity(), :bloodhoundProximityIntensity);
+    var menu = createMenu(app.text(Rez.Strings.TextBloodhoundCompass));
+    addToggleEntry(menu, app.text(Rez.Strings.TextProximityVibration), app.isBloodhoundProximityVibrationEnabled(), :bloodhoundProximityVibrationToggle);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextProximityRadius), app.getBloodhoundProximityRadius().toString() + " meters", :bloodhoundProximityRadius);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextProximityIntensity), app.getBloodhoundProximityIntensity(), :bloodhoundProximityIntensity);
     return menu;
 }
 
 function buildBloodhoundRadiusMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:proximityRadiusTitle)});
+    var menu = createMenu(app.text(Rez.Strings.TextProximityRadius));
     addAlertValues(menu, 10, 200, 10);
     return menu;
 }
 
 function buildBloodhoundIntensityMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => app.text(:proximityIntensityTitle)});
+    var menu = createMenu(app.text(Rez.Strings.TextProximityIntensity));
     addProfileStringValues(menu, ["Single Burst", "Triple Burst", "Until In Position"]);
     return menu;
 }
@@ -562,12 +556,12 @@ function toolToggleLabel(enabled as Boolean) as String {
 }
 
 function locationServicesLabel(app as StandaloneApp) as String {
-    return app.isLocationServicesEnabled() ? app.text(:on) : app.text(:off);
+    return app.isLocationServicesEnabled() ? app.text(Rez.Strings.TextOn) : app.text(Rez.Strings.TextOff);
 }
 
 function manualAlertMenuLabel(app as StandaloneApp) as String {
     var client = app.getTakClient();
-    return client.isAlerting() ? app.text(:manualAlert) + " (" + app.text(:active) + ")" : app.text(:manualAlert);
+    return client.isAlerting() ? app.text(Rez.Strings.TextManualAlert) + " (" + app.text(Rez.Strings.TextActive) + ")" : app.text(Rez.Strings.TextManualAlert);
 }
 
 class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
@@ -656,9 +650,9 @@ class PointManagementMenuDelegate extends WatchUi.Menu2InputDelegate {
                 WatchUi.showToast("No markers to clear", null);
                 return;
             }
-            var confirmation = new WatchUi.Menu2({:title => "Clear Last Marker?"});
-            confirmation.addItem(new WatchUi.MenuItem("Clear Last Marker", null, :confirmClearLast, null));
-            confirmation.addItem(new WatchUi.MenuItem("Cancel", null, :cancelClearLast, null));
+            var confirmation = createMenu("Clear Last Marker?");
+            addMenuEntry(confirmation, "Clear Last Marker", null, :confirmClearLast);
+            addMenuEntry(confirmation, "Cancel", null, :cancelClearLast);
             WatchUi.pushView(confirmation, new PointDeletionConfirmationDelegate(mapView, :last), WatchUi.SLIDE_UP);
         }
     }
@@ -918,7 +912,7 @@ class WifiNetworkTextPickerDelegate extends WatchUi.TextPickerDelegate {
             }
             if (!exists) {
                 app.addKnownWifiNetwork(value);
-                menu.addItem(new WatchUi.MenuItem(value, "Selected", value, null));
+                addMenuEntry(menu, value, "Selected", value);
             }
         }
         WatchUi.popView(WatchUi.SLIDE_DOWN);
@@ -1340,7 +1334,7 @@ class AtmPressureAlertsDelegate extends WatchUi.Menu2InputDelegate {
 }
 
 function buildPressureValueMenu(app as StandaloneApp, setting as Symbol) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => setting == :lowPressureThreshold ? "Low Pressure Threshold" : "High Pressure Threshold"});
+    var menu = createMenu(setting == :lowPressureThreshold ? "Low Pressure Threshold" : "High Pressure Threshold");
     if (setting == :lowPressureThreshold) {
         addAlertValues(menu, 800, 1100, 5);
     } else {
@@ -1541,15 +1535,15 @@ class ToolPreferencesDelegate extends WatchUi.Menu2InputDelegate {
         if (id == :bloodhoundCompass) {
             WatchUi.pushView(buildBloodhoundMenu(app), new BloodhoundDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :plugins) {
-            var plugins = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.PluginsTitle)});
+            var plugins = createMenu(WatchUi.loadResource(Rez.Strings.PluginsTitle));
             addMenuEntry(plugins, WatchUi.loadResource(Rez.Strings.DataSyncTitle), null, :dataSync);
             WatchUi.pushView(plugins, new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :dataSync) {
             openDataSync(app);
         } else if (id == :clearPoints) {
-            var confirmation = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.ConfirmClearPointsTitle)});
-            confirmation.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelClearPoints), null, :clear, null));
-            confirmation.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel, null));
+            var confirmation = createMenu(WatchUi.loadResource(Rez.Strings.ConfirmClearPointsTitle));
+            addMenuEntry(confirmation, WatchUi.loadResource(Rez.Strings.LabelClearPoints), null, :clear);
+            addMenuEntry(confirmation, WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel);
             WatchUi.pushView(confirmation, new ClearPointsDelegate(app), WatchUi.SLIDE_UP);
         } else if (id == :chat) {
             WatchUi.pushView(buildChatMenu(app), new ChatMenuDelegate(app), WatchUi.SLIDE_LEFT);
@@ -1615,7 +1609,7 @@ class ClearPointsDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         if (item.getId() == :clear) {
             if (app.getMapView().clearDroppedPoints()) {
-                WatchUi.showToast(app.text(:oldPointsCleared), null);
+                WatchUi.showToast(app.text(Rez.Strings.TextOldPointsCleared), null);
             }
         }
         WatchUi.popView(WatchUi.SLIDE_DOWN);

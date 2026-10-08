@@ -2,15 +2,15 @@ import Toybox.Lang;
 import Toybox.WatchUi;
 
 function buildChatMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleChat)});
+    var menu = createMenu(WatchUi.loadResource(Rez.Strings.MenuTitleChat));
     var messages = app.getChatMessages();
-    menu.addItem(new WatchUi.MenuItem("Send", null, :send, null));
-    menu.addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.ChatEmpty), null, :empty, null));
+    addMenuEntry(menu, "Send", null, :send);
+    addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.ChatEmpty), null, :empty);
     for (var index = messages.size() - 1; index >= 0; index--) {
         var message = messages[index] as Dictionary;
         var sender = message.get("sender");
         var text = message.get("text");
-        menu.addItem(new WatchUi.MenuItem(sender == null ? WatchUi.loadResource(Rez.Strings.ChatUnknownSender) : sender.toString(), text == null ? "" : text.toString(), index, null));
+        addMenuEntry(menu, sender == null ? WatchUi.loadResource(Rez.Strings.ChatUnknownSender) : sender.toString(), text == null ? "" : text.toString(), index);
     }
     return menu;
 }
@@ -34,11 +34,11 @@ class ChatMenuDelegate extends WatchUi.Menu2InputDelegate {
         }
         var messages = app.getChatMessages();
         var message = messages[index] as Dictionary;
-        var replyMenu = new WatchUi.Menu2({:title => WatchUi.loadResource(Rez.Strings.MenuTitleQuickReply)});
-        replyMenu.addItem(new WatchUi.MenuItem("Rgr", null, :rgr, null));
-        replyMenu.addItem(new WatchUi.MenuItem("Neg", null, :neg, null));
-        replyMenu.addItem(new WatchUi.MenuItem("ObjS", null, :objs, null));
-        replyMenu.addItem(new WatchUi.MenuItem("nPos", null, :npos, null));
+        var replyMenu = createMenu(WatchUi.loadResource(Rez.Strings.MenuTitleQuickReply));
+        addMenuEntry(replyMenu, "Rgr", null, :rgr);
+        addMenuEntry(replyMenu, "Neg", null, :neg);
+        addMenuEntry(replyMenu, "ObjS", null, :objs);
+        addMenuEntry(replyMenu, "nPos", null, :npos);
         WatchUi.pushView(replyMenu, new QuickReplyDelegate(app, message), WatchUi.SLIDE_UP);
     }
 

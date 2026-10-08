@@ -18,11 +18,11 @@ class EnvironmentalSensorsView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         var screenWidth = System.getDeviceSettings().screenWidth;
         var centerX = screenWidth / 2;
-        dc.drawText(centerX, 16, Graphics.FONT_MEDIUM, app.text(:environment), Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(centerX, 16, Graphics.FONT_MEDIUM, app.text(Rez.Strings.TextEnvironment), Graphics.TEXT_JUSTIFY_CENTER);
         var info = app.getSensorInfo();
-        drawReading(dc, screenWidth, 58, app.text(:altitude), info != null ? formatValue(info.altitude, " m") : app.text(:unavailable));
-        drawReading(dc, screenWidth, 90, app.text(:pressure), info != null ? formatValue(info.pressure, " Pa") : app.text(:unavailable));
-        drawReading(dc, screenWidth, 122, app.text(:temperature), info != null ? formatValue(info.temperature, " C") : app.text(:unavailable));
+        drawReading(dc, screenWidth, 58, app.text(Rez.Strings.TextAltitude), info != null ? formatValue(info.altitude, " m") : app.text(Rez.Strings.TextUnavailable));
+        drawReading(dc, screenWidth, 90, app.text(Rez.Strings.TextPressure), info != null ? formatValue(info.pressure, " Pa") : app.text(Rez.Strings.TextUnavailable));
+        drawReading(dc, screenWidth, 122, app.text(Rez.Strings.TextTemperature), info != null ? formatValue(info.temperature, " C") : app.text(Rez.Strings.TextUnavailable));
     }
 
     function drawReading(dc, screenWidth, y, label, value) {
@@ -49,10 +49,10 @@ class PhysiologicalSensorsView extends WatchUi.View {
         dc.fillRectangle(0, 0, System.getDeviceSettings().screenWidth, System.getDeviceSettings().screenHeight);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         var centerX = System.getDeviceSettings().screenWidth / 2;
-        dc.drawText(centerX, 8, Graphics.FONT_MEDIUM, app.text(:physiologyView), Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(centerX, 8, Graphics.FONT_MEDIUM, app.text(Rez.Strings.TextPhysiologyView), Graphics.TEXT_JUSTIFY_CENTER);
         var sensorInfo = app.getSensorInfo();
-        drawReading(dc, centerX, 50, app.text(:exertion), formatValue(app.getExertionPercent(), "%"));
-        drawReading(dc, centerX, 78, app.text(:heartRate), sensorInfo != null ? formatIntegerValue(sensorInfo.heartRate, " BPM") : app.text(:unavailable));
+        drawReading(dc, centerX, 50, app.text(Rez.Strings.TextExertion), formatValue(app.getExertionPercent(), "%"));
+        drawReading(dc, centerX, 78, app.text(Rez.Strings.TextHeartRate), sensorInfo != null ? formatIntegerValue(sensorInfo.heartRate, " BPM") : app.text(Rez.Strings.TextUnavailable));
     }
 
     function drawReading(dc, x, y, label, value) {
@@ -84,19 +84,19 @@ class BloodhoundCompassView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.fillRectangle(0, 0, screenWidth, screenHeight);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(centerX, 8, Graphics.FONT_MEDIUM, app.text(:bloodhound), Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(centerX, 8, Graphics.FONT_MEDIUM, app.text(Rez.Strings.TextBloodhound), Graphics.TEXT_JUSTIFY_CENTER);
         drawCompass(dc, centerX, centerY - 4, 54);
         var mapView = app.getMapView();
         if (mapView.isBloodhoundActive()) {
             var bearing = mapView.getBloodhoundBearingDegrees();
             drawArrow(dc, centerX, centerY - 4, bearing, 42);
             dc.drawText(centerX, centerY + 58, Graphics.FONT_XTINY, mapView.getBloodhoundTitle(), Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(centerX, centerY + 76, Graphics.FONT_XTINY, app.text(:range) + ": " + mapView.getBloodhoundRangeMeters().toString() + " m", Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(centerX, centerY + 94, Graphics.FONT_XTINY, app.text(:bearing) + ": " + bearing.toString() + " deg", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(centerX, centerY + 76, Graphics.FONT_XTINY, app.text(Rez.Strings.TextRange) + ": " + mapView.getBloodhoundRangeMeters().toString() + " m", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(centerX, centerY + 94, Graphics.FONT_XTINY, app.text(Rez.Strings.TextBearing) + ": " + bearing.toString() + " deg", Graphics.TEXT_JUSTIFY_CENTER);
         } else {
             drawArrow(dc, centerX, centerY - 4, 0, 42);
-            dc.drawText(centerX, centerY + 66, Graphics.FONT_XTINY, app.text(:noBloodhoundTarget), Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(centerX, centerY + 86, Graphics.FONT_XTINY, app.text(:tapMapPoint), Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(centerX, centerY + 66, Graphics.FONT_XTINY, app.text(Rez.Strings.TextNoBloodhoundTarget), Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(centerX, centerY + 86, Graphics.FONT_XTINY, app.text(Rez.Strings.TextTapMapPoint), Graphics.TEXT_JUSTIFY_CENTER);
         }
     }
 

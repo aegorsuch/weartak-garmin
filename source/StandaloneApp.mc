@@ -417,137 +417,18 @@ class StandaloneApp extends Application.AppBase {
         return locationServices;
     }
 
-    const TEXT_RESOURCE_IDS = {
-        :map => Rez.Strings.TextMap,
-        :settings => Rez.Strings.TextSettings,
-        :clear2525d => Rez.Strings.TextClear2525d,
-        :environment => Rez.Strings.TextEnvironment,
-        :exit => Rez.Strings.TextExit,
-        :manualAlert => Rez.Strings.TextManualAlert,
-        :clearManualAlert => Rez.Strings.TextClearManualAlert,
-        :gateRunner => Rez.Strings.TextGateRunner,
-        :gunshot => Rez.Strings.TextGunshot,
-        :gunshotInjury => Rez.Strings.TextGunshotInjury,
-        :injury => Rez.Strings.TextInjury,
-        :uas => Rez.Strings.TextUas,
-        :vehicle => Rez.Strings.TextVehicle,
-        :pointTitle => Rez.Strings.TextPointTitle,
-        :bloodhound => Rez.Strings.TextBloodhound,
-        :stopBloodhound => Rez.Strings.TextStopBloodhound,
-        :coordinates => Rez.Strings.TextCoordinates,
-        :latLon => Rez.Strings.TextLatLon,
-        :mgrs => Rez.Strings.TextMgrs,
-        :setTitle => Rez.Strings.TextSetTitle,
-        :setRemark => Rez.Strings.TextSetRemark,
-        :setType => Rez.Strings.TextSetType,
-        :delete => Rez.Strings.TextDelete,
-        :self => Rez.Strings.TextSelf,
-        :proximity => Rez.Strings.TextProximity,
-        :cancelBloodhound => Rez.Strings.TextStopBloodhound,
-        :takConnect => Rez.Strings.TextTakConnect,
-        :myUserMetrics => Rez.Strings.TextMyUserMetrics,
-        :medicalProfile => Rez.Strings.TextMedicalProfile,
-        :gaitTracking => Rez.Strings.TextGaitTracking,
-        :birthYear => Rez.Strings.TextBirthYear,
-        :height => Rez.Strings.TextHeight,
-        :weight => Rez.Strings.TextWeight,
-        :sex => Rez.Strings.TextSex,
-        :bloodType => Rez.Strings.TextBloodType,
-        :allergies => Rez.Strings.TextAllergies,
-        :userType => Rez.Strings.TextUserType,
-        :uniformWaistSize => Rez.Strings.TextUniformWaistSize,
-        :strideLength => Rez.Strings.TextStrideLength,
-        :uniformPantsLength => Rez.Strings.TextUniformPantsLength,
-        :loadoutWeight => Rez.Strings.TextLoadoutWeight,
-        :proximityVibration => Rez.Strings.TextProximityVibration,
-        :proximityRadius => Rez.Strings.TextProximityRadius,
-        :proximityIntensity => Rez.Strings.TextProximityIntensity,
-        :allergyEnabled => Rez.Strings.TextAllergyEnabled,
-        :allergyDisabled => Rez.Strings.TextAllergyDisabled,
-        :oldPointsCleared => Rez.Strings.TextOldPointsCleared,
-        :active => Rez.Strings.TextActive,
-        :unknownPoint => Rez.Strings.TextUnknownPoint,
-        :friendlyPoint => Rez.Strings.TextFriendlyPoint,
-        :hostilePoint => Rez.Strings.TextHostilePoint,
-        :neutralPoint => Rez.Strings.TextObstaclePoint,
-        :waitingForLocation => Rez.Strings.TextWaitingForLocation,
-        :highHrThreshold => Rez.Strings.TextHighHrThreshold,
-        :lowHrThreshold => Rez.Strings.TextLowHrThreshold,
-        :navigationTitle => Rez.Strings.TextBloodhoundCompass,
-        :proximityRadiusTitle => Rez.Strings.TextProximityRadius,
-        :proximityIntensityTitle => Rez.Strings.TextProximityIntensity,
-        :range => Rez.Strings.TextRange,
-        :bearing => Rez.Strings.TextBearing,
-        :noBloodhoundTarget => Rez.Strings.TextNoBloodhoundTarget,
-        :tapMapPoint => Rez.Strings.TextTapMapPoint,
-        :physiology => Rez.Strings.TextPhysiology,
-        :devicePreferences => Rez.Strings.TextDevicePreferences,
-        :networkPreferences => Rez.Strings.TextNetworkPreferences,
-        :alertingPreferences => Rez.Strings.TextAlertingPreferences,
-        :toolPreferences => Rez.Strings.TextToolPreferences,
-        :locationServices => Rez.Strings.TextLocationServices,
-        :userMetrics => Rez.Strings.TextUserMetrics,
-        :physiologicalAlerts => Rez.Strings.TextPhysiologicalAlerts,
-        :environmentalAlerts => Rez.Strings.TextEnvironmentalAlerts,
-        :batteryAlerts => Rez.Strings.TextBatteryAlerts,
-        :immersionAlerts => Rez.Strings.TextImmersionAlerts,
-        :atmPressureAlerts => Rez.Strings.TextAtmPressureAlerts,
-        :restingHeartRateAlerts => Rez.Strings.TextRestingHeartRateAlerts,
-        :exertionAlerts => Rez.Strings.TextExertionAlerts,
-        :chat => Rez.Strings.TextChat,
-        :bloodhoundCompass => Rez.Strings.TextBloodhoundCompass,
-        :clearPointsMain => Rez.Strings.TextClearPointsMain,
-        :dropPoint => Rez.Strings.TextDropPoint,
-        :clearPointsPrompt => Rez.Strings.TextClearPointsPrompt,
-        :clearPointsAction => Rez.Strings.TextClearPointsMain,
-        :pointDropped => Rez.Strings.TextPointDropped,
-        :locationUnavailable => Rez.Strings.TextLocationUnavailable,
-        :cancel => Rez.Strings.TextCancel,
-        :atmPressureTitle => Rez.Strings.TextAtmPressureAlerts,
-        :lowPressureAlert => Rez.Strings.TextLowPressureAlert,
-        :highPressureAlert => Rez.Strings.TextHighPressureAlert,
-        :pressureThreshold => Rez.Strings.TextPressureThreshold,
-        :restingHeartRateTitle => Rez.Strings.TextRestingHeartRateAlerts,
-        :highRestingHeartRate => Rez.Strings.TextHighRestingHeartRate,
-        :lowRestingHeartRate => Rez.Strings.TextLowRestingHeartRate,
-        :warningLength => Rez.Strings.TextWarningLength,
-        :alertLength => Rez.Strings.TextAlertLength,
-        :exertionTitle => Rez.Strings.TextExertionAlerts,
-        :warningThreshold => Rez.Strings.TextWarningThreshold,
-        :alertThreshold => Rez.Strings.TextAlertThreshold,
-        :heartRateThreshold => Rez.Strings.TextHeartRateThreshold,
-        :alertDuration => Rez.Strings.TextAlertDuration,
-        :setTypeTitle => Rez.Strings.TextSetType,
-        :friendly => Rez.Strings.TextFriendlyPoint,
-        :hostile => Rez.Strings.TextHostilePoint,
-        :neutral => Rez.Strings.TextObstaclePoint,
-        :selected => Rez.Strings.TextSelected,
-        :on => Rez.Strings.TextOn,
-        :off => Rez.Strings.TextOff,
-        :altitude => Rez.Strings.TextAltitude,
-        :pressure => Rez.Strings.TextPressure,
-        :temperature => Rez.Strings.TextTemperature,
-        :physiologyView => Rez.Strings.TextPhysiologyView,
-        :exertion => Rez.Strings.TextExertion,
-        :heartRate => Rez.Strings.TextHeartRate,
-        :unavailable => Rez.Strings.TextUnavailable,
-    } as Dictionary<Symbol, ResourceId>;
 
-    function text(key as Symbol) as String {
-        var resourceId = TEXT_RESOURCE_IDS[key];
-        if (resourceId != null) {
-            return WatchUi.loadResource(resourceId) as String;
-        }
-        return key.toString();
+    function text(resourceId as ResourceId) as String {
+        return WatchUi.loadResource(resourceId) as String;
     }
 
     function alertTypeLabel(alertType as String) as String {
-        if (alertType.equals("Gate Runner")) { return text(:gateRunner); }
-        else if (alertType.equals("Gunshot")) { return text(:gunshot); }
-        else if (alertType.equals("Gunshot Injury")) { return text(:gunshotInjury); }
-        else if (alertType.equals("Injury")) { return text(:injury); }
-        else if (alertType.equals("UAS")) { return text(:uas); }
-        else if (alertType.equals("Vehicle")) { return text(:vehicle); }
+        if (alertType.equals("Gate Runner")) { return text(Rez.Strings.TextGateRunner); }
+        else if (alertType.equals("Gunshot")) { return text(Rez.Strings.TextGunshot); }
+        else if (alertType.equals("Gunshot Injury")) { return text(Rez.Strings.TextGunshotInjury); }
+        else if (alertType.equals("Injury")) { return text(Rez.Strings.TextInjury); }
+        else if (alertType.equals("UAS")) { return text(Rez.Strings.TextUas); }
+        else if (alertType.equals("Vehicle")) { return text(Rez.Strings.TextVehicle); }
         return alertType;
     }
 

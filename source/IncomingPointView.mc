@@ -10,7 +10,7 @@ class IncomingPointsMenu extends WatchUi.Menu2 {
     var refreshing as Boolean = false;
 
     function initialize(application as StandaloneApp) {
-        Menu2.initialize({:title => application.text(:bloodhound)});
+        Menu2.initialize({:title => application.text(Rez.Strings.TextBloodhound)});
         app = application;
         populate();
     }
@@ -68,8 +68,8 @@ class IncomingPointsMenu extends WatchUi.Menu2 {
 }
 
 function buildIncomingPointActions(map as StandaloneMapView, id as String) as WatchUi.Menu2 {
-    var menu = new WatchUi.Menu2({:title => map.incomingPointTitle(id)});
-    addMenuEntry(menu, map.application.text(:range), map.getPointDistanceLabel(id), :range);
+    var menu = createMenu(map.incomingPointTitle(id));
+    addMenuEntry(menu, map.application.text(Rez.Strings.TextRange), map.getPointDistanceLabel(id), :range);
     var details = map.incomingDetails.get(id);
     if (details instanceof Dictionary && details.get("isPoint")) {
         addMenuEntry(menu, "RGR", WatchUi.loadResource(Rez.Strings.IncomingPointRgr), :rgr);
@@ -77,8 +77,8 @@ function buildIncomingPointActions(map as StandaloneMapView, id as String) as Wa
             addMenuEntry(menu, "nPos", WatchUi.loadResource(Rez.Strings.IncomingPointNpos), :npos);
         }
     }
-    addMenuEntry(menu, map.isBloodhoundTarget(id) ? map.application.text(:stopBloodhound)
-        : map.application.text(:bloodhound), null, :track);
+    addMenuEntry(menu, map.isBloodhoundTarget(id) ? map.application.text(Rez.Strings.TextStopBloodhound)
+        : map.application.text(Rez.Strings.TextBloodhound), null, :track);
     addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.IncomingPointRemove), null, :remove);
     addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel);
     return menu;
