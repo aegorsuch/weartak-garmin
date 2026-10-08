@@ -149,4 +149,10 @@
     <string id="OfflineStorageFailed">Unable to save offline events; storage full or unavailable</string>
     <string id="IncomingPointsRemoveAll">Remove All</string>
     <string id="IncomingAlertLabel">Alert</string>
+    <string id="IncomingAlertBloodhound">Bloodhound to Alert</string>
+    <string id="IncomingAlertDismiss">Dismiss locally</string>
+    <string id="IncomingAlertNoLocation">Location unavailable</string>
+    <string id="IncomingAlertStaleLastKnown">Stale (last-known location)</string>
+    <string id="IncomingAlertUnknownCategory">Emergency</string>
+    <string id="IncomingAlertStale">Stale</string>
 </resources>
