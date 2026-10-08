@@ -41,6 +41,8 @@ class StandaloneApp extends Application.AppBase {
     private var lastGpsSpeed as Number? = null;
     private var lastHeartRateSampleTime as Number? = null;
     private var lastPliSentTime as Number? = null;
+    private var lastActionPliSentTime as Number? = null;
+    private var locationRefreshPending as Boolean = false;
     private var lastVersionTapTime as Number? = null;
     private var locationServices as Boolean = true;
     private var physiologicalAlertsEnabled as Boolean = false;
@@ -67,7 +69,7 @@ class StandaloneApp extends Application.AppBase {
     private var lowRestingSince as Number? = null;
     private var lowPressureAlertActive as Boolean = false;
     private var highPressureAlertActive as Boolean = false;
-    private var pressureSamples = [];
+    private var pressureSamples as Array<Float> = [];
     private var lastPressureSampleTime as Number? = null;
     private var lowPressureSince as Number? = null;
     private var highPressureSince as Number? = null;
@@ -154,8 +156,12 @@ class StandaloneApp extends Application.AppBase {
         while (normalized.length() > 0 && isCallsignWhitespace(normalized.substring(normalized.length() - 1, normalized.length()))) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
+        if (callsign.equals(normalized)) {
+            return;
+        }
         callsign = normalized;
         Application.Storage.setValue("callsign", callsign);
+        sendPliNow();
     }
 
     function isCallsignWhitespace(character as String) as Boolean {
@@ -170,8 +176,12 @@ class StandaloneApp extends Application.AppBase {
         if (!isSupportedTeamColor(value)) {
             return;
         }
+        if (myTeamColor.equals(value)) {
+            return;
+        }
         myTeamColor = value;
         Application.Storage.setValue("myTeamColor", myTeamColor);
+        sendPliNow();
     }
 
     function isSupportedTeamColor(value as String) as Boolean {
@@ -332,10 +342,14 @@ class StandaloneApp extends Application.AppBase {
         if (!isValidMyRole(category, role)) {
             return;
         }
+        if (myRoleCategory.equals(category) && myRole.equals(role)) {
+            return;
+        }
         myRoleCategory = category;
         myRole = role;
         Application.Storage.setValue("myRoleCategory", myRoleCategory);
         Application.Storage.setValue("myRole", myRole);
+        sendPliNow();
     }
 
     function isValidMyRole(category as String, role as String) as Boolean {
@@ -394,6 +408,7 @@ class StandaloneApp extends Application.AppBase {
 
     function setLocationServices(enabled as Boolean) as Void {
         locationServices = enabled;
+        if (!enabled) { locationRefreshPending = false; }
         Application.Storage.setValue("locationServices", enabled);
         applyLocationServices();
     }
@@ -959,13 +974,25 @@ class StandaloneApp extends Application.AppBase {
         if (info.speed != null) {
             lastGpsSpeed = info.speed;
         }
-        if (info.position != null && info.speed != null) {
+        if (info.position != null) {
             lastGpsFixTime = Time.now().value();
+        }
+        if (info.position != null && info.speed != null) {
             if (info.speed > 0.8) {
                 lastGpsMovementTime = lastGpsFixTime;
             }
         }
-        sendPliIfDue();
+        if (locationRefreshPending) {
+            locationRefreshPending = false;
+            Position.enableLocationEvents(Position.LOCATION_CONTINUOUS, method(:onPosition));
+            if (info.position != null) {
+                sendPliNow();
+            } else {
+                sendPliIfDue();
+            }
+        } else {
+            sendPliIfDue();
+        }
         if (view != null) {
             view.updatePosition(info);
         }
@@ -1019,10 +1046,32 @@ class StandaloneApp extends Application.AppBase {
         var interval = getActiveReportingInterval();
         var now = Time.now().value();
         if (lastPliSentTime != null && now - lastPliSentTime < interval) { return; }
+        sendPliNow();
+    }
+
+    function sendPliNow() as Boolean {
+        if (!takClient.isConnected()) { return false; }
+        var now = Time.now().value();
+        var interval = getActiveReportingInterval();
         var age = Gregorian.info(Time.now(), Time.FORMAT_SHORT).year - birthYear;
         if (age < 0) { age = 0; }
         takClient.sendPli(interval, callsign, myRole, myTeamColor, getHeartRate(), age, batdokCotEnabled);
         lastPliSentTime = now;
+        lastActionPliSentTime = now;
+        return true;
+    }
+
+    function refreshPliForUserAction() as Void {
+        var now = Time.now().value();
+        if (!locationServices || !takClient.isConnected()) { return; }
+        if (lastActionPliSentTime != null && now - lastActionPliSentTime < 10) { return; }
+        if (lastGpsFixTime != null && now - lastGpsFixTime <= 60) {
+            sendPliNow();
+        } else if (!locationRefreshPending) {
+            locationRefreshPending = true;
+            lastActionPliSentTime = now;
+            Position.enableLocationEvents(Position.LOCATION_ONE_SHOT, method(:onPosition));
+        }
     }
 
     function getActiveReportingInterval() as Number {
@@ -1131,14 +1180,14 @@ class StandaloneApp extends Application.AppBase {
         if (lastPressureSampleTime == null || now != lastPressureSampleTime) {
             pressureSamples.add(pressureHpa);
             if (pressureSamples.size() > 5) {
-                pressureSamples.remove(0);
+                pressureSamples.remove(pressureSamples[0]);
             }
             lastPressureSampleTime = now;
         }
         if (pressureSamples.size() < 5) {
             return;
         }
-        var meanPressure = 0;
+        var meanPressure = 0.0;
         for (var index = 0; index < pressureSamples.size(); index++) {
             meanPressure += pressureSamples[index];
         }
@@ -1238,7 +1287,7 @@ class StandaloneApp extends Application.AppBase {
         WatchUi.showToast(label, null);
     }
 
-    function queueTakAlert(label as String, value as Number) as Void {
+    function queueTakAlert(label as String, value as Number or Float) as Void {
         takClient.sendAutomatedAlert(label, label + ": " + value.toString() + " hPa");
     }
 
@@ -1357,10 +1406,12 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function sendChatReply(replyTo as String, text as String) as Void {
+        refreshPliForUserAction();
         takClient.sendChatReply(replyTo, text);
     }
 
     function sendChatMessage(text as String) as Void {
+        refreshPliForUserAction();
         takClient.sendChatMessage(text, callsign);
     }
 

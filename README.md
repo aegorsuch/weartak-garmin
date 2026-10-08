@@ -116,6 +116,13 @@ features currently available:
 	active SSID detection is not implemented on Garmin. The adjacent BATDOK toggle
 	adds an `includeBatdok` flag to Garmin PLI messages. The companion must consume
 	that flag to add AMIST; the current companion implementation does not yet do so.
+- Callsign, team, or role changes send an immediate PLI update when the relay is
+	connected. Opening the map, sending a manual alert, or sending chat can also
+	trigger a PLI update when location services have a recent fix; if the fix is
+	stale, the watch requests a one-shot location update and resumes continuous
+	tracking when it arrives. These action refreshes are throttled to avoid excess
+	relay traffic. The companion continues to supply the authoritative phone
+	location.
 - Unlock Developer Options by tapping the version row eight times within
 	1.5 seconds. Developer Options includes the Network Preferences admin lock;
 	when locked, Network Preferences cannot be opened from Settings.

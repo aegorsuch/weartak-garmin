@@ -581,6 +581,7 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
         if (id == :map) {
+            app.refreshPliForUserAction();
             var mapView = app.getMapView();
             mapView.setTakClient(app.getTakClient());
             WatchUi.pushView(mapView, new StandaloneMapDelegate(mapView, false, app), WatchUi.SLIDE_LEFT);

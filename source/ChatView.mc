@@ -43,6 +43,7 @@ class ChatMenuDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function openMapForUserSelection() as Void {
+        app.refreshPliForUserAction();
         var mapView = app.getMapView();
         mapView.setTakClient(app.getTakClient());
         WatchUi.pushView(mapView, new StandaloneMapDelegate(mapView, false, app), WatchUi.SLIDE_LEFT);
