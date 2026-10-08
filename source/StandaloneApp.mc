@@ -118,6 +118,7 @@ class StandaloneApp extends Application.AppBase {
         takClient = new TakClient();
         sitxClient = new SitxClient();
         takClient.incomingCotCallback = method(:onIncomingCot);
+        takClient.incomingSourceRemovedCallback = method(:onIncomingCotSourceRemoved);
         takClient.incomingChatCallback = method(:onIncomingChat);
         var storedLocationServices = Application.Storage.getValue("locationServices");
         if (storedLocationServices != null) {
@@ -1273,6 +1274,10 @@ class StandaloneApp extends Application.AppBase {
 
     function onIncomingCot(uid, latitude, longitude, type, callSign, team, role, metadata as Dictionary) as Void {
         getMapView().updateIncomingCot(uid, latitude, longitude, type, callSign, team, role, metadata);
+    }
+
+    function onIncomingCotSourceRemoved(source as String) as Void {
+        getMapView().removeIncomingAlertSource(source);
     }
 
     function onIncomingChat(message as Dictionary) as Void {

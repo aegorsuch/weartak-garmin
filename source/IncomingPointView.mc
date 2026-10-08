@@ -69,17 +69,25 @@ class IncomingPointsMenu extends WatchUi.Menu2 {
 
 function buildIncomingPointActions(map as StandaloneMapView, id as String) as WatchUi.Menu2 {
     var menu = createMenu(map.incomingPointTitle(id));
-    addMenuEntry(menu, map.application.text(Rez.Strings.TextRange), map.getPointDistanceLabel(id), :range);
     var details = map.incomingDetails.get(id);
+    var isAlert = details instanceof Dictionary && details.get("isAlert") == true;
+    var hasLocation = map.pointLocations.hasKey(id);
+    if (hasLocation) {
+        addMenuEntry(menu, map.application.text(Rez.Strings.TextRange), map.getPointDistanceLabel(id), :range);
+    }
     if (details instanceof Dictionary && details.get("isPoint")) {
         addMenuEntry(menu, "RGR", WatchUi.loadResource(Rez.Strings.IncomingPointRgr), :rgr);
         if (map.isBloodhoundTarget(id)) {
             addMenuEntry(menu, "nPos", WatchUi.loadResource(Rez.Strings.IncomingPointNpos), :npos);
         }
     }
-    addMenuEntry(menu, map.isBloodhoundTarget(id) ? map.application.text(Rez.Strings.TextStopBloodhound)
-        : map.application.text(Rez.Strings.TextBloodhound), null, :track);
-    addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.IncomingPointRemove), null, :remove);
+    if (hasLocation) {
+        addMenuEntry(menu, map.isBloodhoundTarget(id) ? map.application.text(Rez.Strings.TextStopBloodhound)
+            : map.application.text(isAlert ? Rez.Strings.IncomingAlertBloodhound : Rez.Strings.TextBloodhound),
+            null, :track);
+    }
+    addMenuEntry(menu, WatchUi.loadResource(isAlert
+        ? Rez.Strings.IncomingAlertDismiss : Rez.Strings.IncomingPointRemove), null, :remove);
     addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel);
     return menu;
 }
@@ -137,6 +145,10 @@ class IncomingPointActionsDelegate extends WatchUi.Menu2InputDelegate {
             map.removeIncomingPoint(pointId, true);
             WatchUi.popView(WatchUi.SLIDE_RIGHT);
         } else if (id == :track) {
+            if (!map.pointLocations.hasKey(pointId)) {
+                WatchUi.showToast(WatchUi.loadResource(Rez.Strings.IncomingAlertNoLocation), null);
+                return;
+            }
             map.toggleBloodhound(pointId);
             map.pendingIncomingPoints.remove(pointId);
             map.application.refreshIncomingPointCount();

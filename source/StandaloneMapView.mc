@@ -25,6 +25,8 @@ class StandaloneMapView extends WatchUi.MapView {
     var incomingDetails = {};
     var pendingIncomingPoints as Array<String> = [];
     var dismissedIncomingPoints = {};
+    var alertSourceStates = {};
+    var alertOrdering = {};
     var hiddenMapTeams as Array<String> = [];
     var hiddenMapRoles as Array<String> = [];
     var mapButtonsVisible as Boolean = true;
@@ -61,6 +63,29 @@ class StandaloneMapView extends WatchUi.MapView {
         var storedButtons = Application.Storage.getValue("mapButtonsVisible");
         if (storedButtons instanceof Boolean) { mapButtonsVisible = storedButtons as Boolean; }
         loadPoints();
+        loadIncomingAlertPersistence();
+    }
+
+    function loadIncomingAlertPersistence() as Void {
+        var stored = Application.Storage.getValue("dismissedIncomingPoints");
+        if (stored instanceof Dictionary) {
+            dismissedIncomingPoints = stored;
+        }
+        var storedOrdering = Application.Storage.getValue("incomingAlertOrdering");
+        if (storedOrdering instanceof Dictionary) {
+            alertOrdering = storedOrdering;
+        }
+    }
+
+    function saveIncomingAlertPersistence() as Void {
+        try {
+            Application.Storage.setValue("dismissedIncomingPoints", dismissedIncomingPoints);
+            Application.Storage.setValue("incomingAlertOrdering", alertOrdering);
+        } catch (error instanceof Lang.StorageFullException) {
+            System.println("Incoming alert lifecycle not saved: storage full");
+        } catch (error instanceof Application.ObjectStoreAccessException) {
+            System.println("Incoming alert lifecycle not saved: storage unavailable");
+        }
     }
 
     function loadStoredStringArray(key as String) as Array<String> {
@@ -253,18 +278,26 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function updateIncomingCot(uid as String, latitude, longitude, cotType as String, callSign as String?, team as String?, role as String?, metadata as Dictionary) as Void {
         var markerId = "cot-" + uid;
-        if (isIncomingAlertCleared(cotType, metadata)) {
-            dismissedIncomingPoints.remove(markerId);
-            removeIncomingPoint(markerId, false);
+        if (metadata == null) { metadata = {}; }
+        var alertType = isIncomingAlert(cotType, metadata);
+        if (alertType) {
+            if (isSelfIncomingAlert(uid, metadata)) {
+                System.println("Incoming alert rejected: local sender");
+                return;
+            }
+            updateIncomingAlert(uid, latitude, longitude, cotType, callSign, team, role, metadata);
             return;
         }
-        var isAlert = isIncomingAlert(cotType, metadata);
-        var isPoint = !isAlert && isIncomingMapPoint(cotType, metadata);
+        var isAlert = false;
+        var isPoint = isIncomingMapPoint(cotType, metadata);
         var revision = incomingPointRevision(metadata);
         if (dismissedIncomingPoints.hasKey(markerId)) {
             var dismissed = dismissedIncomingPoints.get(markerId) as Dictionary;
-            if (revision.equals(dismissed.get("revision")) || revision.length() == 0) { return; }
+            var dismissedRevision = dismissed.get("revision");
+            if (revision.equals(dismissedRevision) || revision.length() == 0) { return; }
+            if (dismissedRevision instanceof String && revision.length() > 0 && compareIncomingRevision(revision, dismissedRevision) < 0) { return; }
             dismissedIncomingPoints.remove(markerId);
+            saveIncomingAlertPersistence();
         }
         var previous = incomingDetails.get(markerId);
         var notify = (isPoint || isAlert) && (previous == null
@@ -274,7 +307,16 @@ class StandaloneMapView extends WatchUi.MapView {
             pendingIncomingPoints.remove(markerId);
             if (isBloodhoundTarget(markerId)) { toggleBloodhound(markerId); }
         }
-        var location = new Position.Location({:latitude => latitude, :longitude => longitude, :format => :degrees});
+        var validLocation = isIncomingCoordinateValue(latitude) && isIncomingCoordinateValue(longitude);
+        if (validLocation) {
+            var lat = latitude as Number;
+            var lon = longitude as Number;
+            validLocation = lat >= -90.0 && lat <= 90.0 && lon >= -180.0 && lon <= 180.0;
+        }
+        var location = null;
+        if (validLocation) {
+            location = new Position.Location({:latitude => latitude as Double, :longitude => longitude as Double, :format => :degrees});
+        }
         if (!incomingDetails.hasKey(markerId)) {
             incomingIds.add(markerId);
             if (incomingIds.size() > MAP_RETAINED_LIMIT) {
@@ -289,9 +331,15 @@ class StandaloneMapView extends WatchUi.MapView {
             "role" => role == null ? "" : trimMapText(role),
             "isPoint" => isPoint, "isAlert" => isAlert,
             "senderUID" => incomingPointSender(metadata),
-            "revision" => revision
+            "revision" => revision,
+            "stale" => false,
+            "lastKnownLocation" => location
         });
-        pointLocations.put(markerId, location);
+        if (location != null) {
+            pointLocations.put(markerId, location);
+        } else {
+            pointLocations.remove(markerId);
+        }
         if (notify) {
             if (pendingIncomingPoints.indexOf(markerId) == -1) { pendingIncomingPoints.add(markerId); }
             Attention.vibrate([new Attention.VibeProfile(80, 250)]);
@@ -302,6 +350,174 @@ class StandaloneMapView extends WatchUi.MapView {
         pruneIncomingEntities();
         markersDirty = true;
         WatchUi.requestUpdate();
+    }
+
+    function updateIncomingAlert(uid as String, latitude, longitude, cotType as String, callSign as String?,
+            team as String?, role as String?, metadata as Dictionary) as Void {
+        var markerId = "cot-" + uid;
+        var source = incomingPointSource(metadata);
+        var revision = incomingPointRevision(metadata);
+        var cancellation = isIncomingAlertCleared(cotType, metadata);
+        var order = alertOrdering.get(markerId);
+        if (order instanceof Dictionary) {
+            var latestRevision = order.get("revision");
+            latestRevision = latestRevision instanceof String ? latestRevision as String : "";
+            var comparison = compareIncomingRevision(revision, latestRevision);
+            if (comparison < 0 || (!cancellation && order.get("cancelled") == true && comparison <= 0)) {
+                System.println("Incoming alert rejected: out of order " + uid);
+                return;
+            }
+        }
+
+        alertOrdering.put(markerId, {"revision" => revision, "cancelled" => cancellation});
+        var sources = alertSourceStates.get(markerId);
+        if (!(sources instanceof Dictionary)) {
+            sources = {};
+            alertSourceStates.put(markerId, sources);
+        }
+
+        if (cancellation) {
+            var sourceKeys = (sources as Dictionary).keys();
+            for (var sourceIndex = 0; sourceIndex < sourceKeys.size(); sourceIndex++) {
+                var sourceRecord = (sources as Dictionary).get(sourceKeys[sourceIndex]);
+                if (!(sourceRecord instanceof Dictionary)) { continue; }
+                var sourceRevision = sourceRecord.get("revision");
+                sourceRevision = sourceRevision instanceof String ? sourceRevision as String : "";
+                if (compareIncomingRevision(sourceRevision, revision) <= 0) {
+                    (sources as Dictionary).remove(sourceKeys[sourceIndex]);
+                }
+            }
+            if ((sources as Dictionary).size() == 0) { alertSourceStates.remove(markerId); }
+            if (dismissedIncomingPoints.hasKey(markerId)) {
+                var dismissal = dismissedIncomingPoints.get(markerId) as Dictionary;
+                var dismissalRevision = dismissal.get("latestRevision");
+                dismissalRevision = dismissalRevision instanceof String ? dismissalRevision as String : "";
+                if (compareIncomingRevision(revision, dismissalRevision) >= 0) {
+                    dismissedIncomingPoints.remove(markerId);
+                }
+            }
+            saveIncomingAlertPersistence();
+            rebuildVisibleAlert(markerId);
+            return;
+        }
+
+        var validLocation = isUsableIncomingLocation(latitude, longitude);
+        var location = validLocation
+            ? new Position.Location({:latitude => latitude as Double, :longitude => longitude as Double, :format => :degrees})
+            : null;
+        var previousSource = (sources as Dictionary).get(source);
+        if (location == null && previousSource instanceof Dictionary) {
+            location = previousSource.get("lastKnownLocation");
+        }
+        var sender = incomingPointSender(metadata);
+        var displayCallSign = callSign == null ? "" : trimMapText(callSign);
+        if (displayCallSign.length() == 0 && sender.length() > 0) { displayCallSign = sender; }
+        (sources as Dictionary).put(source, {
+            "uid" => uid, "type" => cotType,
+            "callSign" => displayCallSign,
+            "team" => team == null ? "" : trimMapText(team),
+            "role" => role == null ? "" : trimMapText(role),
+            "isPoint" => false, "isAlert" => true,
+            "senderUID" => sender,
+            "category" => trimMapText(incomingPointCategory(cotType, metadata)),
+            "revision" => revision,
+            "staleDeadline" => incomingPointStaleDeadline(metadata),
+            "lastKnownLocation" => location,
+            "source" => source
+        });
+        saveIncomingAlertPersistence();
+
+        if (dismissedIncomingPoints.hasKey(markerId)) {
+            var dismissal = dismissedIncomingPoints.get(markerId) as Dictionary;
+            var dismissedRevision = dismissal.get("latestRevision");
+            dismissedRevision = dismissedRevision instanceof String ? dismissedRevision as String : "";
+            if (compareIncomingRevision(revision, dismissedRevision) > 0) {
+                dismissal.put("latestRevision", revision);
+                saveIncomingAlertPersistence();
+            }
+            System.println("Incoming alert accepted but hidden by local dismissal: " + uid);
+            return;
+        }
+        rebuildVisibleAlert(markerId);
+    }
+
+    function isUsableIncomingLocation(latitude, longitude) as Boolean {
+        if (!isIncomingCoordinateValue(latitude) || !isIncomingCoordinateValue(longitude)) { return false; }
+        var lat = latitude;
+        var lon = longitude;
+        return lat >= -90.0 && lat <= 90.0 && lon >= -180.0 && lon <= 180.0;
+    }
+
+    function rebuildVisibleAlert(markerId as String) as Void {
+        var sources = alertSourceStates.get(markerId);
+        var selected = null;
+        if (sources instanceof Dictionary) {
+            var sourceKeys = (sources as Dictionary).keys();
+            for (var index = 0; index < sourceKeys.size(); index++) {
+                var candidate = (sources as Dictionary).get(sourceKeys[index]);
+                if (!(candidate instanceof Dictionary)) { continue; }
+                if (!(selected instanceof Dictionary)
+                        || compareIncomingRevision(candidate.get("revision") as String,
+                            (selected as Dictionary).get("revision") as String) > 0) {
+                    selected = candidate;
+                }
+            }
+        }
+        if (!(selected instanceof Dictionary) || dismissedIncomingPoints.hasKey(markerId)) {
+            removeIncomingPoint(markerId, false);
+            return;
+        }
+
+        var isNew = !incomingDetails.hasKey(markerId);
+        if (isNew) {
+            incomingIds.add(markerId);
+            if (incomingIds.size() > MAP_RETAINED_LIMIT) { removeIncomingPoint(incomingIds[0], false); }
+        }
+        var selectedDetails = selected as Dictionary;
+        selectedDetails.put("stale", isIncomingAlertStale(selectedDetails));
+        incomingDetails.put(markerId, selectedDetails);
+        incomingLastSeen.put(markerId, Time.now().value());
+        var location = selectedDetails.get("lastKnownLocation");
+        if (location != null) { pointLocations.put(markerId, location); }
+        else { pointLocations.remove(markerId); }
+        if (isNew) {
+            pendingIncomingPoints.add(markerId);
+            Attention.vibrate([new Attention.VibeProfile(80, 250)]);
+            WatchUi.showToast(incomingPointTitle(markerId), null);
+        }
+        if (application != null) { application.refreshIncomingPointCount(); }
+        markersDirty = true;
+        WatchUi.requestUpdate();
+    }
+
+    function isIncomingAlertStale(details as Dictionary) as Boolean {
+        var deadline = details.get("staleDeadline");
+        if (!(deadline instanceof String) || (deadline as String).length() == 0) { return false; }
+        return compareCotTimestamp(deadline as String, currentCotTimestamp()) <= 0;
+    }
+
+    function currentCotTimestamp() as String {
+        var info = Time.Gregorian.utcInfo(Time.now(), Time.FORMAT_SHORT);
+        return info.year.format("%04d") + "-" + info.month.format("%02d") + "-" + info.day.format("%02d")
+            + "T" + info.hour.format("%02d") + ":" + info.min.format("%02d") + ":" + info.sec.format("%02d") + "Z";
+    }
+
+    function compareCotTimestamp(left as String, right as String) as Number {
+        var starts = [0, 5, 8, 11, 14, 17];
+        var lengths = [4, 2, 2, 2, 2, 2];
+        for (var index = 0; index < starts.size(); index++) {
+            if (left.length() < starts[index] + lengths[index]
+                    || right.length() < starts[index] + lengths[index]) {
+                if (left.length() < right.length()) { return -1; }
+                if (left.length() > right.length()) { return 1; }
+                return left.equals(right) ? 0 : -1;
+            }
+            var leftPart = left.substring(starts[index], starts[index] + lengths[index]).toNumber();
+            var rightPart = right.substring(starts[index], starts[index] + lengths[index]).toNumber();
+            if (leftPart < rightPart) { return -1; }
+            if (leftPart > rightPart) { return 1; }
+        }
+        return 0;
     }
 
     function incomingPointTitle(id as String) as String {
@@ -315,6 +531,22 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function incomingPointDetailLabel(id as String) as String {
         var details = incomingDetails.get(id);
+        var detailsDict = details instanceof Dictionary ? details as Dictionary : null;
+        if (detailsDict != null && detailsDict.get("isAlert") == true) {
+            var category = detailsDict.get("category");
+            var label = category instanceof String && (category as String).length() > 0
+                ? category as String : application.text(Rez.Strings.IncomingAlertUnknownCategory);
+            var location = pointLocations.get(id);
+            if (detailsDict.get("stale") == true) {
+                label = label + " · " + application.text(location == null
+                    ? Rez.Strings.IncomingAlertStale : Rez.Strings.IncomingAlertStaleLastKnown);
+            }
+            if (location == null) {
+                label = label + " · " + application.text(Rez.Strings.IncomingAlertNoLocation);
+            }
+            if (currentPosition == null || location == null) { return label; }
+            return label + " · " + distanceMeters(currentPosition, location).format("%.0f") + " m";
+        }
         var affiliation = Rez.Strings.TextUnknownPoint;
         if (details instanceof Dictionary) {
             var cotType = details.get("type");
@@ -381,7 +613,20 @@ class StandaloneMapView extends WatchUi.MapView {
             if (dismissedIncomingPoints.size() >= MAP_RETAINED_LIMIT) {
                 dismissedIncomingPoints.remove(dismissedIncomingPoints.keys()[0]);
             }
-            dismissedIncomingPoints.put(id, {"revision" => details.get("revision"), "removedAt" => Time.now().value()});
+            if (details.get("isAlert") == true) {
+                dismissedIncomingPoints.put(id, {
+                    "latestRevision" => details.get("revision"),
+                    "removedAt" => Time.now().value(),
+                    "isAlert" => true
+                });
+            } else {
+                dismissedIncomingPoints.put(id, {
+                    "revision" => details.get("revision"),
+                    "removedAt" => Time.now().value(),
+                    "isAlert" => false
+                });
+            }
+            saveIncomingAlertPersistence();
         }
         markers.remove(id);
         pointLocations.remove(id);
@@ -389,13 +634,25 @@ class StandaloneMapView extends WatchUi.MapView {
         incomingDetails.remove(id);
         incomingIds.remove(id);
         pendingIncomingPoints.remove(id);
-        application.refreshIncomingPointCount();
+        if (application != null) { application.refreshIncomingPointCount(); }
         if (bloodhoundPointId != null && bloodhoundPointId.equals(id)) {
             bloodhoundPointId = null;
             bloodhoundProximityNotified = false;
         }
         markersDirty = true;
         WatchUi.requestUpdate();
+    }
+
+    function removeIncomingAlertSource(source as String) as Void {
+        var alertIds = alertSourceStates.keys();
+        for (var index = 0; index < alertIds.size(); index++) {
+            var markerId = alertIds[index] as String;
+            var sources = alertSourceStates.get(markerId);
+            if (!(sources instanceof Dictionary) || !(sources as Dictionary).hasKey(source)) { continue; }
+            (sources as Dictionary).remove(source);
+            if ((sources as Dictionary).size() == 0) { alertSourceStates.remove(markerId); }
+            rebuildVisibleAlert(markerId);
+        }
     }
 
     function trimMapText(value as String) as String {
@@ -481,6 +738,68 @@ class StandaloneMapView extends WatchUi.MapView {
         var deviceId = System.getDeviceSettings().uniqueIdentifier;
         var uid = details.get("uid");
         return deviceId != null && uid instanceof String && (uid as String).equals(deviceId);
+    }
+
+    function isSelfIncomingAlert(uid as String, metadata as Dictionary) as Boolean {
+        if (!(metadata instanceof Dictionary)) { return false; }
+        var sender = incomingPointSender(metadata);
+        var deviceId = System.getDeviceSettings().uniqueIdentifier;
+        if (deviceId != null && sender.length() > 0 && sender.equals(deviceId)) { return true; }
+        if (deviceId != null && uid != null && uid.toString().equals(deviceId)) { return true; }
+        if (application != null) {
+            var callsign = metadata.get("callSign");
+            if (callsign == null) { callsign = metadata.get("callsign"); }
+            var contact = metadata.get("contact");
+            if (callsign == null && contact instanceof Dictionary) {
+                callsign = (contact as Dictionary).get("callsign");
+            }
+            var ownCallsign = application.getCallsign();
+            if (callsign instanceof String && ownCallsign.length() > 0
+                    && normalizeMapGroup(callsign as String).equals(normalizeMapGroup(ownCallsign))) {
+                return true;
+            }
+        }
+        if (takClient != null && takClient.isLocalAlertUid(uid)) { return true; }
+        return false;
+    }
+
+    function compareIncomingRevision(left as String, right as String) as Number {
+        if (left == null || left.length() == 0) {
+            return right == null || right.length() == 0 ? 0 : -1;
+        }
+        if (right == null || right.length() == 0) {
+            return 1;
+        }
+        if (left.equals(right)) { return 0; }
+        if (left.length() >= 19 && right.length() >= 19
+                && left.substring(4, 5).equals("-") && right.substring(4, 5).equals("-")
+                && left.substring(10, 11).equals("T") && right.substring(10, 11).equals("T")) {
+            return compareCotTimestamp(left, right);
+        }
+        var leftNumber = revisionNumericValue(left);
+        var rightNumber = revisionNumericValue(right);
+        if (leftNumber != null && rightNumber != null) {
+            if (leftNumber < rightNumber) { return -1; }
+            if (leftNumber > rightNumber) { return 1; }
+            return 0;
+        }
+        if (left.length() < right.length()) { return -1; }
+        if (left.length() > right.length()) { return 1; }
+        return 0;
+    }
+
+    function revisionNumericValue(value as String) as Number? {
+        var digits = "";
+        for (var i = 0; i < value.length(); i++) {
+            var chr = value.substring(i, i + 1);
+            if (chr.equals("0") || chr.equals("1") || chr.equals("2") || chr.equals("3")
+                    || chr.equals("4") || chr.equals("5") || chr.equals("6")
+                    || chr.equals("7") || chr.equals("8") || chr.equals("9")) {
+                digits += chr;
+            }
+        }
+        if (digits.length() == 0) { return null; }
+        return digits.toNumber();
     }
 
     function isMapGroupHidden(hiddenGroups as Array<String>, value as String) as Boolean {
@@ -1090,22 +1409,41 @@ class StandaloneMapView extends WatchUi.MapView {
                 :format => :degrees
             });
         }
-        var nearest = new NearestMapItems();
+        var nearestAlerts = new NearestMapItems();
+        var nearestOrdinary = new NearestMapItems();
         var ids = pointLocations.keys();
         for (var i = 0; i < ids.size(); i++) {
             var markerId = ids[i].toString();
             if (!isIncomingUserVisible(markerId)) { continue; }
-            nearest.add(markerId, distanceMeters(origin, pointLocations.get(markerId)));
+            var details = incomingDetails.get(markerId);
+            if (details instanceof Dictionary && details.get("isAlert") == true) {
+                nearestAlerts.add(markerId, distanceMeters(origin, pointLocations.get(markerId)));
+            } else {
+                nearestOrdinary.add(markerId, distanceMeters(origin, pointLocations.get(markerId)));
+            }
         }
-        drawnPointIds = nearest.pointIds;
+        drawnPointIds = nearestAlerts.pointIds.slice(0, nearestAlerts.pointIds.size());
+        for (var ordinaryIndex = 0;
+                ordinaryIndex < nearestOrdinary.pointIds.size() && drawnPointIds.size() < MAP_DRAWN_LIMIT;
+                ordinaryIndex++) {
+            drawnPointIds.add(nearestOrdinary.pointIds[ordinaryIndex]);
+        }
         var result = [];
         for (var i = 0; i < drawnPointIds.size(); i++) {
             var markerId = drawnPointIds[i];
             if (incomingDetails.hasKey(markerId)) {
                 var details = incomingDetails.get(markerId) as Dictionary;
-                var cotType = details.get("type") as String;
-                var type = cotType.find("a-h-") != null ? :hostile : cotType.find("a-f-") != null ? :friendly : cotType.find("a-n-") != null ? :neutral : :unknown;
-                result.add(createPointMarker(pointLocations.get(markerId), type, incomingPointTitle(markerId)));
+                if (details.get("isAlert") == true) {
+                    var alertMarker = new WatchUi.MapMarker(pointLocations.get(markerId));
+                    var alertIcon = WatchUi.loadResource(Rez.Drawables.AlertIcon);
+                    alertMarker.setIcon(alertIcon, alertIcon.getWidth() / 2, alertIcon.getHeight() / 2);
+                    alertMarker.setLabel(incomingPointTitle(markerId));
+                    result.add(alertMarker);
+                } else {
+                    var cotType = details.get("type") as String;
+                    var type = cotType.find("a-h-") != null ? :hostile : cotType.find("a-f-") != null ? :friendly : cotType.find("a-n-") != null ? :neutral : :unknown;
+                    result.add(createPointMarker(pointLocations.get(markerId), type, incomingPointTitle(markerId)));
+                }
             } else {
                 result.add(markers.get(markerId));
             }
@@ -1393,25 +1731,42 @@ class StandaloneMapView extends WatchUi.MapView {
     function pruneIncomingEntities() as Boolean {
         var now = Time.now().value();
         var staleIds = [];
+        var changed = false;
         var ids = incomingLastSeen.keys();
         for (var i = 0; i < ids.size(); i++) {
-            if (now - incomingLastSeen.get(ids[i]) > 300) {
-                staleIds.add(ids[i]);
+            var id = ids[i] as String;
+            var details = incomingDetails.get(id);
+            if (details instanceof Dictionary && details.get("isAlert") == true) {
+                var stale = isIncomingAlertStale(details as Dictionary);
+                if (details.get("stale") != stale) {
+                    details.put("stale", stale);
+                    changed = true;
+                }
+            } else if (now - incomingLastSeen.get(id) > 300) {
+                staleIds.add(id);
             }
         }
         for (var j = 0; j < staleIds.size(); j++) {
+            if (incomingDetails.get(staleIds[j]) instanceof Dictionary && (incomingDetails.get(staleIds[j]) as Dictionary).get("isAlert") == true) {
+                continue;
+            }
             removeIncomingPoint(staleIds[j], false);
         }
         var dismissedIds = dismissedIncomingPoints.keys();
         for (var k = 0; k < dismissedIds.size(); k++) {
-            if (now - dismissedIncomingPoints.get(dismissedIds[k]).get("removedAt") > 300) {
+            var dismissal = dismissedIncomingPoints.get(dismissedIds[k]);
+            var removedAt = dismissal instanceof Dictionary ? dismissal.get("removedAt") : null;
+            if (dismissal instanceof Dictionary && dismissal.get("isAlert") != true
+                    && removedAt instanceof Number && now - (removedAt as Number) > 300) {
                 dismissedIncomingPoints.remove(dismissedIds[k]);
+                changed = true;
             }
         }
-        if (staleIds.size() > 0) {
+        if (staleIds.size() > 0 || changed) {
             markersDirty = true;
         }
-        return staleIds.size() > 0;
+        if (changed) { saveIncomingAlertPersistence(); }
+        return staleIds.size() > 0 || changed;
     }
 
     function pruneIncomingEntitiesOnTimer() as Void {

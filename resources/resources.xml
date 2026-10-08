@@ -31,6 +31,12 @@
     <string id="IncomingPointNew">New</string>
     <string id="IncomingPointReceived">Incoming map point</string>
     <string id="IncomingAlertLabel">Alert</string>
+    <string id="IncomingAlertBloodhound">Bloodhound to Alert</string>
+    <string id="IncomingAlertDismiss">Dismiss locally</string>
+    <string id="IncomingAlertStale">Stale</string>
+    <string id="IncomingAlertStaleLastKnown">Stale (last-known location)</string>
+    <string id="IncomingAlertNoLocation">Location unavailable</string>
+    <string id="IncomingAlertUnknownCategory">Emergency</string>
     <string id="IncomingPointUnavailable">Point no longer available</string>
     <string id="IncomingPointRgr">Reply and start Bloodhound</string>
     <string id="IncomingPointNpos">Reply, stop and remove locally</string>

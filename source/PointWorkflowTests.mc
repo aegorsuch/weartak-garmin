@@ -2,6 +2,8 @@ import Toybox.Lang;
 import Toybox.Test;
 import Toybox.Application;
 import Toybox.Graphics;
+import Toybox.Position;
+import Toybox.System;
 import Toybox.Time;
 
 (:test)
@@ -107,6 +109,7 @@ function retainedMapEntitiesAndNearestDrawing(logger) as Boolean {
     map.pointLocations = {};
     map.pointDetails = {};
     map.pointOrder = [];
+    map.dismissedIncomingPoints = {};
     map.hiddenMapTeams = [];
     map.hiddenMapRoles = [];
     map.currentPosition = new Toybox.Position.Location({
@@ -356,6 +359,7 @@ function incomingPointClassification(logger) as Boolean {
 function bloodhoundIncomingPointsMenu(logger) as Boolean {
     var app = Application.getApp() as StandaloneApp;
     var map = app.getMapView();
+    map.dismissedIncomingPoints = {};
     var mainMenu = buildMainMenu(app);
     Test.assertEqual(mainMenu.getItem(0).getLabel(), app.text(Rez.Strings.TextBloodhound));
     var mainMenuIds = [:incomingPoints, :chat, :managePoints, :dropPoint, :sos, :map, :settings];
@@ -387,6 +391,13 @@ function bloodhoundIncomingPointsMenu(logger) as Boolean {
 function bloodhoundRemoteAlerts(logger) as Boolean {
     var app = Application.getApp() as StandaloneApp;
     var map = app.getMapView();
+    map.alertOrdering = {};
+    map.alertSourceStates = {};
+    map.dismissedIncomingPoints = {};
+    var existingIncoming = map.incomingIds.slice(0, map.incomingIds.size());
+    for (var existingIndex = 0; existingIndex < existingIncoming.size(); existingIndex++) {
+        map.removeIncomingPoint(existingIncoming[existingIndex], false);
+    }
     Test.assert(isIncomingAlert("b-a-o-tbl", {}));
     Test.assert(isIncomingAlert("a-f-G-U-C", {"emergency" => {"type" => "911 Alert"}}));
     Test.assert(isIncomingAlert("a-f-G-U-C", {"isAlert" => true}));
@@ -429,24 +440,28 @@ function bloodhoundRemoteAlerts(logger) as Boolean {
     Test.assert(!map.isBloodhoundActive());
     Test.assertEqual(menu.getItem(0).getId(), :removeAll);
     Test.assertEqual(menu.getItem(1).getId(), :empty);
-    map.updateIncomingCot("alert-first", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null, {});
+    map.updateIncomingCot("alert-first", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-1"});
     map.removeIncomingPoint("cot-alert-first", true);
-    relay.forwardEntity({"uid" => "alert-first", "type" => "b-a-o-can"});
+    map.updateIncomingCot("alert-first", null, null, "b-a-o-can", "Medic", null, null,
+        {"time" => "revision-1"});
     Test.assert(!map.dismissedIncomingPoints.hasKey("cot-alert-first"));
-    map.updateIncomingCot("alert-first", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null, {});
+    map.updateIncomingCot("alert-first", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-2"});
     Test.assertEqual(menu.getItem(0).getId(), "cot-alert-first");
     map.toggleBloodhound("cot-alert-first");
-    map.incomingLastSeen.put("cot-alert-first", Time.now().value() - 301);
+    (map.incomingDetails.get("cot-alert-first") as Dictionary).put("staleDeadline", "2000-01-01T00:00:00Z");
     map.pruneIncomingEntities();
-    Test.assert(!map.isBloodhoundActive());
-    Test.assertEqual(menu.getItem(1).getId(), :empty);
+    Test.assert(map.isBloodhoundActive());
+    Test.assert(map.incomingDetails.hasKey("cot-alert-first"));
+    Test.assert(map.incomingDetails.get("cot-alert-first").get("stale") == true);
     map.updateIncomingCot("alert-user", 38.0, -77.0, "a-f-G-U-C", "User", null, null,
         {"isAlert" => true});
     map.toggleBloodhound("cot-alert-user");
     map.updateIncomingCot("alert-user", 38.0, -77.0, "a-f-G-U-C", "User", null, null, {});
     Test.assert(map.incomingDetails.hasKey("cot-alert-user"));
     Test.assert(!map.isBloodhoundActive());
-    Test.assertEqual(menu.getItem(1).getId(), :empty);
+    Test.assertEqual(menu.getItem(0).getId(), "cot-alert-first");
     map.removeIncomingPoint("cot-alert-user", false);
     menu.onHide();
     map.updateIncomingCot("alert-notify", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
@@ -456,8 +471,107 @@ function bloodhoundRemoteAlerts(logger) as Boolean {
     map.updateIncomingCot("alert-notify", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
         {"time" => "revision-1"});
     Test.assertEqual(map.pendingIncomingPoints.size(), 0);
-    relay.forwardEntity({"uid" => "alert-notify", "type" => "b-a-o-tbl", "state" => "CANCEL"});
+    relay.forwardEntity({"uid" => "alert-notify", "type" => "b-a-o-tbl", "state" => "CANCEL",
+        "time" => "revision-1"});
     Test.assert(!map.incomingDetails.hasKey("cot-alert-notify"));
+    return true;
+}
+
+(:test)
+function incomingAlertLifecycleEdgeCases(logger) as Boolean {
+    var map = new StandaloneMapView();
+    map.setApplication(Application.getApp() as StandaloneApp);
+    map.entityPruneTimer.stop();
+    map.alertOrdering = {};
+    map.alertSourceStates = {};
+    map.dismissedIncomingPoints = {};
+    map.updateIncomingCot("stale-alert", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-10", "stale" => "2000-01-01T00:00:00Z", "__source" => "source-a"});
+    Test.assert(map.incomingDetails.hasKey("cot-stale-alert"));
+    Test.assert(map.incomingDetails.get("cot-stale-alert").get("stale") == true);
+    map.updateIncomingCot("stale-alert", 38.1, -77.1, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-11", "stale" => "2999-01-01T00:00:00Z", "__source" => "source-a"});
+    Test.assert(map.incomingDetails.get("cot-stale-alert").get("stale") == false);
+
+    map.updateIncomingCot("alert-locationless", null, null, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-20", "__source" => "source-a"});
+    Test.assert(map.incomingDetails.hasKey("cot-alert-locationless"));
+    Test.assert(!map.pointLocations.hasKey("cot-alert-locationless"));
+    Test.assertEqual(buildIncomingPointActions(map, "cot-alert-locationless").getItem(0).getId(), :remove);
+    map.updateIncomingCot("alert-locationless", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-21", "__source" => "source-a"});
+    map.updateIncomingCot("alert-locationless", null, null, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-22", "__source" => "source-a"});
+    Test.assert(map.pointLocations.hasKey("cot-alert-locationless"));
+
+    map.updateIncomingCot("alert-order", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-30", "__source" => "source-a"});
+    map.updateIncomingCot("alert-order", 39.0, -78.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-29", "__source" => "source-a"});
+    var orderedLatitude = (map.pointLocations.get("cot-alert-order") as Position.Location).toDegrees()[0];
+    Test.assert(orderedLatitude > 37.99 && orderedLatitude < 38.01);
+    map.updateIncomingCot("alert-order", null, null, "b-a-o-can", "Medic", null, null,
+        {"time" => "revision-29", "__source" => "source-a"});
+    Test.assert(map.incomingDetails.hasKey("cot-alert-order"));
+    Test.assert(map.incomingDetails.get("cot-alert-order").get("isAlert") == true);
+    map.updateIncomingCot("alert-order", null, null, "b-a-o-can", "Medic", null, null,
+        {"time" => "revision-31", "__source" => "source-a"});
+    Test.assert(!map.incomingDetails.hasKey("cot-alert-order"));
+    map.updateIncomingCot("alert-order", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-30", "__source" => "source-b"});
+    Test.assert(!map.incomingDetails.hasKey("cot-alert-order"));
+    map.updateIncomingCot("alert-order", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-32", "__source" => "source-b"});
+    Test.assert(map.incomingDetails.hasKey("cot-alert-order"));
+
+    map.updateIncomingCot("duplicate", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-40", "__source" => "source-a"});
+    map.updateIncomingCot("duplicate", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-40", "__source" => "source-b"});
+    Test.assertEqual((map.alertSourceStates.get("cot-duplicate") as Dictionary).size(), 2);
+    map.removeIncomingAlertSource("source-a");
+    Test.assert(map.incomingDetails.hasKey("cot-duplicate"));
+    Test.assertEqual((map.alertSourceStates.get("cot-duplicate") as Dictionary).size(), 1);
+
+    map.removeIncomingPoint("cot-duplicate", true);
+    map.updateIncomingCot("duplicate", 38.1, -77.1, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-41", "__source" => "source-b"});
+    Test.assert(!map.incomingDetails.hasKey("cot-duplicate"));
+    Test.assert(map.dismissedIncomingPoints.hasKey("cot-duplicate"));
+    map.updateIncomingCot("duplicate", null, null, "b-a-o-can", "Medic", null, null,
+        {"time" => "revision-40", "__source" => "source-b"});
+    Test.assert(map.dismissedIncomingPoints.hasKey("cot-duplicate"));
+    map.updateIncomingCot("duplicate", null, null, "b-a-o-can", "Medic", null, null,
+        {"time" => "revision-41", "__source" => "source-b"});
+    Test.assert(!map.dismissedIncomingPoints.hasKey("cot-duplicate"));
+    map.updateIncomingCot("duplicate", 38.2, -77.2, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-42", "__source" => "source-b"});
+    Test.assert(map.incomingDetails.hasKey("cot-duplicate"));
+
+    map.updateIncomingCot("persisted-alert", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-50", "__source" => "source-a"});
+    map.removeIncomingPoint("cot-persisted-alert", true);
+    var restored = new StandaloneMapView();
+    restored.setApplication(Application.getApp() as StandaloneApp);
+    restored.entityPruneTimer.stop();
+    Test.assert(restored.dismissedIncomingPoints.hasKey("cot-persisted-alert"));
+    restored.updateIncomingCot("persisted-alert", 38.1, -77.1, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-51", "__source" => "source-a"});
+    Test.assert(!restored.incomingDetails.hasKey("cot-persisted-alert"));
+    restored.updateIncomingCot("persisted-alert", null, null, "b-a-o-can", "Medic", null, null,
+        {"time" => "revision-51", "__source" => "source-a"});
+    Test.assert(!restored.dismissedIncomingPoints.hasKey("cot-persisted-alert"));
+    restored.updateIncomingCot("persisted-alert", 38.2, -77.2, "b-a-o-tbl", "Medic", null, null,
+        {"time" => "revision-52", "__source" => "source-a"});
+    Test.assert(restored.incomingDetails.hasKey("cot-persisted-alert"));
+
+    var deviceId = System.getDeviceSettings().uniqueIdentifier;
+    if (deviceId != null) {
+        map.updateIncomingCot(deviceId, 38.0, -77.0, "b-a-o-tbl", "Medic", null, null, {"senderUID" => deviceId, "time" => "revision-40"});
+        Test.assert(!map.incomingDetails.hasKey("cot-" + deviceId));
+    }
+    Test.assertEqual(incomingPointSender({"link" => {"relation" => "p-p", "uid" => "sender-parent"}}), "sender-parent");
+    Test.assertEqual(incomingPointCategory("b-a-o-tbl", {"emergency" => {"type" => "911 Alert"}}), "911 Alert");
     return true;
 }
 
@@ -466,6 +580,7 @@ function bulkIncomingPointRemoval(logger) as Boolean {
     var map = new StandaloneMapView();
     map.setApplication(Application.getApp() as StandaloneApp);
     map.entityPruneTimer.stop();
+    map.dismissedIncomingPoints = {};
     var localPointCount = map.pointOrder.size();
     map.updateIncomingCot("bulk-first", 38.0, -77.0, "a-n-G", "First", null, null,
         {"isPoint" => true, "time" => "revision-1"});
@@ -506,6 +621,7 @@ function bulkIncomingPointRemoval(logger) as Boolean {
 function incomingPointWorkflow(logger) as Boolean {
     var app = Application.getApp() as StandaloneApp;
     var map = app.getMapView();
+    map.dismissedIncomingPoints = {};
     var originalClient = map.takClient;
     var relay = new TestPointRelay();
     map.setTakClient(relay);

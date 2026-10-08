@@ -437,6 +437,26 @@ Review and translate those fallback values before release.
 Treat location and saved waypoints as sensitive data. Configure ATAK's TAK
 connection according to the deployment's operational policy.
 
+### Remote emergency alerts
+
+Received ATAK and WearTAK emergencies share one alert list between the map and
+the Bloodhound picker. Alerts are deduplicated by their CoT UID while retaining
+the ingress sources that supplied them. A yellow warning triangle identifies an
+alert independently of ordinary contact and point visibility filters.
+
+The CoT `stale` deadline describes location freshness, not whether the emergency
+has ended. After that deadline the alert remains visible and its coordinates are
+identified as a stale, last-known location. An alert without usable coordinates
+remains readable but cannot be shown on the map or selected for navigation. A
+later location-less refresh may retain that source's previous valid location.
+
+Only an explicit, ordered sender cancellation ends an emergency. If a
+cancellation is missed, the last-known alert can remain visible indefinitely
+until it is dismissed locally or its source is removed. **Dismiss locally**
+hides an ongoing alert on this watch without sending a cancellation,
+acknowledgement, or chat message. Dismissals and cancellation ordering survive
+an app restart so delayed packets cannot reveal or resurrect an older alert.
+
 ## Implementation roadmap
 
 This project is intentionally scoped to the currently working features above.

@@ -56,6 +56,7 @@ class TakClient {
     var automatedAlertSequence as Number = 0;
     var statusCallback as Method?  = null;
     var incomingCotCallback as Method? = null;
+    var incomingSourceRemovedCallback as Method? = null;
     var incomingChatCallback as Method? = null;
     var channelsCallback as Method? = null;
     var dataSync as DataSyncClient;
@@ -162,6 +163,7 @@ class TakClient {
         if (dataSync.requestId != null) { dataSync.fail(Rez.Strings.DataSyncRelayOff); }
         automatedAlertSentAt = {};
         status = :idle;
+        if (incomingSourceRemovedCallback != null) { incomingSourceRemovedCallback.invoke("phone-relay"); }
         notifyStatusChanged();
         WatchUi.requestUpdate();
     }
@@ -244,6 +246,7 @@ class TakClient {
         if (uid == null) {
             return;
         }
+
         if (!queueRelay("emergency", {
                 "uid" => uid, "state" => "CANCEL",
                 "tStart" => cotTimestamp(Time.now()),
@@ -252,6 +255,16 @@ class TakClient {
         automatedAlertUids.remove(category);
         automatedAlertSentAt.remove(category);
         saveOfflineValue("automatedAlertUids", automatedAlertUids);
+    }
+
+    function isLocalAlertUid(uid as String) as Boolean {
+        if (alerting && uid.equals("garmin-sos")) { return true; }
+        var categories = automatedAlertUids.keys();
+        for (var index = 0; index < categories.size(); index++) {
+            var localUid = automatedAlertUids.get(categories[index]);
+            if (localUid instanceof String && uid.equals(localUid as String)) { return true; }
+        }
+        return false;
     }
 
     function sendChatReply(replyTo as String, text as String) as Void {
@@ -426,6 +439,7 @@ class TakClient {
         var msgType = envelope.get("msgType");
         var payload = envelope.get("payload");
         if (!(msgType instanceof String) || !(payload instanceof Dictionary)) {
+            System.println("TAK relay ingress absent: invalid envelope");
             return;
         }
         lastRelayMessageType = "<- " + msgType.toString();
@@ -448,6 +462,9 @@ class TakClient {
             return;
         }
         if ((msgType != "entity" && msgType != "entities") || incomingCotCallback == null) {
+            if (msgType == "entity" || msgType == "entities") {
+                System.println("TAK relay ingress absent: no entity callback");
+            }
             return;
         }
         if (msgType == "entity") {
@@ -469,11 +486,13 @@ class TakClient {
         var latitude = entity.get("lat");
         var longitude = entity.get("lon");
         var cotType = entity.get("type");
+        entity.put("__source", "phone-relay");
         if (uid != null && cotType instanceof String && isIncomingAlertCleared(cotType, entity)) {
             incomingCotCallback.invoke(uid.toString(), null, null, cotType, null, null, null, entity);
             return;
         }
-        if (uid != null && latitude != null && longitude != null && cotType != null) {
+        if (uid != null && cotType instanceof String
+                && (isIncomingAlert(cotType, entity) || (latitude != null && longitude != null))) {
             var callSign = entity.get("callSign");
             if (callSign == null) { callSign = entity.get("callsign"); }
             var team = entity.get("team");
@@ -488,13 +507,18 @@ class TakClient {
                 callSign = (contact as Dictionary).get("callsign");
             }
             incomingCotCallback.invoke(
-                uid.toString(), (latitude as Number).toFloat(), (longitude as Number).toFloat(), cotType.toString(),
+                uid.toString(),
+                incomingCoordinateFloat(latitude),
+                incomingCoordinateFloat(longitude),
+                cotType.toString(),
                 callSign == null ? null : callSign.toString(),
                 team == null ? null : team.toString(),
                 role == null ? null : role.toString(),
                 entity
             );
             flushPointReplies();
+        } else {
+            System.println("TAK relay event rejected: missing uid, type, or usable coordinates");
         }
     }
 
