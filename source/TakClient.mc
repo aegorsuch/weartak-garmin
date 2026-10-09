@@ -59,7 +59,10 @@ class TakClient {
     var incomingSourceRemovedCallback as Method? = null;
     var incomingChatCallback as Method? = null;
     var channelsCallback as Method? = null;
+    var phoneSettingsCallback as Method? = null;
+    var watchSettingsCallback as Method? = null;
     var dataSync as DataSyncClient;
+    var bloodhoundSync as BloodhoundSync;
     var verboseLoggingEnabled as Boolean = false;
     var lastRelayMessageType as String? = null;
     var lastRelayMessageTime as Time.Moment? = null;
@@ -70,6 +73,9 @@ class TakClient {
 
     function initialize() {
         dataSync = new DataSyncClient(self);
+        bloodhoundSync = new BloodhoundSync();
+        bloodhoundSync.sendCallback = method(:sendBloodhoundMessage);
+        bloodhoundSync.reportErrorCallback = method(:reportBloodhoundError);
         pointReplies = new OfflineRelayQueue();
         var sequence = Application.Storage.getValue("pointReplySequence");
         if (sequence instanceof Number) { pointReplySequence = sequence; }
@@ -163,6 +169,8 @@ class TakClient {
         if (dataSync.requestId != null) { dataSync.fail(Rez.Strings.DataSyncRelayOff); }
         automatedAlertSentAt = {};
         status = :idle;
+        bloodhoundSync.connectionChanged(false);
+        if (phoneSettingsCallback != null) { phoneSettingsCallback.invoke(null); }
         if (incomingSourceRemovedCallback != null) { incomingSourceRemovedCallback.invoke("phone-relay"); }
         notifyStatusChanged();
         WatchUi.requestUpdate();
@@ -174,6 +182,7 @@ class TakClient {
         }
         status = :connected;
         transmit("entity_sync_request", {"limit" => MAP_RETAINED_LIMIT, "protocolVersion" => 1});
+        bloodhoundSync.connectionChanged(true);
         flushPointReplies();
         notifyStatusChanged();
     }
@@ -184,8 +193,21 @@ class TakClient {
         }
         automatedAlertSentAt = {};
         status = :failed;
+        bloodhoundSync.connectionChanged(false);
+        if (phoneSettingsCallback != null) { phoneSettingsCallback.invoke(null); }
         notifyStatusChanged();
         WatchUi.requestUpdate();
+    }
+
+    function sendBloodhoundMessage(msgType as String, payload as Dictionary) as Boolean {
+        if (!isConnected()) { return false; }
+        transmit(msgType, payload);
+        return true;
+    }
+
+    function reportBloodhoundError(message as String) as Void {
+        System.println("Bloodhound sync: " + message);
+        WatchUi.showToast(message, null);
     }
 
     function sendMarker(id as String, location as Position.Location?, type as Symbol, label as String, remark as String) as Boolean {
@@ -364,6 +386,7 @@ class TakClient {
         if (dataSync.requestId != null && System.getTimer() - dataSync.requestedAt >= 65000) {
             dataSync.fail(Rez.Strings.DataSyncTimeout);
         }
+        bloodhoundSync.checkTimeouts();
         if (pointReplies.restoreFailed) { return; }
         expirePointReplies();
         if (!isConnected() || pointReplyInFlight != null || pointReplies.replies.size() == 0) { return; }
@@ -452,6 +475,22 @@ class TakClient {
             dataSync.receive(msgType, payload);
             return;
         }
+        if (msgType.equals("bloodhound_control")) {
+            bloodhoundSync.receiveControl(payload as Dictionary);
+            return;
+        }
+        if (msgType.equals("bloodhound_control_result")) {
+            bloodhoundSync.receiveResult(payload as Dictionary);
+            return;
+        }
+        if (msgType.equals("set_settings")) {
+            applyPhoneSettings(payload as Dictionary);
+            return;
+        }
+        if (msgType.equals("request_settings")) {
+            sendWatchSettings();
+            return;
+        }
         if (msgType == "chat" && incomingChatCallback != null) {
             incomingChatCallback.invoke(payload as Dictionary);
             return;
@@ -479,6 +518,27 @@ class TakClient {
                 }
             }
         }
+    }
+
+    function applyPhoneSettings(payload as Dictionary) as Void {
+        if (phoneSettingsCallback == null) {
+            transmit("settings_set_ack", {"ok" => false, "error" => "Settings are not available"});
+            return;
+        }
+        var error = phoneSettingsCallback.invoke(payload);
+        if (error instanceof String) {
+            transmit("settings_set_ack", {"ok" => false, "error" => error});
+        } else {
+            transmit("settings_set_ack", {"ok" => true});
+        }
+        // Always echo the applied values so the phone and watch stay in true sync.
+        sendWatchSettings();
+    }
+
+    function sendWatchSettings() as Void {
+        if (watchSettingsCallback == null) { return; }
+        var settings = watchSettingsCallback.invoke();
+        if (settings instanceof Dictionary) { transmit("watch_settings", settings as Dictionary); }
     }
 
     function forwardEntity(entity as Dictionary) as Void {

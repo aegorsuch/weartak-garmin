@@ -795,3 +795,237 @@ function incomingPointWorkflow(logger) as Boolean {
     map.takClient = originalClient;
     return true;
 }
+
+class BloodhoundSyncHarness {
+    var sync as BloodhoundSync;
+    var target as Dictionary? = null;
+    var sent as Array = [];
+    var errors as Array = [];
+    var startResult as Boolean = true;
+    var stopResult as Boolean = true;
+    var updateResult as Boolean = true;
+    var sendResult as Boolean = true;
+    var nextIds as Array = [];
+    var clockValue as Number = 1000;
+
+    function initialize() {
+        sync = new BloodhoundSync();
+        sync.activeTargetCallback = method(:activeTarget);
+        sync.startTrackingCallback = method(:startTracking);
+        sync.stopTrackingCallback = method(:stopTracking);
+        sync.updateTrackingCallback = method(:updateTracking);
+        sync.sendCallback = method(:send);
+        sync.reportErrorCallback = method(:reportError);
+        sync.sessionIdCallback = method(:nextSessionId);
+        sync.clockCallback = method(:clock);
+    }
+
+    function activeTarget() as Dictionary? { return target; }
+
+    function startTracking(value as Dictionary) as Boolean {
+        if (startResult) { target = value; }
+        return startResult;
+    }
+
+    function stopTracking(uid as String) as Boolean {
+        if (stopResult) { target = null; }
+        return stopResult;
+    }
+
+    function updateTracking(value as Dictionary) as Boolean { return updateResult; }
+
+    function send(msgType as String, payload as Dictionary) as Boolean {
+        if (sendResult) { sent.add({"msgType" => msgType, "payload" => payload}); }
+        return sendResult;
+    }
+
+    function reportError(message as String) as Void { errors.add(message); }
+
+    function nextSessionId() as String {
+        if (nextIds.size() == 0) { return "generated"; }
+        var id = nextIds[0] as String;
+        nextIds.remove(id);
+        return id;
+    }
+
+    function clock() as Number { return clockValue; }
+
+    function lastType() as String { return (sent[sent.size() - 1] as Dictionary).get("msgType") as String; }
+
+    function lastPayload() as Dictionary { return (sent[sent.size() - 1] as Dictionary).get("payload") as Dictionary; }
+}
+
+function bloodhoundTestTarget(uid as String, latitude as Double) as Dictionary {
+    return {"uid" => uid, "callsign" => uid, "lat" => latitude, "lon" => 20.0d, "hae" => 0.0d};
+}
+
+(:test)
+function bloodhoundLocalTargetSync(logger) as Boolean {
+    var harness = new BloodhoundSyncHarness();
+    harness.nextIds = ["session-1"];
+    harness.sync.connectionChanged(true);
+    harness.target = bloodhoundTestTarget("uid-1", 10.0d);
+    harness.sync.localTargetChanged();
+    Test.assertEqual(harness.lastType(), "bloodhound_control");
+    Test.assertEqual(harness.lastPayload().get("action"), "start");
+    Test.assertEqual(harness.lastPayload().get("session_id"), "session-1");
+    Test.assertEqual(harness.lastPayload().get("target_uid"), "uid-1");
+    Test.assertEqual(harness.lastPayload().get("lat"), 10.0d);
+
+    harness.sync.receiveResult({"session_id" => "session-1", "action" => "start", "ok" => true});
+    Test.assertEqual(harness.sync.pending.size(), 0);
+
+    // Moving the same target updates rather than restarting the session.
+    harness.target = bloodhoundTestTarget("uid-1", 11.0d);
+    harness.sync.localTargetChanged();
+    Test.assertEqual(harness.lastPayload().get("action"), "update");
+    Test.assertEqual(harness.lastPayload().get("session_id"), "session-1");
+
+    harness.target = null;
+    harness.sync.localTargetChanged();
+    Test.assertEqual(harness.lastPayload().get("action"), "stop");
+    Test.assertEqual(harness.lastPayload().get("session_id"), "session-1");
+    Test.assert(harness.lastPayload().get("lat") == null);
+    Test.assert(harness.sync.sessionId == null);
+    Test.assertEqual(harness.errors.size(), 0);
+    return true;
+}
+
+(:test)
+function bloodhoundPhoneControl(logger) as Boolean {
+    var harness = new BloodhoundSyncHarness();
+    harness.sync.connectionChanged(true);
+    harness.sync.receiveControl({"session_id" => "phone-1", "action" => "start", "target_uid" => "uid-2",
+        "target_callsign" => "Bravo", "lat" => 12.0d, "lon" => 21.0d, "hae" => 0.0d});
+    Test.assertEqual(harness.lastType(), "bloodhound_control_result");
+    Test.assertEqual(harness.lastPayload().get("ok"), true);
+    Test.assertEqual(harness.lastPayload().get("session_id"), "phone-1");
+    Test.assertEqual(harness.target.get("uid"), "uid-2");
+    Test.assertEqual(harness.target.get("callsign"), "Bravo");
+
+    harness.sync.receiveControl({"session_id" => "phone-1", "action" => "stop", "target_uid" => "uid-2"});
+    Test.assertEqual(harness.lastPayload().get("ok"), true);
+    Test.assert(harness.target == null);
+
+    // A duplicate stop for a retired session is acknowledged rather than rejected.
+    harness.sync.receiveControl({"session_id" => "phone-1", "action" => "stop", "target_uid" => "uid-2"});
+    Test.assertEqual(harness.lastPayload().get("ok"), true);
+
+    harness.sync.receiveControl({"session_id" => "phone-2", "action" => "start", "target_uid" => "uid-3"});
+    Test.assertEqual(harness.lastPayload().get("ok"), false);
+    Test.assertEqual(harness.lastPayload().get("error"), "Tracking target has no valid location");
+
+    harness.sync.receiveControl({"session_id" => "phone-3", "action" => "launch", "target_uid" => "uid-3"});
+    Test.assertEqual(harness.lastPayload().get("error"), "Invalid tracking command");
+    return true;
+}
+
+(:test)
+function bloodhoundConflictAndTimeout(logger) as Boolean {
+    var harness = new BloodhoundSyncHarness();
+    harness.nextIds = ["a-session"];
+    harness.sync.connectionChanged(true);
+    harness.target = bloodhoundTestTarget("uid-1", 10.0d);
+    harness.sync.localTargetChanged();
+    Test.assertEqual(harness.sync.sessionId, "a-session");
+
+    // The lower session id wins when both sides start at once.
+    harness.sync.receiveControl({"session_id" => "b-session", "action" => "start", "target_uid" => "uid-9",
+        "lat" => 1.0d, "lon" => 2.0d, "hae" => 0.0d});
+    Test.assertEqual(harness.lastPayload().get("ok"), false);
+    Test.assertEqual(harness.lastPayload().get("error"), "Superseded by simultaneous tracking start");
+    Test.assertEqual(harness.sync.sessionId, "a-session");
+
+    harness.clockValue += BLOODHOUND_ACK_TIMEOUT_SECONDS + 1;
+    harness.sync.checkTimeouts();
+    Test.assert(harness.sync.sessionId == null);
+    Test.assertEqual(harness.sync.pending.size(), 0);
+    Test.assertEqual(harness.errors.size(), 1);
+
+    // Dropping the relay retires the session and stops further commands.
+    harness.sync.connectionChanged(false);
+    var before = harness.sent.size();
+    harness.target = bloodhoundTestTarget("uid-4", 10.0d);
+    harness.sync.localTargetChanged();
+    Test.assertEqual(harness.sent.size(), before);
+    return true;
+}
+
+(:test)
+function bloodhoundMapTargetResolution(logger) as Boolean {
+    var map = new TestMapSelectionView();
+    var center = new Position.Location({:latitude => 1.0, :longitude => 2.0, :format => :degrees});
+    map.pointLocations.put("local", center);
+    map.pointDetails.put("local", {"title" => "Local marker", "type" => :friendly});
+    Test.assertEqual(map.bloodhoundTargetUid("local"), "garmin-marker-local");
+    Test.assertEqual(map.bloodhoundPointIdForUid("garmin-marker-local"), "local");
+    Test.assertEqual(map.bloodhoundTargetFor("local").get("callsign"), "Local marker");
+    var latitude = map.bloodhoundTargetFor("local").get("lat") as Double;
+    Test.assert(latitude > 0.999d && latitude < 1.001d);
+
+    map.updateIncomingCot("remote-1", 3.0, 4.0, "a-f-G-U-C", "Alpha", "Blue", null, {});
+    Test.assertEqual(map.bloodhoundTargetUid("cot-remote-1"), "remote-1");
+    Test.assertEqual(map.bloodhoundPointIdForUid("remote-1"), "cot-remote-1");
+    Test.assertEqual(map.bloodhoundTargetFor("cot-remote-1").get("callsign"), "Alpha");
+    Test.assert(map.bloodhoundPointIdForUid("missing-uid") == null);
+
+    Test.assert(map.bloodhoundTarget() == null);
+    Test.assert(map.startBloodhoundFromPhone({"uid" => "remote-1"}));
+    Test.assertEqual(map.bloodhoundPointId, "cot-remote-1");
+    Test.assertEqual(map.bloodhoundTarget().get("uid"), "remote-1");
+    Test.assert(!map.startBloodhoundFromPhone({"uid" => "missing-uid"}));
+    Test.assert(map.updateBloodhoundFromPhone({"uid" => "remote-1"}));
+    Test.assert(!map.stopBloodhoundFromPhone("other-uid"));
+    Test.assert(map.stopBloodhoundFromPhone("remote-1"));
+    Test.assert(map.bloodhoundPointId == null);
+    map.removeIncomingPoint("cot-remote-1", false);
+    return true;
+}
+
+(:test)
+function phoneManagedSettingsLock(logger) as Boolean {
+    var app = Application.getApp() as StandaloneApp;
+    var callsign = app.getCallsign();
+    var team = app.getMyTeamColor();
+    var roleCategory = app.getMyRoleCategory();
+    var role = app.getMyRole();
+    var interval = app.getReportingInterval(:constant);
+    var dynamic = app.isDynamicReportingEnabled();
+
+    Test.assert(app.applyPhoneSettings({"team" => "Chartreuse"}) != null);
+    Test.assert(app.applyPhoneSettings({"role" => "Barista"}) != null);
+    Test.assert(app.applyPhoneSettings({"reportIntSecs" => 0}) != null);
+    Test.assert(!app.isPhoneManagedSettings());
+
+    Test.assert(app.applyPhoneSettings({"callsign" => "Ghost", "team" => "Red", "role" => "Medic",
+        "reportIntSecs" => 45, "phoneManagedSettings" => true}) == null);
+    Test.assertEqual(app.getCallsign(), "Ghost");
+    Test.assertEqual(app.getMyTeamColor(), "Red");
+    Test.assertEqual(app.getMyRole(), "Medic");
+    Test.assertEqual(app.getMyRoleCategory(), "MIL");
+    Test.assertEqual(app.getReportingInterval(:constant), 45);
+    Test.assert(!app.isDynamicReportingEnabled());
+    Test.assert(app.isPhoneManagedSettings());
+    Test.assertEqual(app.buildWatchSettings().get("callsign"), "Ghost");
+    Test.assertEqual(app.buildWatchSettings().get("phoneManagedSettings"), true);
+
+    var menu = buildDevicePreferencesMenu(app);
+    Test.assertEqual(menu.getItem(0).getSubLabel(), "Ghost (Phone)");
+    Test.assertEqual(menu.getItem(5).getSubLabel(), "Phone Managed");
+    var delegate = new DevicePreferencesDelegate(app, menu);
+    delegate.onSelect(menu.getItem(0));
+    delegate.onSelect(menu.getItem(5));
+    Test.assertEqual(buildSettingsMenu(app).getItem(1).getSubLabel(), "Locked");
+
+    // Losing the relay returns the settings to the watch.
+    Test.assert(app.applyPhoneSettings(null) == null);
+    Test.assert(!app.isPhoneManagedSettings());
+    Test.assert(buildDevicePreferencesMenu(app).getItem(0).getSubLabel() == null);
+
+    app.setCallsign(callsign);
+    app.setMyTeamColor(team);
+    app.setMyRole(roleCategory, role);
+    app.setReportingInterval(:constant, interval);
+    app.setDynamicReportingEnabled(dynamic);
+    return true;
+}

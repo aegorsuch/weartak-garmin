@@ -58,6 +58,17 @@ Garmin-specific transport using the Connect IQ Mobile SDK to receive these
 messages. That transport is being implemented in the ATAK companion's
 `garmin-connect-iq-integration` branch (a separate repository).
 
+Message envelopes are dictionaries of the form
+`{"msgType": <string>, "payload": <dictionary>}`. The Bloodhound and settings
+message families (`bloodhound_control`, `bloodhound_control_result`,
+`set_settings`, `settings_set_ack`, `request_settings`, `watch_settings`) use the
+same type names and payload field names as the WearOS WearTAK app's BLE
+protocol, so the companion can route one payload to either watch without a
+translation layer. The Garmin transport differs only in that payloads are
+Connect IQ dictionaries rather than newline-delimited JSON, and the watch never
+parses raw CoT XML — the companion must normalize ATAK markers, alerts, and chat
+into the `entity`, `entities`, and `chat` envelopes.
+
 > Important: the watch-side relay and the ATAK companion's Garmin Connect IQ
 > integration are still under development. Using both builds is required for
 > Garmin messages to reach ATAK; a watch-side relay toggle alone does not
@@ -126,6 +137,17 @@ features currently available:
 - Unlock Developer Options by tapping the version row eight times within
 	1.5 seconds. Developer Options includes the Network Preferences admin lock;
 	when locked, Network Preferences cannot be opened from Settings.
+- The paired phone can manage watch identity and reporting. A `set_settings`
+	message applies `callsign`, `team`, `role`, and `reportIntSecs`, and the watch
+	replies with `settings_set_ack` followed by a `watch_settings` echo of the
+	values it actually stored; `request_settings` returns the same echo on demand.
+	Values are validated first, so an unsupported team or role is rejected without
+	applying any part of the message. A `reportIntSecs` value also switches the
+	watch to static reporting so the phone interval takes effect. While
+	`phoneManagedSettings` is set, My Callsign, My Team, My Role, Reporting
+	Strategy, and Network Preferences are read-only and show the phone-managed
+	value; User Metrics and the other watch-local settings stay editable. Losing
+	the relay returns control to the watch.
 - View point details as native scrollable rows for marker type/drop time,
 	distance, bearing, latitude/longitude, and MGRS, followed by Bloodhound,
 	title, remark, marker-type, move, delete, and back actions.
@@ -149,6 +171,16 @@ features currently available:
 	`callSign`/`callsign`, `team` or `__group.name`, and `role` or `__group.role`.
 - Track a selected point with Bloodhound range, true bearing, proximity radius,
 	vibration, and cancel controls.
+- Bloodhound tracking is synchronized with the paired phone. Starting, moving, or
+	stopping a target on the watch sends a `bloodhound_control` message, and ATAK
+	can drive the watch with the same message; each command is acknowledged with
+	`bloodhound_control_result`. Sessions are identified by a UUID, unacknowledged
+	commands time out after 10 seconds, and when both sides start at once the lower
+	session id wins so exactly one target survives. Dropping the relay retires the
+	session and leaves watch tracking untouched. Phone-initiated commands only
+	apply to points the watch already holds; otherwise the watch replies with an
+	error instead of inventing a marker. This is the same contract the WearOS
+	WearTAK app uses, so one ATAK plugin drives both watches.
 - Open **Bloodhound** from the main menu to browse incoming map points.
 	Active remote alerts appear first with an **(Alert)** prefix, followed by
 	**Remove All** and received points. Alerts disappear when their cancellation

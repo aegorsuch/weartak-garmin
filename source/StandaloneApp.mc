@@ -30,6 +30,7 @@ class StandaloneApp extends Application.AppBase {
     private var devModeEnabled as Boolean = false;
     private var verboseLoggingEnabled as Boolean = false;
     private var networkPreferencesLocked as Boolean = false;
+    private var phoneManagedSettings as Boolean = false;
     private var chatMessages = [];
     private var sensorInfo;
     private var exertionPercent as Number = 0;
@@ -120,6 +121,8 @@ class StandaloneApp extends Application.AppBase {
         takClient.incomingCotCallback = method(:onIncomingCot);
         takClient.incomingSourceRemovedCallback = method(:onIncomingCotSourceRemoved);
         takClient.incomingChatCallback = method(:onIncomingChat);
+        takClient.phoneSettingsCallback = method(:applyPhoneSettings);
+        takClient.watchSettingsCallback = method(:buildWatchSettings);
         var storedLocationServices = Application.Storage.getValue("locationServices");
         if (storedLocationServices != null) {
             locationServices = storedLocationServices as Boolean;
@@ -290,6 +293,69 @@ class StandaloneApp extends Application.AppBase {
         Application.Storage.setValue("networkPreferencesLocked", locked);
     }
 
+    // True while a paired phone owns identity and reporting; cleared when the relay drops.
+    function isPhoneManagedSettings() as Boolean {
+        return phoneManagedSettings;
+    }
+
+    function setPhoneManagedSettings(managed as Boolean) as Void {
+        if (phoneManagedSettings == managed) { return; }
+        phoneManagedSettings = managed;
+        Application.Storage.setValue("phoneManagedSettings", managed);
+    }
+
+    // A null payload means the relay dropped, so the watch takes its settings back.
+    function applyPhoneSettings(payload) as String? {
+        if (payload == null) {
+            setPhoneManagedSettings(false);
+            return null;
+        }
+        if (!(payload instanceof Dictionary)) { return "Invalid settings payload"; }
+        var settings = payload as Dictionary;
+        var teamValue = settings.get("team");
+        if (teamValue instanceof String && !isSupportedTeamColor(teamValue as String)) {
+            return "Unsupported team: " + teamValue;
+        }
+        var roleValue = settings.get("role");
+        var roleCategory = null;
+        if (roleValue instanceof String) {
+            roleCategory = phoneRoleCategory(roleValue as String);
+            if (roleCategory == null) { return "Unsupported role: " + roleValue; }
+        }
+        var intervalValue = settings.get("reportIntSecs");
+        if (intervalValue instanceof Number && ((intervalValue as Number) < 1 || (intervalValue as Number) > 3600)) {
+            return "Reporting interval out of range";
+        }
+        var callsignValue = settings.get("callsign");
+        if (callsignValue instanceof String) { setCallsign(callsignValue as String); }
+        if (teamValue instanceof String) { setMyTeamColor(teamValue as String); }
+        if (roleCategory != null) { setMyRole(roleCategory as String, roleValue as String); }
+        if (intervalValue instanceof Number) {
+            // Static reporting is required for the phone interval to take effect.
+            setDynamicReportingEnabled(false);
+            setReportingInterval(:constant, intervalValue as Number);
+        }
+        setPhoneManagedSettings(settings.get("phoneManagedSettings") == true);
+        return null;
+    }
+
+    function phoneRoleCategory(role as String) as String? {
+        if (isValidMyRole("MIL", role)) { return "MIL"; }
+        if (isValidMyRole("LEO", role)) { return "LEO"; }
+        return null;
+    }
+
+    function buildWatchSettings() as Dictionary {
+        return {
+            "callsign" => callsign,
+            "team" => myTeamColor,
+            "role" => myRole,
+            "roleCategory" => myRoleCategory,
+            "reportIntSecs" => getReportingInterval(:constant),
+            "phoneManagedSettings" => phoneManagedSettings
+        };
+    }
+
     function isBatdokCotEnabled() as Boolean {
         return batdokCotEnabled;
     }
@@ -457,6 +523,7 @@ class StandaloneApp extends Application.AppBase {
         physiologicalMonitoringEnabled = storedBoolean("physiologicalMonitoringEnabled", physiologicalMonitoringEnabled);
         batdokCotEnabled = storedBoolean("batdokCotEnabled", batdokCotEnabled);
         networkPreferencesLocked = storedBoolean("networkPreferencesLocked", networkPreferencesLocked);
+        phoneManagedSettings = storedBoolean("phoneManagedSettings", phoneManagedSettings);
         myRoleCategory = storedString("myRoleCategory", myRoleCategory);
         myRole = storedString("myRole", myRole);
         if (!isValidMyRole(myRoleCategory, myRole)) {

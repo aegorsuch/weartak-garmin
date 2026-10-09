@@ -202,6 +202,10 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function setTakClient(client as TakClient) as Void {
         takClient = client;
+        client.bloodhoundSync.activeTargetCallback = method(:bloodhoundTarget);
+        client.bloodhoundSync.startTrackingCallback = method(:startBloodhoundFromPhone);
+        client.bloodhoundSync.stopTrackingCallback = method(:stopBloodhoundFromPhone);
+        client.bloodhoundSync.updateTrackingCallback = method(:updateBloodhoundFromPhone);
     }
 
     function setApplication(app as StandaloneApp) as Void {
@@ -295,9 +299,16 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function toggleBloodhound(pointId) as Void {
         if (bloodhoundPointId != null && bloodhoundPointId.equals(pointId)) {
-            bloodhoundPointId = null;
+            setBloodhoundPoint(null);
         } else {
-            bloodhoundPointId = pointId;
+            setBloodhoundPoint(pointId);
+        }
+        notifyBloodhoundChanged();
+    }
+
+    function setBloodhoundPoint(pointId) as Void {
+        bloodhoundPointId = pointId;
+        if (pointId != null) {
             var currentInfo = Position.getInfo();
             if (currentInfo != null && currentInfo.position != null) {
                 currentPosition = currentInfo.position;
@@ -307,6 +318,94 @@ class StandaloneMapView extends WatchUi.MapView {
         bloodhoundProximityNotified = false;
         evaluateBloodhoundProximity();
         WatchUi.requestUpdate();
+    }
+
+    // Phone-initiated changes must not echo a command back, so only local edits notify.
+    function notifyBloodhoundChanged() as Void {
+        if (takClient != null) { takClient.bloodhoundSync.localTargetChanged(); }
+    }
+
+    function bloodhoundTarget() as Dictionary? {
+        return bloodhoundPointId == null ? null : bloodhoundTargetFor(bloodhoundPointId as String);
+    }
+
+    function bloodhoundTargetFor(pointId as String) as Dictionary? {
+        var uid = bloodhoundTargetUid(pointId);
+        var location = pointLocations.get(pointId);
+        if (uid == null || location == null) { return null; }
+        var degrees = location.toDegrees();
+        return {
+            "uid" => uid,
+            "callsign" => bloodhoundTargetLabel(pointId, uid as String),
+            "lat" => degrees[0].toDouble(),
+            "lon" => degrees[1].toDouble(),
+            "hae" => 0.0d
+        };
+    }
+
+    function bloodhoundTargetUid(pointId as String) as String? {
+        var details = incomingDetails.get(pointId);
+        if (details instanceof Dictionary) {
+            var uid = (details as Dictionary).get("uid");
+            if (uid instanceof String && (uid as String).length() > 0) { return uid as String; }
+        }
+        return pointDetails.hasKey(pointId) ? "garmin-marker-" + pointId : null;
+    }
+
+    function bloodhoundTargetLabel(pointId as String, uid as String) as String {
+        var details = incomingDetails.get(pointId);
+        if (details instanceof Dictionary) {
+            var callSign = (details as Dictionary).get("callSign");
+            return callSign instanceof String && (callSign as String).length() > 0 ? callSign as String : uid;
+        }
+        details = pointDetails.get(pointId);
+        if (details instanceof Dictionary) {
+            var title = (details as Dictionary).get("title");
+            if (title instanceof String && (title as String).length() > 0) { return title as String; }
+        }
+        return uid;
+    }
+
+    function bloodhoundPointIdForUid(uid as String) as String? {
+        var ids = incomingDetails.keys();
+        for (var index = 0; index < ids.size(); index++) {
+            var pointId = ids[index] as String;
+            var details = incomingDetails.get(pointId);
+            if (!(details instanceof Dictionary)) { continue; }
+            var candidate = (details as Dictionary).get("uid");
+            if (candidate instanceof String && uid.equals(candidate as String)
+                    && pointLocations.hasKey(pointId)) { return pointId; }
+        }
+        var prefix = "garmin-marker-";
+        if (uid.length() > prefix.length() && uid.substring(0, prefix.length()).equals(prefix)) {
+            var localId = uid.substring(prefix.length(), uid.length());
+            if (pointLocations.hasKey(localId)) { return localId; }
+        }
+        return null;
+    }
+
+    function startBloodhoundFromPhone(target as Dictionary) as Boolean {
+        var uid = target.get("uid");
+        if (!(uid instanceof String)) { return false; }
+        var pointId = bloodhoundPointIdForUid(uid as String);
+        if (pointId == null) { return false; }
+        setBloodhoundPoint(pointId);
+        return true;
+    }
+
+    function stopBloodhoundFromPhone(uid as String) as Boolean {
+        if (bloodhoundPointId == null || !uid.equals(bloodhoundTargetUid(bloodhoundPointId as String))) {
+            return false;
+        }
+        setBloodhoundPoint(null);
+        return true;
+    }
+
+    // The watch tracks the target from its own entity stream, so a move only needs acknowledging.
+    function updateBloodhoundFromPhone(target as Dictionary) as Boolean {
+        var uid = target.get("uid");
+        return uid instanceof String && bloodhoundPointId != null
+            && (uid as String).equals(bloodhoundTargetUid(bloodhoundPointId as String));
     }
 
     function updateIncomingCot(uid as String, latitude, longitude, cotType as String, callSign as String?, team as String?, role as String?, metadata as Dictionary) as Void {
@@ -671,6 +770,7 @@ class StandaloneMapView extends WatchUi.MapView {
         if (bloodhoundPointId != null && bloodhoundPointId.equals(id)) {
             bloodhoundPointId = null;
             bloodhoundProximityNotified = false;
+            notifyBloodhoundChanged();
         }
         markersDirty = true;
         WatchUi.requestUpdate();
@@ -1732,6 +1832,7 @@ class StandaloneMapView extends WatchUi.MapView {
         if (takClient != null && !takClient.deleteMarker(id)) { return false; }
         if (bloodhoundPointId != null && bloodhoundPointId.equals(id)) {
             bloodhoundPointId = null;
+            notifyBloodhoundChanged();
         }
         markers.remove(id);
         pointLocations.remove(id);

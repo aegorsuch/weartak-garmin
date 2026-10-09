@@ -59,8 +59,9 @@ function buildPointManagementMenu() as WatchUi.Menu2 {
 
 function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu(app.text(Rez.Strings.TextSettings));
-    addMenuEntry(menu, "Callsign and Device Preferences", null, :devicePreferences);
-    addMenuEntry(menu, app.text(Rez.Strings.TextNetworkPreferences), app.isNetworkPreferencesLocked() ? "Locked" : null, :networkPreferences);
+    addMenuEntry(menu, "Callsign and Device Preferences", app.isPhoneManagedSettings() ? "Phone Managed" : null, :devicePreferences);
+    addMenuEntry(menu, app.text(Rez.Strings.TextNetworkPreferences),
+        app.isNetworkPreferencesLocked() || app.isPhoneManagedSettings() ? "Locked" : null, :networkPreferences);
     addMenuEntry(menu, app.text(Rez.Strings.TextAlertingPreferences), null, :alertingPreferences);
     addMenuEntry(menu, app.text(Rez.Strings.TextToolPreferences), null, :toolPreferences);
     addMenuEntry(menu, "Version " + app.getAppVersion(), null, :appVersion);
@@ -80,12 +81,14 @@ function buildDeveloperOptionsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function buildDevicePreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu("Callsign and Device Preferences");
-    addMenuEntry(menu, "My Callsign", null, :callsign);
-    addMenuEntry(menu, "My Team", app.getMyTeamColor(), :myTeam);
-    addMenuEntry(menu, "My Role", app.getMyRoleLabel(), :myRole);
+    var managed = app.isPhoneManagedSettings();
+    addMenuEntry(menu, "My Callsign", managed ? app.getCallsign() + " (Phone)" : null, :callsign);
+    addMenuEntry(menu, "My Team", managed ? app.getMyTeamColor() + " (Phone)" : app.getMyTeamColor(), :myTeam);
+    addMenuEntry(menu, "My Role", managed ? app.getMyRoleLabel() + " (Phone)" : app.getMyRoleLabel(), :myRole);
     addMenuEntry(menu, app.text(Rez.Strings.TextUserMetrics), null, :userMetrics);
     addMenuEntry(menu, "----------------", null, :devicePreferencesSeparator);
-    addMenuEntry(menu, "Reporting Strategy", app.isDynamicReportingEnabled() ? "Dynamic" : "Static", :reportingStrategy);
+    addMenuEntry(menu, "Reporting Strategy",
+        managed ? "Phone Managed" : (app.isDynamicReportingEnabled() ? "Dynamic" : "Static"), :reportingStrategy);
     return menu;
 }
 
@@ -675,7 +678,7 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             var deviceMenu = buildDevicePreferencesMenu(app);
             WatchUi.pushView(deviceMenu, new DevicePreferencesDelegate(app, deviceMenu), WatchUi.SLIDE_LEFT);
         } else if (id == :networkPreferences) {
-            if (app.isNetworkPreferencesLocked()) {
+            if (app.isNetworkPreferencesLocked() || app.isPhoneManagedSettings()) {
                 WatchUi.showToast("Network settings are locked", null);
                 return;
             }
@@ -737,6 +740,11 @@ class DevicePreferencesDelegate extends WatchUi.Menu2InputDelegate {
 
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
+        if (app.isPhoneManagedSettings()
+                && (id == :callsign || id == :myTeam || id == :myRole || id == :reportingStrategy)) {
+            WatchUi.showToast("Managed by the paired phone", null);
+            return;
+        }
         if (id == :callsign) {
             var initialCallsign = app.getCallsign().length() == 0 ? " " : app.getCallsign();
             WatchUi.pushView(new WatchUi.TextPicker(initialCallsign), new CallsignTextPickerDelegate(app, menu), WatchUi.SLIDE_UP);
