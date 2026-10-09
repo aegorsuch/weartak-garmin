@@ -31,8 +31,8 @@ The TAK Forge repository is canonical. GitHub is a secondary repository.
 	appear as a removable drive.
 3. Open the watch drive and navigate to `GARMIN/Apps`.
 4. Drag only the matching `.prg` into the `GARMIN/Apps` folder. For a fēnix
-	7X running version `5.8.0.7-e497a03`, use
-	`WearTAK-Garmin-fenix7x-5.8.0.7-e497a03.prg`.
+	7X running version `5.8.3-9f1ec78`, use
+	`WearTAK-Garmin-fenix7x-5.8.3-9f1ec78.prg`.
 5. Safely eject the watch, disconnect the USB cable, and launch WearTAK from
 	the watch's app list.
 
@@ -591,7 +591,7 @@ The maintainer's `fenix7x` direct-install build is also written to the Desktop,
 replacing the superseded Fenix 7X release. Publish the device-specific PRGs;
 do not publish debug files or the `.iq` bundle.
 
-Version `5.8.0.7-e497a03` publishes seven device builds: Fenix 6 Pro,
+Version `5.8.3-9f1ec78` publishes seven device builds: Fenix 6 Pro,
 6S Pro, 6X Pro, 7X, 8 (47 mm), 8 Solar (47 mm), and 8 Solar (51 mm).
 The non-Pro Fenix 6 and Fenix 6S are not included: although the optimized app
 compiles, loading still exceeds runtime memory on Fenix 6, and neither model
