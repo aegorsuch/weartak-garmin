@@ -260,6 +260,39 @@ class StandaloneMapView extends WatchUi.MapView {
         }
     }
 
+    function showMapItemsAtScreen(x, y) as Void {
+        var ids = pointsAtScreen(x, y);
+        var includeSelf = isSelfAtScreen(x, y);
+        if (ids.size() + (includeSelf ? 1 : 0) > 1) {
+            showMapSelectionMenu(ids, includeSelf);
+        } else if (ids.size() == 1) {
+            showPointTypeMenu(ids[0]);
+        } else if (includeSelf) {
+            showSelfMenu();
+        }
+    }
+
+    function showMapSelectionMenu(ids as Array<String>, includeSelf as Boolean) as Void {
+        WatchUi.pushView(buildMapSelectionMenu(self, ids, includeSelf),
+            new MapSelectionMenuDelegate(self), WatchUi.SLIDE_UP);
+    }
+
+    function showSelectedMapItem(id as String or Symbol) as Void {
+        if (id == :self) {
+            if (currentPosition == null) {
+                WatchUi.showToast(application.text(Rez.Strings.TextLocationUnavailable), null);
+                return;
+            }
+            showSelfMenu();
+        } else if (id instanceof String) {
+            if (!pointLocations.hasKey(id) || !isIncomingUserVisible(id)) {
+                WatchUi.showToast(WatchUi.loadResource(Rez.Strings.IncomingPointUnavailable), null);
+                return;
+            }
+            showPointTypeMenu(id);
+        }
+    }
+
     function toggleBloodhound(pointId) as Void {
         if (bloodhoundPointId != null && bloodhoundPointId.equals(pointId)) {
             bloodhoundPointId = null;
@@ -1459,16 +1492,22 @@ class StandaloneMapView extends WatchUi.MapView {
             (topLeft[0] - degrees[0]) / (topLeft[0] - bottomRight[0]) * screenHeight];
     }
 
-    function pointAtScreen(x, y) {
+    function pointsAtScreen(x, y) as Array<String> {
+        var hits = [];
         var keys = drawnPointIds;
         for (var i = 0; i < keys.size(); i++) {
             if (!pointLocations.hasKey(keys[i])) { continue; }
             if (!isIncomingUserVisible(keys[i])) { continue; }
             if (isLocationAtScreen(pointLocations.get(keys[i]), x, y)) {
-                return keys[i];
+                hits.add(keys[i]);
             }
         }
-        return null;
+        return hits;
+    }
+
+    function pointAtScreen(x, y) {
+        var hits = pointsAtScreen(x, y);
+        return hits.size() > 0 ? hits[0] : null;
     }
 
     function isSelfAtScreen(x, y) as Boolean {
@@ -1476,7 +1515,11 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function isLocationAtScreen(location, x, y) as Boolean {
+        if (mapTopLeft == null || mapBottomRight == null) { return false; }
         var screen = pointScreenPosition(location);
+        if (screen[0] < 0 || screen[0] >= screenWidth || screen[1] < 0 || screen[1] >= screenHeight) {
+            return false;
+        }
         var dx = screen[0] - x;
         var dy = screen[1] - y;
         return dx * dx + dy * dy <= 14 * 14;
@@ -1900,6 +1943,41 @@ class MapLayersMenuDelegate extends WatchUi.Menu2InputDelegate {
     }
 }
 
+function buildMapSelectionMenu(map as StandaloneMapView, ids as Array<String>, includeSelf as Boolean) as WatchUi.Menu2 {
+    var menu = createMenu("Select Map Item");
+    for (var index = 0; index < ids.size(); index++) {
+        var id = ids[index];
+        if (map.incomingDetails.hasKey(id)) {
+            addMenuEntry(menu, map.incomingPointTitle(id), map.incomingPointDetailLabel(id), id);
+        } else {
+            addMenuEntry(menu, map.getPointText(id, "title"), map.getPointTypeLabel(id), id);
+        }
+    }
+    if (includeSelf) {
+        addMenuEntry(menu, map.application.text(Rez.Strings.TextSelf), null, :self);
+    }
+    addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel);
+    return menu;
+}
+
+class MapSelectionMenuDelegate extends WatchUi.Menu2InputDelegate {
+    var mapView as StandaloneMapView;
+
+    function initialize(map as StandaloneMapView) {
+        Menu2InputDelegate.initialize();
+        mapView = map;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :cancel) {
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
+        } else if (id instanceof String || id == :self) {
+            mapView.showSelectedMapItem(id);
+        }
+    }
+}
+
 class StandaloneMapDelegate extends WatchUi.InputDelegate {
     var view;
     var app as StandaloneApp;
@@ -1956,15 +2034,7 @@ class StandaloneMapDelegate extends WatchUi.InputDelegate {
             }
             return true;
         }
-        var pointId = view.pointAtScreen(coordinates[0], coordinates[1]);
-        if (pointId != null) {
-            view.showPointTypeMenu(pointId);
-            return true;
-        }
-        if (view.isSelfAtScreen(coordinates[0], coordinates[1])) {
-            view.showSelfMenu();
-            return true;
-        }
+        view.showMapItemsAtScreen(coordinates[0], coordinates[1]);
         return true;
     }
 

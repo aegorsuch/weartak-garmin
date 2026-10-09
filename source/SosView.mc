@@ -7,10 +7,14 @@ function buildSosMenu(app as StandaloneApp) as WatchUi.Menu2 {
     if (client.isAlerting()) {
         addMenuEntry(menu, app.text(Rez.Strings.TextClearManualAlert) + " (" + app.alertTypeLabel(client.getAlertType()) + " " + app.text(Rez.Strings.TextActive) + ")", null, :clear);
     } else {
+        addMenuEntry(menu, app.text(Rez.Strings.TextAlert911), null, :alert911);
         addMenuEntry(menu, app.text(Rez.Strings.TextGateRunner), null, :gateRunner);
+        addMenuEntry(menu, app.text(Rez.Strings.TextGeofenceBreached), null, :geofenceBreached);
         addMenuEntry(menu, app.text(Rez.Strings.TextGunshot), null, :gunshot);
         addMenuEntry(menu, app.text(Rez.Strings.TextGunshotInjury), null, :gunshotInjury);
+        addMenuEntry(menu, app.text(Rez.Strings.TextInContact), null, :inContact);
         addMenuEntry(menu, app.text(Rez.Strings.TextInjury), null, :injury);
+        addMenuEntry(menu, app.text(Rez.Strings.TextRingTheBell), null, :ringTheBell);
         addMenuEntry(menu, app.text(Rez.Strings.TextUas), null, :uas);
         addMenuEntry(menu, app.text(Rez.Strings.TextVehicle), null, :vehicle);
         addMenuEntry(menu, app.text(Rez.Strings.TextCancel), null, :cancel);
@@ -48,14 +52,22 @@ class SosMenuDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function alertTypeFor(id) as String {
-        if (id == :gateRunner) {
+        if (id == :alert911) {
+            return "911 Alert";
+        } else if (id == :gateRunner) {
             return "Gate Runner";
+        } else if (id == :geofenceBreached) {
+            return "Geofence Breached";
         } else if (id == :gunshot) {
             return "Gunshot";
         } else if (id == :gunshotInjury) {
             return "Gunshot Injury";
+        } else if (id == :inContact) {
+            return "In Contact";
         } else if (id == :injury) {
             return "Injury";
+        } else if (id == :ringTheBell) {
+            return "Ring The Bell";
         } else if (id == :uas) {
             return "UAS";
         } else if (id == :vehicle) {

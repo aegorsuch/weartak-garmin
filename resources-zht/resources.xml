@@ -182,4 +182,8 @@
     <string id="IncomingAlertStaleLastKnown">Stale (last-known location)</string>
     <string id="IncomingAlertUnknownCategory">Emergency</string>
     <string id="IncomingAlertStale">Stale</string>
+    <string id="TextAlert911">911 Alert</string>
+    <string id="TextGeofenceBreached">Geofence Breached</string>
+    <string id="TextInContact">In Contact</string>
+    <string id="TextRingTheBell">Ring The Bell</string>
 </resources>

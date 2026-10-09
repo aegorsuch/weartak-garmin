@@ -131,6 +131,11 @@ features currently available:
 	title, remark, marker-type, move, delete, and back actions.
 - View self coordinates in latitude/longitude and MGRS.
 - Tap the self marker to view separate latitude and longitude rows and MGRS.
+- Tap overlapping or closely spaced map markers to open a native text-only
+	Select Map Item list with their titles/callsigns and details. Choose a row to
+	open its usual actions, or Cancel/back to return to the map. Self is included
+	when it overlaps; a single hit still opens directly. Only drawn, visible
+	markers within the existing 14-pixel tap radius are listed.
 - Pan, zoom, and recenter the map.
 - Open Map Layers from the top-center stacked-layers control and TAK Channels
 	from the adjacent control. Map Buttons hides zoom/snap and Channels controls
@@ -217,9 +222,10 @@ this build:
 	Active remote alerts appear at the top, labeled **(Alert)**, and can be tracked.
 	**Remove All** below the alerts clears all received points locally and stops
 	tracking a removed target; it leaves active alerts, live users, and your dropped markers intact.
-6. Select **Manual Alert** from the main menu and choose an alert type. It is
-	sent through an active Garmin relay; without one, its active state remains
-	local. Select **Manual Alert (Active)** to clear it.
+6. Select **Manual Alert** from the main menu and choose an alphabetized alert
+	type, including **911 Alert**, **Geofence Breached**, **In Contact**, and
+	**Ring The Bell**. It is sent through an active Garmin relay; without one, its
+	active state remains local. Select **Manual Alert (Active)** to clear it.
 7. To configure Sit(x), open **Network Preferences** > **Sit(x) TAK**, turn on
 	TAK, enter the organization under **Address**, authorize with the displayed
 	code, and select a permitted **Group**. **Sit(x) State** will say that the

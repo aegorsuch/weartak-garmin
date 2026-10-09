@@ -34,6 +34,32 @@ function sharedMenuConstruction(logger) as Boolean {
 }
 
 (:test)
+function manualAlertCategories(logger) as Boolean {
+    var app = Application.getApp() as StandaloneApp;
+    app.getTakClient().alerting = false;
+    var menu = buildSosMenu(app);
+    var ids = [:alert911, :gateRunner, :geofenceBreached, :gunshot, :gunshotInjury,
+        :inContact, :injury, :ringTheBell, :uas, :vehicle, :cancel];
+    for (var index = 0; index < ids.size(); index++) {
+        Test.assertEqual(menu.getItem(index).getId(), ids[index]);
+    }
+    var delegate = new SosMenuDelegate(app, false);
+    Test.assertEqual(delegate.alertTypeFor(:alert911), "911 Alert");
+    Test.assertEqual(delegate.alertTypeFor(:geofenceBreached), "Geofence Breached");
+    Test.assertEqual(delegate.alertTypeFor(:inContact), "In Contact");
+    Test.assertEqual(delegate.alertTypeFor(:ringTheBell), "Ring The Bell");
+    Test.assertEqual(app.alertTypeLabel("911 Alert"), app.text(Rez.Strings.TextAlert911));
+    Test.assertEqual(app.alertTypeLabel("Geofence Breached"), app.text(Rez.Strings.TextGeofenceBreached));
+    Test.assertEqual(app.alertTypeLabel("In Contact"), app.text(Rez.Strings.TextInContact));
+    Test.assertEqual(app.alertTypeLabel("Ring The Bell"), app.text(Rez.Strings.TextRingTheBell));
+    Test.assertEqual(incomingPointCategory("b-a-o-tbl", {"emergency" => {"type" => "911 Alert"}}), "911 Alert");
+    Test.assertEqual(incomingPointCategory("b-a-o-tbl", {"emergency" => {"type" => "Geofence Breached"}}), "Geofence Breached");
+    Test.assertEqual(incomingPointCategory("b-a-o-tbl", {"emergency" => {"type" => "In Contact"}}), "In Contact");
+    Test.assertEqual(incomingPointCategory("b-a-o-tbl", {"emergency" => {"type" => "Ring The Bell"}}), "Ring The Bell");
+    return true;
+}
+
+(:test)
 class TestMapPositionInfo {
     var position;
     var accuracy = Toybox.Position.QUALITY_USABLE;
@@ -82,6 +108,109 @@ function nearestMapItemThreshold(logger) as Boolean {
     Test.assertEqual(relay.sentKind, "entity_sync_request");
     Test.assertEqual(relay.sentPayload.get("limit"), 999);
     Test.assertEqual(relay.sentPayload.get("protocolVersion"), 1);
+    return true;
+}
+
+(:test)
+class TestMapSelectionView extends StandaloneMapView {
+    var openedId = null;
+    var selectionMenu = null;
+
+    function initialize() {
+        StandaloneMapView.initialize();
+        entityPruneTimer.stop();
+        setApplication(Application.getApp() as StandaloneApp);
+        markers = {};
+        pointLocations = {};
+        pointDetails = {};
+        pointOrder = [];
+        incomingIds = [];
+        incomingDetails = {};
+        incomingLastSeen = {};
+        dismissedIncomingPoints = {};
+        hiddenMapTeams = [];
+        hiddenMapRoles = [];
+        drawnPointIds = [];
+        currentPosition = null;
+        screenWidth = 200;
+        screenHeight = 200;
+        mapTopLeft = new Position.Location({:latitude => 1.0, :longitude => -1.0, :format => :degrees});
+        mapBottomRight = new Position.Location({:latitude => -1.0, :longitude => 1.0, :format => :degrees});
+    }
+
+    function showPointTypeMenu(id) as Void {
+        openedId = id;
+    }
+
+    function showSelfMenu() as Void {
+        openedId = :self;
+    }
+
+    function showMapSelectionMenu(ids as Array<String>, includeSelf as Boolean) as Void {
+        selectionMenu = buildMapSelectionMenu(self, ids, includeSelf);
+    }
+}
+
+(:test)
+function overlappingMapSelection(logger) as Boolean {
+    var map = new TestMapSelectionView();
+    var center = new Position.Location({:latitude => 0.0, :longitude => 0.0, :format => :degrees});
+    Test.assert(map.isLocationAtScreen(center, 114, 100));
+    Test.assert(!map.isLocationAtScreen(center, 115, 100));
+    map.pointLocations.put("local", center);
+    map.pointDetails.put("local", {"title" => "Local marker", "type" => :friendly});
+    map.drawnPointIds = ["local"];
+    map.showMapItemsAtScreen(100, 100);
+    Test.assertEqual(map.openedId, "local");
+    Test.assert(map.selectionMenu == null);
+    map.openedId = null;
+    map.showMapItemsAtScreen(150, 150);
+    Test.assert(map.openedId == null);
+    Test.assert(map.selectionMenu == null);
+
+    map.updateIncomingCot("near", 0.0, 0.10, "a-f-G-U-C", "Alpha", "Blue", null, {});
+    map.updateIncomingCot("edge", 0.0, 0.13, "a-n-G", "Bravo", null, null, {});
+    map.updateIncomingCot("outside", 0.0, 0.15, "a-n-G", "Outside", null, null, {});
+    map.updateIncomingCot("undrawn", 0.0, 0.0, "a-n-G", "Undrawn", null, null, {});
+    map.drawnPointIds = ["local", "cot-near", "cot-edge", "cot-outside", "deleted"];
+    var hits = map.pointsAtScreen(100, 100);
+    Test.assertEqual(hits.size(), 3);
+    Test.assertEqual(hits[0], "local");
+    Test.assertEqual(hits[1], "cot-near");
+    Test.assertEqual(hits[2], "cot-edge");
+    map.currentPosition = center;
+    map.showMapItemsAtScreen(100, 100);
+    Test.assert(map.openedId == null);
+    var menu = map.selectionMenu;
+    Test.assertEqual(menu.getItem(0).getLabel(), "Local marker");
+    Test.assertEqual(menu.getItem(0).getSubLabel(), map.getPointTypeLabel("local"));
+    Test.assertEqual(menu.getItem(1).getLabel(), "Alpha");
+    Test.assertEqual(menu.getItem(1).getId(), "cot-near");
+    Test.assertEqual(menu.getItem(2).getId(), "cot-edge");
+    Test.assertEqual(menu.getItem(3).getId(), :self);
+    Test.assertEqual(menu.getItem(4).getId(), :cancel);
+    Test.assert(menu.getItem(5) == null);
+    var delegate = new MapSelectionMenuDelegate(map);
+    delegate.onSelect(menu.getItem(1));
+    Test.assertEqual(map.openedId, "cot-near");
+    delegate.onSelect(menu.getItem(0));
+    Test.assertEqual(map.openedId, "local");
+    delegate.onSelect(menu.getItem(3));
+    Test.assertEqual(map.openedId, :self);
+
+    map.hiddenMapTeams = ["blue"];
+    Test.assertEqual(map.pointsAtScreen(100, 100).size(), 2);
+    map.drawnPointIds = [];
+    map.selectionMenu = null;
+    map.openedId = null;
+    map.showMapItemsAtScreen(100, 100);
+    Test.assertEqual(map.openedId, :self);
+    Test.assert(map.selectionMenu == null);
+    map.mapTopLeft = null;
+    Test.assert(!map.isSelfAtScreen(100, 100));
+    map.mapTopLeft = new Position.Location({:latitude => 1.0, :longitude => -1.0, :format => :degrees});
+    var offscreen = new Position.Location({:latitude => 0.0, :longitude => 1.01, :format => :degrees});
+    Test.assert(!map.isLocationAtScreen(offscreen, 199, 100));
     return true;
 }
 
@@ -415,10 +544,10 @@ function bloodhoundRemoteAlerts(logger) as Boolean {
     map.updateIncomingCot("alert-first", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null, {});
     map.updateIncomingCot("alert-second", 38.0, -77.0, "a-f-G-U-C", "Patrol", null, null,
         {"isPoint" => true, "emergency" => {"type" => "911 Alert"}});
-    Test.assertEqual(menu.getItem(0).getId(), "cot-alert-second");
-    Test.assertEqual(menu.getItem(0).getLabel(), "(" + Toybox.WatchUi.loadResource(Rez.Strings.IncomingAlertLabel) + ") Patrol");
-    Test.assertEqual(menu.getItem(1).getId(), "cot-alert-first");
-    Test.assertEqual(menu.getItem(2).getId(), :removeAll);
+    Test.assertEqual(menu.getItem(0).getId(), :removeAll);
+    Test.assertEqual(menu.getItem(1).getId(), "cot-alert-second");
+    Test.assertEqual(menu.getItem(1).getLabel(), "(" + Toybox.WatchUi.loadResource(Rez.Strings.IncomingAlertLabel) + ") Patrol");
+    Test.assertEqual(menu.getItem(2).getId(), "cot-alert-first");
     Test.assertEqual(menu.getItem(3).getId(), "cot-alert-point");
     Test.assert(menu.getItem(4) == null);
     Test.assertEqual(map.pendingIncomingPoints.size(), 0);
@@ -431,7 +560,8 @@ function bloodhoundRemoteAlerts(logger) as Boolean {
         "emergency" => {"cancel" => true}});
     Test.assert(!map.incomingDetails.hasKey("cot-alert-second"));
     Test.assert(!map.isBloodhoundActive());
-    Test.assertEqual(menu.getItem(0).getId(), "cot-alert-first");
+    Test.assertEqual(menu.getItem(0).getId(), :removeAll);
+    Test.assertEqual(menu.getItem(1).getId(), "cot-alert-first");
     map.removeAllIncomingPoints();
     Test.assert(map.incomingDetails.hasKey("cot-alert-first"));
     Test.assert(!map.incomingDetails.hasKey("cot-alert-point"));

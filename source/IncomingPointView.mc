@@ -46,6 +46,7 @@ class IncomingPointsMenu extends WatchUi.Menu2 {
         map.pruneIncomingEntities();
         map.markIncomingPointsSeen();
         var pointCount = 0;
+        addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.IncomingPointsRemoveAll), null, :removeAll, null));
         for (var alertIndex = map.incomingIds.size() - 1; alertIndex >= 0; alertIndex--) {
             var alertId = map.incomingIds[alertIndex] as String;
             var alertDetails = map.incomingDetails.get(alertId) as Dictionary;
@@ -53,7 +54,6 @@ class IncomingPointsMenu extends WatchUi.Menu2 {
             pointCount += 1;
             addItem(new WatchUi.MenuItem(map.incomingPointTitle(alertId), map.incomingPointDetailLabel(alertId), alertId, null));
         }
-        addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.IncomingPointsRemoveAll), null, :removeAll, null));
         for (var i = map.incomingIds.size() - 1; i >= 0; i--) {
             var id = map.incomingIds[i] as String;
             var details = map.incomingDetails.get(id) as Dictionary;
