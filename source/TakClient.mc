@@ -9,18 +9,20 @@ import Toybox.WatchUi;
 
 class PhoneRelayListener extends Communications.ConnectionListener {
     var client;
+    var generation as Number;
 
     function initialize(relayClient) {
         ConnectionListener.initialize();
         client = relayClient;
+        generation = relayClient.relayGeneration;
     }
 
     function onComplete() as Void {
-        client.onRelayTransmitComplete();
+        if (generation == client.relayGeneration) { client.onRelayTransmitComplete(); }
     }
 
     function onError() as Void {
-        client.onRelayTransmitError();
+        if (generation == client.relayGeneration) { client.onRelayTransmitError(); }
     }
 }
 
@@ -28,19 +30,21 @@ class PhoneRelayListener extends Communications.ConnectionListener {
 class PointReplyListener extends Communications.ConnectionListener {
     var client;
     var messageId as String;
+    var attempt as Number;
 
     function initialize(relayClient, id as String) {
         ConnectionListener.initialize();
         client = relayClient;
         messageId = id;
+        attempt = relayClient.pointReplyAttempt;
     }
 
     function onComplete() as Void {
-        client.onPointReplyComplete(messageId);
+        if (attempt == client.pointReplyAttempt) { client.onPointReplyComplete(messageId); }
     }
 
     function onError() as Void {
-        client.onPointReplyError(messageId);
+        if (attempt == client.pointReplyAttempt) { client.onPointReplyError(messageId); }
     }
 }
 
@@ -70,6 +74,16 @@ class TakClient {
     var pointReplyInFlight as String? = null;
     var pointReplySequence as Number = 0;
     var outboxTimer as Timer.Timer;
+    var relayResultRequired as Boolean = false;
+    var relayGeneration as Number = 0;
+    var relaySession as String = "";
+    var relayNegotiating as Boolean = false;
+    var relayNegotiationAt as Number = 0;
+    var pointReplyAttempt as Number = 0;
+    var pointReplySentAt as Number = 0;
+    var pointReplyRetryAt as Number = 0;
+    var pointReplyRetryDelay as Number = 5000;
+    var userProfileCallback as Method? = null;
 
     function initialize() {
         dataSync = new DataSyncClient(self);
@@ -77,24 +91,32 @@ class TakClient {
         bloodhoundSync.sendCallback = method(:sendBloodhoundMessage);
         bloodhoundSync.reportErrorCallback = method(:reportBloodhoundError);
         pointReplies = new OfflineRelayQueue();
-        var sequence = Application.Storage.getValue("pointReplySequence");
+        var sequence = loadOfflineValue("pointReplySequence");
         if (sequence instanceof Number) { pointReplySequence = sequence; }
-        pointReplies.restore(Application.Storage.getValue("pointReplies"), Time.now().value());
+        pointReplies.restore(loadOfflineValue("pointReplies"), relayEpochNow());
         if (pointReplies.expiredOnRestore > 0) {
             System.println("TAK offline events expired during restart");
         }
         savePointReplies();
-        var savedAlertUids = Application.Storage.getValue("automatedAlertUids");
+        var savedAlertUids = loadOfflineValue("automatedAlertUids");
         if (savedAlertUids instanceof Dictionary) { automatedAlertUids = savedAlertUids; }
-        var savedAlert = Application.Storage.getValue("manualAlertState");
+        var savedAlert = loadOfflineValue("manualAlertState");
         if (savedAlert instanceof Dictionary) {
             alerting = savedAlert.get("active") == true;
             var type = savedAlert.get("type");
             if (type instanceof String) { alertType = type; }
         }
         outboxTimer = new Timer.Timer();
+        startRelayRuntime();
+    }
+
+    function startRelayRuntime() as Void {
         outboxTimer.start(method(:flushPointReplies), 5000, true);
         Communications.registerForPhoneAppMessages(method(:onPhoneMessage));
+    }
+
+    function loadOfflineValue(key as String) {
+        return Application.Storage.getValue(key);
     }
 
     function updatePosition(info as Position.Info) as Void {
@@ -161,13 +183,25 @@ class TakClient {
             return;
         }
         status = :connecting;
-        transmit("relay_hello", {"watchLabel" => "Garmin watch", "protocolVersion" => 1});
+        relayGeneration++;
+        pointReplyAttempt++;
+        pointReplyInFlight = null;
+        relaySession = relayEpochNow().toString() + "-" + relayNow().toString() + "-" + relayGeneration.toString();
+        relayNegotiating = true;
+        relayNegotiationAt = relayNow();
+        pointReplyRetryAt = 0;
+        transmit("relay_hello", {"watchLabel" => "Garmin watch", "protocolVersion" => 1,
+            "relaySession" => relaySession});
         notifyStatusChanged();
     }
 
     function disconnect() as Void {
         if (dataSync.requestId != null) { dataSync.fail(Rez.Strings.DataSyncRelayOff); }
         automatedAlertSentAt = {};
+        relayGeneration++;
+        pointReplyAttempt++;
+        pointReplyInFlight = null;
+        relayNegotiating = false;
         status = :idle;
         bloodhoundSync.connectionChanged(false);
         if (phoneSettingsCallback != null) { phoneSettingsCallback.invoke(null); }
@@ -192,6 +226,10 @@ class TakClient {
             return;
         }
         automatedAlertSentAt = {};
+        relayGeneration++;
+        pointReplyAttempt++;
+        pointReplyInFlight = null;
+        relayNegotiating = false;
         status = :failed;
         bloodhoundSync.connectionChanged(false);
         if (phoneSettingsCallback != null) { phoneSettingsCallback.invoke(null); }
@@ -283,7 +321,9 @@ class TakClient {
         if (alerting && uid.equals("garmin-sos")) { return true; }
         var categories = automatedAlertUids.keys();
         for (var index = 0; index < categories.size(); index++) {
-            var localUid = automatedAlertUids.get(categories[index]);
+            var category = categories[index];
+            if (!(category instanceof String)) { continue; }
+            var localUid = automatedAlertUids.get(category as String);
             if (localUid instanceof String && uid.equals(localUid as String)) { return true; }
         }
         return false;
@@ -331,7 +371,7 @@ class TakClient {
             return false;
         }
         pointReplySequence += 1;
-        var now = Time.now().value();
+        var now = relayEpochNow();
         var id = "garmin-event-" + now.toString() + "-" + pointReplySequence.toString();
         payload.put("messageId", id);
         payload.put("createdAt", now);
@@ -375,7 +415,22 @@ class TakClient {
             WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyExpired), null);
             pointReplies.expiredOnRestore = 0;
         }
-        if (pointReplies.expire(Time.now().value()) > 0) {
+        if (pointReplies.expire(relayEpochNow()) > 0) {
+            if (pointReplyInFlight != null) {
+                var retained = false;
+                for (var i = 0; i < pointReplies.replies.size(); i++) {
+                    if (pointReplies.replies[i].get("messageId").equals(pointReplyInFlight)) {
+                        retained = true;
+                        break;
+                    }
+                }
+                if (!retained) {
+                    pointReplyInFlight = null;
+                    pointReplyAttempt++;
+                    pointReplyRetryAt = 0;
+                    pointReplyRetryDelay = 5000;
+                }
+            }
             savePointReplies();
             System.println("TAK relay: unsent point replies expired");
             WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyExpired), null);
@@ -389,7 +444,18 @@ class TakClient {
         bloodhoundSync.checkTimeouts();
         if (pointReplies.restoreFailed) { return; }
         expirePointReplies();
-        if (!isConnected() || pointReplyInFlight != null || pointReplies.replies.size() == 0) { return; }
+        var now = relayNow();
+        if (!isConnected()) { return; }
+        if (relayNegotiating) {
+            if (now - relayNegotiationAt < 15000) { return; }
+            relayNegotiating = false;
+            // Never downgrade a previously negotiated reliable connection on a lost hello reply.
+        }
+        if (pointReplyInFlight != null) {
+            if (now - pointReplySentAt < 30000) { return; }
+            retryPointReply("TAK relay acknowledgement timed out; event retained");
+        }
+        if (now < pointReplyRetryAt || pointReplies.replies.size() == 0) { return; }
         var reply = null;
         for (var i = 0; i < pointReplies.replies.size(); i++) {
             var candidate = pointReplies.replies[i];
@@ -400,29 +466,66 @@ class TakClient {
         }
         if (reply == null) { return; }
         pointReplyInFlight = reply.get("messageId") as String;
+        pointReplyAttempt++;
+        pointReplySentAt = now;
         lastRelayMessageType = "-> " + reply.get("msgType").toString();
         lastRelayMessageTime = Time.now();
-        Communications.transmit({"msgType" => reply.get("msgType"), "payload" => reply.get("payload")}, null,
-            new PointReplyListener(self, pointReplyInFlight));
+        sendQueuedPointReply(reply);
+    }
+
+    function sendQueuedPointReply(reply as Dictionary) as Void {
+        var original = reply.get("payload") as Dictionary;
+        var payload = {};
+        var keys = original.keys();
+        for (var i = 0; i < keys.size(); i++) { payload.put(keys[i], original.get(keys[i])); }
+        if (relayResultRequired) { payload.put("relaySession", relaySession); }
+        transmitEnvelope({"msgType" => reply.get("msgType"), "payload" => payload},
+            new PointReplyListener(self, pointReplyInFlight as String));
+    }
+
+    function transmitEnvelope(envelope as Dictionary, listener as Communications.ConnectionListener) as Void {
+        Communications.transmit(envelope, null, listener);
+    }
+
+    function relayNow() as Number {
+        return System.getTimer();
+    }
+
+    function relayEpochNow() as Number {
+        return Time.now().value();
+    }
+
+    function retryPointReply(detail as String) as Void {
+        pointReplyInFlight = null;
+        pointReplyAttempt++;
+        pointReplyRetryAt = relayNow() + pointReplyRetryDelay;
+        pointReplyRetryDelay = pointReplyRetryDelay < 30000 ? pointReplyRetryDelay * 2 : 60000;
+        System.println(detail);
+        WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyFailed), null);
     }
 
     function onPointReplyComplete(id as String) as Void {
         if (pointReplyInFlight == null || !pointReplyInFlight.equals(id)) { return; }
+        if (relayResultRequired) { return; }
         pointReplyInFlight = null;
         // This acknowledges only the phone handoff, not TAK delivery.
         var previous = pointReplies.replies.slice(0, pointReplies.replies.size());
         pointReplies.remove(id);
-        if (!savePointReplies()) { pointReplies.replies = previous; return; }
+        if (!savePointReplies()) {
+            pointReplies.replies = previous;
+            retryPointReply("TAK relay: unable to persist handoff; event retained");
+            return;
+        }
+        pointReplyAttempt++;
+        pointReplyRetryDelay = 5000;
+        pointReplyRetryAt = 0;
         WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyHandedOff), null);
         flushPointReplies();
     }
 
     function onPointReplyError(id as String) as Void {
         if (pointReplyInFlight == null || !pointReplyInFlight.equals(id)) { return; }
-        pointReplyInFlight = null;
-        System.println("TAK relay: point reply phone handoff failed; retained for reconnect");
-        WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyFailed), null);
-        onRelayTransmitError();
+        retryPointReply("TAK relay: phone handoff failed; event retained for retry");
     }
 
     function setChannelsCallback(callback as Method?) as Void {
@@ -451,7 +554,7 @@ class TakClient {
         if (verboseLoggingEnabled) {
             System.println("TAK relay out: " + msgType);
         }
-        Communications.transmit({"msgType" => msgType, "payload" => payload}, null, new PhoneRelayListener(self));
+        transmitEnvelope({"msgType" => msgType, "payload" => payload}, new PhoneRelayListener(self));
     }
 
     function onPhoneMessage(message as Communications.PhoneAppMessage) as Void {
@@ -489,6 +592,18 @@ class TakClient {
         }
         if (msgType.equals("request_settings")) {
             sendWatchSettings();
+            return;
+        }
+        if (msgType.equals("request_user_profile")) {
+            sendUserProfile(payload as Dictionary);
+            return;
+        }
+        if (msgType.equals("relay_status")) {
+            applyRelayStatus(payload as Dictionary);
+            return;
+        }
+        if (msgType.equals("relay_result")) {
+            applyRelayResult(payload as Dictionary);
             return;
         }
         if (msgType == "chat" && incomingChatCallback != null) {
@@ -539,6 +654,57 @@ class TakClient {
         if (watchSettingsCallback == null) { return; }
         var settings = watchSettingsCallback.invoke();
         if (settings instanceof Dictionary) { transmit("watch_settings", settings as Dictionary); }
+    }
+
+    function sendUserProfile(request as Dictionary) as Void {
+        if (userProfileCallback == null) { return; }
+        var profile = userProfileCallback.invoke();
+        if (!(profile instanceof Dictionary)) { return; }
+        var requestId = request.get("requestId");
+        if (requestId instanceof String && requestId.length() > 0) {
+            (profile as Dictionary).put("requestId", requestId);
+        }
+        transmit("user_profile", profile as Dictionary);
+    }
+
+    function applyRelayResult(payload as Dictionary) as Void {
+        var messageId = payload.get("messageId");
+        if (!isConnected() || !relayResultRequired || payload.get("relaySession") != relaySession ||
+                !(payload.get("ok") instanceof Boolean) || !(messageId instanceof String) ||
+                pointReplyInFlight == null || !pointReplyInFlight.equals(messageId)) { return; }
+        if (payload.get("ok") != true) {
+            var error = payload.get("error");
+            if (error instanceof String && error.length() > 0) {
+                WatchUi.showToast(error as String, null);
+            }
+            if (pointReplyInFlight != null && pointReplyInFlight.equals(messageId)) {
+                retryPointReply("TAK relay: server rejected write; event retained");
+            }
+            return;
+        }
+        var previous = pointReplies.replies.slice(0, pointReplies.replies.size());
+        pointReplies.remove(messageId as String);
+        if (!savePointReplies()) {
+            pointReplies.replies = previous;
+            retryPointReply("TAK relay: unable to persist acknowledgement; event retained");
+            return;
+        }
+        if (pointReplyInFlight != null && pointReplyInFlight.equals(messageId)) {
+            pointReplyInFlight = null;
+        }
+        pointReplyAttempt++;
+        pointReplyRetryDelay = 5000;
+        pointReplyRetryAt = 0;
+        WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyHandedOff), null);
+        flushPointReplies();
+    }
+
+    function applyRelayStatus(payload as Dictionary) as Void {
+        if (status == :idle || status == :failed || payload.get("relaySession") != relaySession ||
+                !(payload.get("reliableDelivery") instanceof Boolean)) { return; }
+        relayResultRequired = payload.get("reliableDelivery") == true;
+        relayNegotiating = false;
+        flushPointReplies();
     }
 
     function forwardEntity(entity as Dictionary) as Void {

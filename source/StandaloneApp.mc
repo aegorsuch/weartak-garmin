@@ -2,6 +2,7 @@ import Toybox.Application;
 import Toybox.ActivityMonitor;
 import Toybox.Attention;
 import Toybox.Lang;
+import Toybox.Math;
 import Toybox.Position;
 import Toybox.Sensor;
 import Toybox.Time;
@@ -123,6 +124,7 @@ class StandaloneApp extends Application.AppBase {
         takClient.incomingChatCallback = method(:onIncomingChat);
         takClient.phoneSettingsCallback = method(:applyPhoneSettings);
         takClient.watchSettingsCallback = method(:buildWatchSettings);
+        takClient.userProfileCallback = method(:buildUserProfile);
         var storedLocationServices = Application.Storage.getValue("locationServices");
         if (storedLocationServices != null) {
             locationServices = storedLocationServices as Boolean;
@@ -352,7 +354,25 @@ class StandaloneApp extends Application.AppBase {
             "role" => myRole,
             "roleCategory" => myRoleCategory,
             "reportIntSecs" => getReportingInterval(:constant),
+            "dynamicReporting" => dynamicReportingEnabled,
+            "stationaryIntSecs" => stationaryReportingInterval,
+            "onFootIntSecs" => onFootReportingInterval,
+            "vehicleIntSecs" => vehicleReportingInterval,
+            "alertIntSecs" => whileAlertingReportingInterval,
+            "alertActive" => takClient.isAlerting(),
             "phoneManagedSettings" => phoneManagedSettings
+        };
+    }
+
+    function buildUserProfile() as Dictionary {
+        var heightCm = Math.round((height as Number).toFloat() * 2.54);
+        var weightKg = Math.round((weight as Number).toFloat() * 0.45359237 * 10.0) / 10.0;
+        return {
+            "birthYear" => birthYear,
+            "heightCM" => heightCm,
+            "weightKG" => weightKg,
+            "sex" => sex.equals("Not Set") ? null : sex,
+            "bloodType" => bloodType.equals("Unknown") ? null : bloodType
         };
     }
 

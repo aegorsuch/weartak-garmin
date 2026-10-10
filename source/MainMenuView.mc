@@ -240,7 +240,8 @@ function buildTakRelayMenu(app as StandaloneApp) as WatchUi.Menu2 {
     addToggleEntry(menu, "ATAK Relay", client.status == :connecting || client.isConnected(), :atakRelayToggle);
     addMenuEntry(menu, "iTAK", "Teaming", :itakRelay);
     addMenuEntry(menu, "TAK Aware", "Teaming", :takAwareRelay);
-    addMenuEntry(menu, "WearTAK Companion", "Developing", :wearTakCompanionRelay);
+    addToggleEntry(menu, "WearTAK Companion", client.status == :connecting || client.isConnected(), :wearTakCompanionRelay);
+    addMenuEntry(menu, "Companion Setup", "iPhone", :wearTakCompanionSetup);
     return menu;
 }
 
@@ -1033,6 +1034,10 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
         menu = preferencesMenu;
     }
 
+    function getRelayClient() as TakClient {
+        return app.getTakClient();
+    }
+
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
         if (id == :sitxDeviceApi) {
@@ -1041,8 +1046,8 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :takRelayMenu) {
             var relayMenu = buildTakRelayMenu(app);
             WatchUi.pushView(relayMenu, new NetworkPreferencesDelegate(app, relayMenu), WatchUi.SLIDE_LEFT);
-        } else if (id == :atakRelayToggle) {
-            var client = app.getTakClient();
+        } else if (id == :atakRelayToggle || id == :wearTakCompanionRelay) {
+            var client = getRelayClient();
             client.statusCallback = method(:onClientStatusChanged);
             if (client.status == :connecting || client.isConnected()) {
                 client.disconnect();
@@ -1050,18 +1055,25 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
                 client.connect();
             }
             onClientStatusChanged();
-        } else if (id == :itakRelay || id == :takAwareRelay || id == :wearTakCompanionRelay) {
+        } else if (id == :wearTakCompanionSetup) {
+            WatchUi.showToast("iPhone: authorize Garmin in WearTAK Companion, select watch, then enable relay.", null);
+        } else if (id == :itakRelay || id == :takAwareRelay) {
             WatchUi.showToast(item.getLabel() + " - " + item.getSubLabel(), null);
         }
     }
 
     function onClientStatusChanged() as Void {
-        var client = app.getTakClient();
-        var relayItem = menu.getItem(menu.findItemById(:atakRelayToggle));
-        if (relayItem != null) {
-            relayItem.setSubLabel(toolToggleLabel(client.status == :connecting || client.isConnected()));
-            WatchUi.requestUpdate();
+        var client = getRelayClient();
+        var ids = [:atakRelayToggle, :wearTakCompanionRelay];
+        for (var i = 0; i < ids.size(); i++) {
+            var index = menu.findItemById(ids[i]);
+            if (index < 0) { continue; }
+            var relayItem = menu.getItem(index);
+            if (relayItem != null) {
+                relayItem.setSubLabel(toolToggleLabel(client.status == :connecting || client.isConnected()));
+            }
         }
+        WatchUi.requestUpdate();
     }
 }
 

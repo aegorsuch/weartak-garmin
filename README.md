@@ -69,6 +69,39 @@ Connect IQ dictionaries rather than newline-delimited JSON, and the watch never
 parses raw CoT XML — the companion must normalize ATAK markers, alerts, and chat
 into the `entity`, `entities`, and `chat` envelopes.
 
+The watch can also use the iPhone WearTAK Companion's Garmin route without an
+ATAK plugin or an Apple Watch. That route owns TAK connections and phone GPS;
+it does not implement Bloodhound coordination. Authorize the watch through
+Garmin Connect Mobile, select it in Companion, then enable **WearTAK Companion**
+under the watch's **TAK Relay** submenu. **Companion Setup** provides an iPhone
+setup hint. **ATAK Relay** remains available for Android users; both toggles
+control and display the same underlying phone relay, not separate simultaneous
+connections. The phone's authorized companion determines the destination.
+
+For queued marker, delete, emergency, and chat events, `relay_hello` carries a
+`relaySession`. A matching `relay_status` advertising `reliableDelivery: true`
+enables correlated `relay_result` acknowledgements. SDK handoff alone no longer
+removes these events: the phone acknowledges after at least one eligible server
+socket accepts the write, not after remote TAK receipt. Missing acknowledgements
+time out after 30 seconds; failed events remain queued with 5-to-60-second
+exponential retry delays. Old callbacks and unrelated/malformed results cannot
+complete a new attempt. Existing queue limits (20 events, 24-hour expiry) remain.
+The iPhone persists stable event IDs and original CoT to suppress accepted
+replays across restart; a crash between socket acceptance and ledger persistence
+can still cause a duplicate. Replies are not an exactly-once delivery guarantee.
+
+To preserve older companions, queue sending waits up to 15 seconds for capability
+negotiation, then falls back to SDK handoff if reliable delivery has not been
+negotiated in that watch process. A lost hello response never downgrades a process
+that already negotiated reliable delivery. The simulator tests in
+[ReliableRelayTests.mc](source/ReliableRelayTests.mc) exercise negotiation,
+exact timeout/retry boundaries, capped backoff and reset, transmitted payloads,
+stale callbacks, reconnects, malformed/duplicate results, storage failures,
+in-flight replacement/expiry, and legacy fallback. Their clock, storage, and
+transport are isolated; they never register live phone callbacks or start the
+production outbox timer. Storage-failure cases verify events remain queued until
+acknowledgement or handoff removal can be persisted.
+
 > Important: the watch-side relay and the ATAK companion's Garmin Connect IQ
 > integration are still under development. Using both builds is required for
 > Garmin messages to reach ATAK; a watch-side relay toggle alone does not
