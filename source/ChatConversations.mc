@@ -47,6 +47,7 @@ class ChatConversations {
         if (text.length() == 0) { text = stringValue(message, "text"); }
         var uid = stringValue(message, "conversationUid");
         var title = stringValue(message, "conversationTitle");
+        if (title.length() == 0) { title = stringValue(message, "title"); }
         if (message.hasKey("isGroup") && !(message.get("isGroup") instanceof Boolean)) {
             System.println("Chat rejected: invalid group flag");
             return false;
@@ -56,8 +57,9 @@ class ChatConversations {
             return false;
         }
         var group = message.get("isGroup") == true;
-        // Legacy Garmin chat used uid for the sender, not for the message.
-        if (senderUid.length() == 0 && uid.length() == 0 && !group) {
+        // iPhone envelopes retain uid as sender and identify the event with messageId.
+        if (senderUid.length() == 0 && (uid.length() == 0 && !group
+                || stringValue(message, "messageId").length() > 0)) {
             senderUid = stringValue(message, "uid");
         }
         if (!group) { uid = senderUid; title = sender; }
@@ -145,6 +147,7 @@ class ChatConversations {
         var group = room.get("isGroup") == true;
         if (uid.equals(ALL) && !group) { return null; }
         var result = {"roomUid" => uid, "roomTitle" => title, "isGroup" => group,
+            "conversationUid" => uid, "title" => title,
             "msg" => text, "text" => text, "cs" => callsign.length() == 0 ? "Garmin" : callsign};
         if (!group) {
             result.put("recipientUid", uid);

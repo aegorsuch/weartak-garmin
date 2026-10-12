@@ -124,8 +124,16 @@ destinations are rejected with an on-watch error rather than guessed from the
 event ID. Conversation history is in-memory, bounded to 20 rooms and 20 total
 received messages; it is not a synchronized phone history or a group directory.
 
+The iPhone companion's normalized envelope retains `uid` as sender identity,
+`sender`/`text` as display content, and `messageId` as event identity, with
+`conversationUid`, `title`, and Boolean `isGroup`. The watch also accepts this
+shape; `messageId` distinguishes it from ATAK's event-ID `uid` convention.
+Without `receivedAt`, local arrival time orders the conversation.
+
 Outbound `chat` payloads contain `roomUid`, `roomTitle`, `isGroup`, `msg`,
 `text`, and `cs`, plus the existing queue-assigned `messageId` and `createdAt`.
+They also contain equivalent `conversationUid` and `title` aliases for the
+iPhone companion; ATAK continues to use `roomUid`/`roomTitle`.
 Direct payloads also contain `recipientUid` and `replyTo`, both equal to the
 individual UID. Group payloads omit these direct aliases. The companion resolves
 the group UID to its authoritative membership and rejects unavailable or
