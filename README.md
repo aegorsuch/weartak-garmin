@@ -155,6 +155,14 @@ skipped when capability is absent, while other eligible events can still send.
 Reconnect, relay stop, or relay failure resets the capability. This does not
 claim parity with companions that have not implemented this contract.
 
+The current iOS companion WEARTAK-118 implementation intentionally does not
+advertise `chatGroups`: its room-labelled CoT does not yet establish verified
+member-destination routing. Garmin can display its group messages, but named-group
+sends through that companion remain blocked. Explicit All Chat Rooms and direct
+messages do not require this capability. This is a support boundary, not verified
+end-to-end group parity; Android/ATAK group support likewise requires a proven
+group-aware Garmin adapter.
+
 `ChatConversationTests.mc` exercises pinned picker rows, selected direct rooms,
 mixed receive ordering, destination mapping, legacy input, malformed groups,
 deduplication, retention bounds, and capability-gated queue transmission.
