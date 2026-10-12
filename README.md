@@ -145,6 +145,26 @@ unwritable groups; watch-side participant lists are not routing authority.
 **All Chat Rooms** is one explicit broadcast destination, not iteration over
 saved rooms or direct contacts.
 
+The reviewed ATAK companion WEARTAK-118 branch implements the WearOS BLE route,
+not a Connect IQ ingress adapter. Its native contact/group routing alone does
+not establish Garmin support. The separate Garmin transport must map watch
+`messageId` to the BLE envelope's `msgUid` and payload `uid`, preserve
+`roomUid`/`roomTitle` (accepted aliases of BLE `rmUid`/`rmTitle`), `isGroup`,
+`msg`, and `cs`, and invoke the companion chat handler. `replyTo` is not an ATAK
+BLE chat destination field; the adapter must route using `roomUid`, including
+direct conversations. It must preserve stable message IDs and translate relay
+acknowledgements, rather than interpreting BLE handoff as TAK delivery.
+
+On receive, the adapter must translate `ChatRelayPayloadBuilder`'s
+`chat_received` envelope into a Connect IQ dictionary without changing the
+canonical payload fields. The companion remains responsible for confirming
+the phone's membership in named groups, suppressing self/watch echoes, resolving
+actual `GroupContact`/`IndividualContact` recipients, and rejecting unavailable
+contacts. `participantUids` may be retained as metadata but are not watch-side
+routing authority. No production Connect IQ-to-native-chat path was verified
+in that BLE-only branch; it must not advertise Garmin `chatGroups` based solely
+on its WearOS group tests.
+
 Non-broadcast group sending requires the current-session `relay_status` to
 advertise `chatGroups: true` alongside the existing Boolean `reliableDelivery`.
 Companions must advertise this only after both group receive normalization and
