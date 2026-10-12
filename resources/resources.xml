@@ -24,6 +24,11 @@
     <string id="MenuTitleQuickReply">Quick Reply</string>
     <string id="MenuTitleSos">Manual Alert</string>
     <string id="ChatEmpty">Select a map user</string>
+    <string id="ChatSelectUser">Select User for Chat</string>
+    <string id="ChatSend">Send</string>
+    <string id="ChatNoUsers">No map users available</string>
+    <string id="ChatInvalidDestination">Chat destination unavailable</string>
+    <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatUnknownSender">Unknown</string>
     <string id="IncomingPointsTitle">Compass</string>
     <string id="IncomingPointsEmpty">No incoming points</string>

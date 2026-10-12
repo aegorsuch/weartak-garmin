@@ -32,7 +32,9 @@ class StandaloneApp extends Application.AppBase {
     private var verboseLoggingEnabled as Boolean = false;
     private var networkPreferencesLocked as Boolean = false;
     private var phoneManagedSettings as Boolean = false;
-    private var chatMessages = [];
+    var chats as ChatConversations = new ChatConversations();
+    var chatRoomsMenu as ChatRoomsMenu? = null;
+    var chatConversationMenu as ChatConversationMenu? = null;
     private var sensorInfo;
     private var exertionPercent as Number = 0;
     private var lastStepCount as Number? = null;
@@ -1372,14 +1374,22 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function onIncomingChat(message as Dictionary) as Void {
-        chatMessages.add(message);
-        if (chatMessages.size() > 20) {
-            chatMessages.remove(0);
+        if (!chats.receive(message)) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.ChatInvalidDestination), null);
+            return;
         }
+        if (chatRoomsMenu != null) { chatRoomsMenu.refresh(); }
+        if (chatConversationMenu != null) { chatConversationMenu.refresh(); }
     }
 
-    function getChatMessages() as Array {
-        return chatMessages;
+    function sendConversationChat(room as Dictionary, text as String) as Boolean {
+        var payload = chats.payload(room, text, callsign);
+        if (payload == null) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.ChatInvalidDestination), null);
+            return false;
+        }
+        refreshPliForUserAction();
+        return takClient.queueRelay("chat", payload, null);
     }
 
     function sendChatReply(replyTo as String, text as String) as Void {

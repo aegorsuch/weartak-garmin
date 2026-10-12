@@ -148,4 +148,9 @@
     <string id="TextGeofenceBreached">Geofence Breached</string>
     <string id="TextInContact">In Contact</string>
     <string id="TextRingTheBell">Ring The Bell</string>
+    <string id="ChatInvalidDestination">Chat destination unavailable</string>
+    <string id="ChatNoUsers">No map users available</string>
+    <string id="ChatSelectUser">Select User for Chat</string>
+    <string id="ChatSend">Send</string>
+    <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
 </resources>

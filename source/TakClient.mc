@@ -75,6 +75,7 @@ class TakClient {
     var pointReplySequence as Number = 0;
     var outboxTimer as Timer.Timer;
     var relayResultRequired as Boolean = false;
+    var chatGroupsSupported as Boolean = false;
     var relayGeneration as Number = 0;
     var relaySession as String = "";
     var relayNegotiating as Boolean = false;
@@ -183,6 +184,7 @@ class TakClient {
             return;
         }
         status = :connecting;
+        chatGroupsSupported = false;
         relayGeneration++;
         pointReplyAttempt++;
         pointReplyInFlight = null;
@@ -203,6 +205,7 @@ class TakClient {
         pointReplyInFlight = null;
         relayNegotiating = false;
         status = :idle;
+        chatGroupsSupported = false;
         bloodhoundSync.connectionChanged(false);
         if (phoneSettingsCallback != null) { phoneSettingsCallback.invoke(null); }
         if (incomingSourceRemovedCallback != null) { incomingSourceRemovedCallback.invoke("phone-relay"); }
@@ -231,6 +234,7 @@ class TakClient {
         pointReplyInFlight = null;
         relayNegotiating = false;
         status = :failed;
+        chatGroupsSupported = false;
         bloodhoundSync.connectionChanged(false);
         if (phoneSettingsCallback != null) { phoneSettingsCallback.invoke(null); }
         notifyStatusChanged();
@@ -355,6 +359,10 @@ class TakClient {
     }
 
     function queueRelay(msgType as String, payload as Dictionary, key as String?) as Boolean {
+        if (!canRouteChat(msgType, payload)) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.ChatGroupUnsupported), null);
+            return false;
+        }
         if (pointReplies.restoreFailed) {
             WatchUi.showToast(WatchUi.loadResource(Rez.Strings.OfflineStorageFailed), null);
             return false;
@@ -461,6 +469,7 @@ class TakClient {
             var candidate = pointReplies.replies[i];
             var payload = candidate.get("payload") as Dictionary;
             if (candidate.get("msgType").equals("marker") && payload.get("lat") == null) { continue; }
+            if (!canRouteChat(candidate.get("msgType") as String, payload)) { continue; }
             reply = candidate;
             break;
         }
@@ -606,7 +615,7 @@ class TakClient {
             applyRelayResult(payload as Dictionary);
             return;
         }
-        if (msgType == "chat" && incomingChatCallback != null) {
+        if ((msgType.equals("chat") || msgType.equals("chat_received")) && incomingChatCallback != null) {
             incomingChatCallback.invoke(payload as Dictionary);
             return;
         }
@@ -703,8 +712,15 @@ class TakClient {
         if (status == :idle || status == :failed || payload.get("relaySession") != relaySession ||
                 !(payload.get("reliableDelivery") instanceof Boolean)) { return; }
         relayResultRequired = payload.get("reliableDelivery") == true;
+        chatGroupsSupported = payload.get("chatGroups") == true;
         relayNegotiating = false;
         flushPointReplies();
+    }
+
+    function canRouteChat(msgType as String, payload as Dictionary) as Boolean {
+        var roomUid = payload.get("roomUid");
+        return !msgType.equals("chat") || payload.get("isGroup") != true
+            || (roomUid instanceof String && roomUid.equals("All Chat Rooms")) || chatGroupsSupported;
     }
 
     function forwardEntity(entity as Dictionary) as Void {

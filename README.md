@@ -102,6 +102,51 @@ transport are isolated; they never register live phone callbacks or start the
 production outbox timer. Storage-failure cases verify events remain queued until
 acknowledgement or handoff removal can be persisted.
 
+### Chat transport contract (WEARTAK-118)
+
+Garmin is the watch UI/transport, not the owner of ATAK group membership or
+server routing. A group-aware companion normalizes inbound `chat` or
+`chat_received` payloads as follows:
+
+| Field | Meaning |
+| --- | --- |
+| `uid` | Message/event ID; never the reply destination |
+| `senderUid`, `senderCallsign` | Individual sender identity |
+| `msg` | Message text |
+| `receivedAt` | Receive timestamp in epoch milliseconds |
+| `conversationUid`, `conversationTitle` | Authoritative conversation identity/title |
+| `isGroup` | Explicit Boolean identifying a group |
+
+Direct conversations use `senderUid` as their destination; groups use
+`conversationUid`. Legacy Garmin `chat` payloads containing only
+`uid` (sender identity), `sender`, and `text` remain accepted. Missing group
+destinations are rejected with an on-watch error rather than guessed from the
+event ID. Conversation history is in-memory, bounded to 20 rooms and 20 total
+received messages; it is not a synchronized phone history or a group directory.
+
+Outbound `chat` payloads contain `roomUid`, `roomTitle`, `isGroup`, `msg`,
+`text`, and `cs`, plus the existing queue-assigned `messageId` and `createdAt`.
+Direct payloads also contain `recipientUid` and `replyTo`, both equal to the
+individual UID. Group payloads omit these direct aliases. The companion resolves
+the group UID to its authoritative membership and rejects unavailable or
+unwritable groups; watch-side participant lists are not routing authority.
+**All Chat Rooms** is one explicit broadcast destination, not iteration over
+saved rooms or direct contacts.
+
+Non-broadcast group sending requires the current-session `relay_status` to
+advertise `chatGroups: true` alongside the existing Boolean `reliableDelivery`.
+Companions must advertise this only after both group normalization and explicit
+group send routing are supported. Older iPhone relays ignore `roomUid`, so
+sending them a group without this gate could broadcast unintentionally.
+Unsupported group sends show an error; already queued groups are retained and
+skipped when capability is absent, while other eligible events can still send.
+Reconnect, relay stop, or relay failure resets the capability. This does not
+claim parity with companions that have not implemented this contract.
+
+`ChatConversationTests.mc` exercises pinned picker rows, selected direct rooms,
+mixed receive ordering, destination mapping, legacy input, malformed groups,
+deduplication, retention bounds, and capability-gated queue transmission.
+
 > Important: the watch-side relay and the ATAK companion's Garmin Connect IQ
 > integration are still under development. Using both builds is required for
 > Garmin messages to reach ATAK; a watch-side relay toggle alone does not
@@ -146,8 +191,13 @@ features currently available:
 	with its subrole under Callsign and Device Preferences. The team color is used
 	for the self marker and Bloodhound direction arrow; tracked point icons remain
 	unchanged.
-- Use **Chat** to view received messages, choose quick replies, or select
-	**Send** to compose and broadcast a message to All Chat Rooms.
+- Use **Chat** to open a conversation picker: **All Chat Rooms** is pinned
+	first, **Select User for Chat** second, then direct and group conversations
+	in newest-received order. User selection lists current map users (not dropped
+	points or alerts), opens a direct conversation, and keeps it in the normal
+	room list even before a reply arrives. Opening a room offers received messages,
+	quick replies, and **Send** for text entry. Sending does not move a room ahead
+	of a more recently received conversation.
 - Configure Dynamic or Constant Reporting intervals, Wi-Fi battery-saving
 	preferences, and Physiological Monitoring under Reporting Strategy. Reporting
 	intervals control Garmin-to-companion PLI updates when the ATAK relay is
