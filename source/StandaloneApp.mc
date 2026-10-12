@@ -157,13 +157,7 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function setCallsign(value as String) as Void {
-        var normalized = value;
-        while (normalized.length() > 0 && isCallsignWhitespace(normalized.substring(0, 1))) {
-            normalized = normalized.substring(1, normalized.length());
-        }
-        while (normalized.length() > 0 && isCallsignWhitespace(normalized.substring(normalized.length() - 1, normalized.length()))) {
-            normalized = normalized.substring(0, normalized.length() - 1);
-        }
+        var normalized = normalizeCallsign(value);
         if (callsign.equals(normalized)) {
             return;
         }
@@ -316,31 +310,131 @@ class StandaloneApp extends Application.AppBase {
         }
         if (!(payload instanceof Dictionary)) { return "Invalid settings payload"; }
         var settings = payload as Dictionary;
+
+        var callsignValue = settings.get("callsign");
+        if (settings.hasKey("callsign") && !(callsignValue instanceof String)) {
+            return "Invalid callsign";
+        }
         var teamValue = settings.get("team");
+        if (settings.hasKey("team") && !(teamValue instanceof String)) { return "Invalid team"; }
         if (teamValue instanceof String && !isSupportedTeamColor(teamValue as String)) {
             return "Unsupported team: " + teamValue;
         }
         var roleValue = settings.get("role");
+        if (settings.hasKey("role") && !(roleValue instanceof String)) { return "Invalid role"; }
         var roleCategory = null;
         if (roleValue instanceof String) {
             roleCategory = phoneRoleCategory(roleValue as String);
             if (roleCategory == null) { return "Unsupported role: " + roleValue; }
         }
         var intervalValue = settings.get("reportIntSecs");
+        if (settings.hasKey("reportIntSecs") && !(intervalValue instanceof Number)) {
+            return "Invalid reporting interval";
+        }
         if (intervalValue instanceof Number && ((intervalValue as Number) < 1 || (intervalValue as Number) > 3600)) {
             return "Reporting interval out of range";
         }
-        var callsignValue = settings.get("callsign");
-        if (callsignValue instanceof String) { setCallsign(callsignValue as String); }
-        if (teamValue instanceof String) { setMyTeamColor(teamValue as String); }
-        if (roleCategory != null) { setMyRole(roleCategory as String, roleValue as String); }
-        if (intervalValue instanceof Number) {
-            // Static reporting is required for the phone interval to take effect.
-            setDynamicReportingEnabled(false);
-            setReportingInterval(:constant, intervalValue as Number);
+
+        var managedValue = settings.get("phoneManagedSettings");
+        if (settings.hasKey("phoneManagedSettings") && !(managedValue instanceof Boolean)) {
+            return "Invalid phone-managed setting";
         }
-        setPhoneManagedSettings(settings.get("phoneManagedSettings") == true);
+        var normalizedCallsign = callsignValue instanceof String
+                ? normalizeCallsign(callsignValue as String) : callsign;
+        var nextTeam = teamValue instanceof String ? teamValue as String : myTeamColor;
+        var nextRoleCategory = roleCategory != null ? roleCategory as String : myRoleCategory;
+        var nextRole = roleValue instanceof String ? roleValue as String : myRole;
+        var nextDynamicReporting = dynamicReportingEnabled;
+        var nextInterval = constantReportingInterval;
+        if (intervalValue instanceof Number) {
+            nextDynamicReporting = false;
+            nextInterval = intervalValue as Number;
+        }
+        var nextManaged = settings.get("phoneManagedSettings") == true;
+
+        var oldValues = {
+            "callsign" => callsign,
+            "myTeamColor" => myTeamColor,
+            "myRoleCategory" => myRoleCategory,
+            "myRole" => myRole,
+            "dynamicReportingEnabled" => dynamicReportingEnabled,
+            "constantReportingInterval" => constantReportingInterval,
+            "phoneManagedSettings" => phoneManagedSettings
+        };
+        var nextValues = {
+            "callsign" => normalizedCallsign,
+            "myTeamColor" => nextTeam,
+            "myRoleCategory" => nextRoleCategory,
+            "myRole" => nextRole,
+            "dynamicReportingEnabled" => nextDynamicReporting,
+            "constantReportingInterval" => nextInterval,
+            "phoneManagedSettings" => nextManaged
+        };
+        var keys = [];
+        if (settings.hasKey("callsign")) { keys.add("callsign"); }
+        if (settings.hasKey("team")) { keys.add("myTeamColor"); }
+        if (settings.hasKey("role")) {
+            keys.add("myRoleCategory");
+            keys.add("myRole");
+        }
+        if (settings.hasKey("reportIntSecs")) {
+            keys.add("dynamicReportingEnabled");
+            keys.add("constantReportingInterval");
+        }
+        keys.add("phoneManagedSettings");
+
+        var persisted = [];
+        var storageError = null;
+        for (var index = 0; index < keys.size(); index++) {
+            var key = keys[index] as String;
+            persisted.add(key);
+            storageError = persistPhoneSetting(key, nextValues.get(key));
+            if (storageError != null) { break; }
+        }
+        if (storageError != null) {
+            var rollbackFailed = false;
+            for (var index = persisted.size() - 1; index >= 0; index--) {
+                var key = persisted[index] as String;
+                if (persistPhoneSetting(key, oldValues.get(key)) != null) { rollbackFailed = true; }
+            }
+            return "Could not save settings (" + storageError
+                    + (rollbackFailed ? "); restoring previous values also failed." : "); previous values restored.");
+        }
+
+        var identityChanged = !callsign.equals(normalizedCallsign)
+                || !myTeamColor.equals(nextTeam) || !myRole.equals(nextRole);
+        callsign = normalizedCallsign;
+        myTeamColor = nextTeam;
+        myRoleCategory = nextRoleCategory;
+        myRole = nextRole;
+        dynamicReportingEnabled = nextDynamicReporting;
+        constantReportingInterval = nextInterval;
+        phoneManagedSettings = nextManaged;
+        if (intervalValue instanceof Number) { lastPliSentTime = null; }
+        if (identityChanged) { sendPliNow(); }
         return null;
+    }
+
+    function persistPhoneSetting(key as String, value) as String? {
+        try {
+            Application.Storage.setValue(key, value);
+            return null;
+        } catch (error instanceof Lang.StorageFullException) {
+            return "storage full";
+        } catch (error instanceof Application.ObjectStoreAccessException) {
+            return "storage unavailable";
+        }
+    }
+
+    function normalizeCallsign(value as String) as String {
+        var normalized = value;
+        while (normalized.length() > 0 && isCallsignWhitespace(normalized.substring(0, 1))) {
+            normalized = normalized.substring(1, normalized.length());
+        }
+        while (normalized.length() > 0 && isCallsignWhitespace(normalized.substring(normalized.length() - 1, normalized.length()))) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     function phoneRoleCategory(role as String) as String? {

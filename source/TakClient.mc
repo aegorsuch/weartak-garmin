@@ -590,7 +590,10 @@ class TakClient {
         if (!(message.data instanceof Dictionary)) {
             return;
         }
-        var envelope = message.data as Dictionary;
+        handlePhoneEnvelope(message.data as Dictionary);
+    }
+
+    function handlePhoneEnvelope(envelope as Dictionary) as Void {
         var msgType = envelope.get("msgType");
         var payload = envelope.get("payload");
         if (!(msgType instanceof String) || !(payload instanceof Dictionary)) {
@@ -616,11 +619,25 @@ class TakClient {
             return;
         }
         if (msgType.equals("set_settings")) {
-            applyPhoneSettings(payload as Dictionary);
+            var transactionId = settingsTransactionId(payload as Dictionary);
+            if (payload.hasKey("transactionId") && transactionId == null) {
+                transmit("settings_set_ack", {
+                    "ok" => false,
+                    "error" => "Invalid settings transaction ID"
+                });
+                return;
+            }
+            applyPhoneSettings(payload as Dictionary, transactionId);
             return;
         }
         if (msgType.equals("request_settings")) {
-            sendWatchSettings();
+            var requestPayload = payload as Dictionary;
+            var transactionId = settingsTransactionId(requestPayload);
+            if (requestPayload.hasKey("transactionId") && transactionId == null) {
+                System.println("TAK settings request rejected: invalid transaction ID");
+                return;
+            }
+            sendWatchSettings(transactionId);
             return;
         }
         if (msgType.equals("request_user_profile")) {
@@ -664,25 +681,67 @@ class TakClient {
         }
     }
 
-    function applyPhoneSettings(payload as Dictionary) as Void {
+    function settingsTransactionId(payload as Dictionary) as String? {
+        if (!payload.hasKey("transactionId")) { return null; }
+        var value = payload.get("transactionId");
+        if (!(value instanceof String) || !isValidSettingsTransactionId(value as String)) {
+            return null;
+        }
+        return value as String;
+    }
+
+    function isValidSettingsTransactionId(value as String) as Boolean {
+        if (value.length() != 36) { return false; }
+        var hexadecimal = "0123456789abcdefABCDEF";
+        for (var index = 0; index < value.length(); index++) {
+            var character = value.substring(index, index + 1);
+            if (index == 8 || index == 13 || index == 18 || index == 23) {
+                if (!character.equals("-")) { return false; }
+                continue;
+            }
+            var found = false;
+            for (var digit = 0; digit < hexadecimal.length(); digit++) {
+                if (character.equals(hexadecimal.substring(digit, digit + 1))) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) { return false; }
+        }
+        return true;
+    }
+
+    function applyPhoneSettings(payload as Dictionary, transactionId as String?) as Void {
         if (phoneSettingsCallback == null) {
-            transmit("settings_set_ack", {"ok" => false, "error" => "Settings are not available"});
+            transmitSettingsAck(transactionId, false, "Settings are not available");
             return;
         }
         var error = phoneSettingsCallback.invoke(payload);
         if (error instanceof String) {
-            transmit("settings_set_ack", {"ok" => false, "error" => error});
+            transmitSettingsAck(transactionId, false, error as String);
+        } else if (error != null) {
+            transmitSettingsAck(transactionId, false, "Settings could not be applied");
         } else {
-            transmit("settings_set_ack", {"ok" => true});
+            transmitSettingsAck(transactionId, true, null);
+            sendWatchSettings(transactionId);
         }
-        // Always echo the applied values so the phone and watch stay in true sync.
-        sendWatchSettings();
     }
 
-    function sendWatchSettings() as Void {
+    function transmitSettingsAck(transactionId as String?, ok as Boolean, error as String?) as Void {
+        var payload = {"ok" => ok};
+        if (transactionId != null) { payload.put("transactionId", transactionId); }
+        if (error != null) { payload.put("error", error); }
+        transmit("settings_set_ack", payload);
+    }
+
+    function sendWatchSettings(transactionId as String?) as Void {
         if (watchSettingsCallback == null) { return; }
         var settings = watchSettingsCallback.invoke();
-        if (settings instanceof Dictionary) { transmit("watch_settings", settings as Dictionary); }
+        if (settings instanceof Dictionary) {
+            var snapshot = settings as Dictionary;
+            if (transactionId != null) { snapshot.put("transactionId", transactionId); }
+            transmit("watch_settings", snapshot);
+        }
     }
 
     function sendUserProfile(request as Dictionary) as Void {

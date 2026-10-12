@@ -55,8 +55,8 @@ no effect on Samsung/Wear OS users of the same plugin. Connect IQ apps cannot
 act as a BLE peripheral/GATT server, so the watch cannot use the plugin's
 existing direct-BLE transport; the phone-side plugin needs a second,
 Garmin-specific transport using the Connect IQ Mobile SDK to receive these
-messages. That transport is being implemented in the ATAK companion's
-`garmin-connect-iq-integration` branch (a separate repository).
+messages. The ATAK companion has a separate Garmin Connect IQ transport in its
+TAK Forge repository.
 
 Message envelopes are dictionaries of the form
 `{"msgType": <string>, "payload": <dictionary>}`. The Bloodhound and settings
@@ -68,6 +68,18 @@ translation layer. The Garmin transport differs only in that payloads are
 Connect IQ dictionaries rather than newline-delimited JSON, and the watch never
 parses raw CoT XML — the companion must normalize ATAK markers, alerts, and chat
 into the `entity`, `entities`, and `chat` envelopes.
+
+Garmin settings use a bounded UUID `transactionId` in the request or set payload.
+The watch copies it to `watch_settings` and `settings_set_ack`; the companion only
+confirms a settings write after both the positive acknowledgement and the matching,
+exact supported-profile snapshot arrive, in either order. A negative save or
+storage error returns a correlated failure and no success snapshot. Garmin
+settings contain only callsign, team, role, reporting interval, and the explicit
+phone-management flag; TAK server credentials and P12 data remain on the phone.
+Legacy untagged settings requests still receive untagged responses for older
+clients, but the current Android companion never treats an untagged response as
+confirmation. Watch/phone link loss, a new settings attempt, and a changed profile
+fence out delayed replies; confirmation expires after 15 seconds.
 
 The watch can also use the iPhone WearTAK Companion's Garmin route without an
 ATAK plugin or an Apple Watch. That route owns TAK connections and phone GPS;
@@ -193,10 +205,10 @@ group-aware Garmin adapter.
 mixed receive ordering, destination mapping, legacy input, malformed groups,
 deduplication, retention bounds, and capability-gated queue transmission.
 
-> Important: the watch-side relay and the ATAK companion's Garmin Connect IQ
-> integration are still under development. Using both builds is required for
-> Garmin messages to reach ATAK; a watch-side relay toggle alone does not
-> establish a TAK server connection.
+> Important: Garmin relay behavior requires both the watch application and the
+> ATAK companion's Garmin Connect IQ integration. A watch-side relay toggle alone
+> does not establish a TAK server connection. Hardware end-to-end settings
+> confirmation still needs acceptance testing on a paired watch.
 
 ## Current capabilities
 
