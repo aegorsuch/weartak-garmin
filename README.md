@@ -124,16 +124,18 @@ destinations are rejected with an on-watch error rather than guessed from the
 event ID. Conversation history is in-memory, bounded to 20 rooms and 20 total
 received messages; it is not a synchronized phone history or a group directory.
 
-The iPhone companion's normalized envelope retains `uid` as sender identity,
+For backward compatibility only, an older iPhone envelope retains `uid` as sender identity,
 `sender`/`text` as display content, and `messageId` as event identity, with
 `conversationUid`, `title`, and Boolean `isGroup`. The watch also accepts this
 shape; `messageId` distinguishes it from ATAK's event-ID `uid` convention.
-Without `receivedAt`, local arrival time orders the conversation.
+Without `receivedAt`, local arrival time orders the conversation. New companion
+emitters must use the canonical fields above, including `conversationTitle`;
+`title` is accepted only as an ingress compatibility alias.
 
 Outbound `chat` payloads contain `roomUid`, `roomTitle`, `isGroup`, `msg`,
 `text`, and `cs`, plus the existing queue-assigned `messageId` and `createdAt`.
-They also contain equivalent `conversationUid` and `title` aliases for the
-iPhone companion; ATAK continues to use `roomUid`/`roomTitle`.
+All companions must consume these canonical outbound room fields; conversation
+fields are inbound metadata, not alternate outbound routing.
 Direct payloads also contain `recipientUid` and `replyTo`, both equal to the
 individual UID. Group payloads omit these direct aliases. The companion resolves
 the group UID to its authoritative membership and rejects unavailable or
@@ -143,8 +145,10 @@ saved rooms or direct contacts.
 
 Non-broadcast group sending requires the current-session `relay_status` to
 advertise `chatGroups: true` alongside the existing Boolean `reliableDelivery`.
-Companions must advertise this only after both group normalization and explicit
-group send routing are supported. Older iPhone relays ignore `roomUid`, so
+Companions must advertise this only after both group receive normalization and
+explicit group reply routing are proven. ATAK named groups must resolve to real
+`GroupContact` destinations, not merely room-labelled server XML. Unavailable
+groups must never fall back to broadcast. Older iPhone relays ignore `roomUid`, so
 sending them a group without this gate could broadcast unintentionally.
 Unsupported group sends show an error; already queued groups are retained and
 skipped when capability is absent, while other eligible events can still send.

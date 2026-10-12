@@ -147,7 +147,6 @@ class ChatConversations {
         var group = room.get("isGroup") == true;
         if (uid.equals(ALL) && !group) { return null; }
         var result = {"roomUid" => uid, "roomTitle" => title, "isGroup" => group,
-            "conversationUid" => uid, "title" => title,
             "msg" => text, "text" => text, "cs" => callsign.length() == 0 ? "Garmin" : callsign};
         if (!group) {
             result.put("recipientUid", uid);

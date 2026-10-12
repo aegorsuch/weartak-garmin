@@ -106,15 +106,14 @@ function chatIPhoneEnvelopeCompatibility(logger) as Boolean {
     var room = chats.find("alice", false) as Dictionary;
     Test.assertEqual((room.get("messages") as Array).size(), 1);
     var reply = chats.payload(room, "Rgr", "Watch") as Dictionary;
-    Test.assertEqual(reply.get("conversationUid"), "alice");
-    Test.assertEqual(reply.get("title"), "Alice");
     Test.assertEqual(reply.get("roomUid"), "alice");
+    Test.assertEqual(reply.get("roomTitle"), "Alice");
+    Test.assert(!reply.hasKey("conversationUid"));
+    Test.assert(!reply.hasKey("title"));
     Test.assertEqual(reply.get("recipientUid"), "alice");
     Test.assert(chats.receive({"uid" => "bob", "sender" => "Bob", "text" => "Group",
         "messageId" => "group-event", "conversationUid" => "team", "title" => "Team", "isGroup" => true}));
     var group = chats.payload(chats.find("team", true) as Dictionary, "Neg", "Watch") as Dictionary;
-    Test.assertEqual(group.get("conversationUid"), "team");
-    Test.assertEqual(group.get("title"), "Team");
     Test.assertEqual(group.get("roomUid"), "team");
     Test.assertEqual(group.get("roomTitle"), "Team");
     Test.assert(group.get("isGroup") == true);
@@ -124,7 +123,7 @@ function chatIPhoneEnvelopeCompatibility(logger) as Boolean {
         "messageId" => "broadcast-event", "conversationUid" => "All Chat Rooms",
         "title" => "All Chat Rooms", "isGroup" => true}));
     var broadcast = chats.payload(chats.find("All Chat Rooms", true) as Dictionary, "All", "Watch") as Dictionary;
-    Test.assertEqual(broadcast.get("conversationUid"), "All Chat Rooms");
+    Test.assertEqual(broadcast.get("roomUid"), "All Chat Rooms");
     Test.assert(broadcast.get("isGroup") == true);
     return true;
 }
