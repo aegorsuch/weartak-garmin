@@ -123,6 +123,8 @@ Direct conversations use `senderUid` as their destination; groups use
 destinations are rejected with an on-watch error rather than guessed from the
 event ID. Conversation history is in-memory, bounded to 20 rooms and 20 total
 received messages; it is not a synchronized phone history or a group directory.
+Malformed or empty canonical `senderUid` values are rejected, even if a legacy
+`uid` or `messageId` is present; event IDs must never become reply destinations.
 
 For backward compatibility only, an older iPhone envelope retains `uid` as sender identity,
 `sender`/`text` as display content, and `messageId` as event identity, with
@@ -150,8 +152,12 @@ explicit group reply routing are proven. ATAK named groups must resolve to real
 `GroupContact` destinations, not merely room-labelled server XML. Unavailable
 groups must never fall back to broadcast. Older iPhone relays ignore `roomUid`, so
 sending them a group without this gate could broadcast unintentionally.
-Unsupported group sends show an error; already queued groups are retained and
-skipped when capability is absent, while other eligible events can still send.
+Unsupported group sends show an error before enqueue. Already queued groups are
+skipped when capability is absent; before admitting any new eligible event,
+unsupported queued groups are removed with an explicit notification so they
+cannot fill the outbox and block emergency alerts. In-flight events are protected.
+Removal and admission are persisted together; storage/admission failure restores
+the previous queue. Other pending events retain their existing relative order.
 Reconnect, relay stop, or relay failure resets the capability. This does not
 claim parity with companions that have not implemented this contract.
 

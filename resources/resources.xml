@@ -29,6 +29,7 @@
     <string id="ChatNoUsers">No map users available</string>
     <string id="ChatInvalidDestination">Chat destination unavailable</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
+    <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
     <string id="ChatUnknownSender">Unknown</string>
     <string id="IncomingPointsTitle">Compass</string>
     <string id="IncomingPointsEmpty">No incoming points</string>

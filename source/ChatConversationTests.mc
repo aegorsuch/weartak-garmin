@@ -129,6 +129,97 @@ function chatIPhoneEnvelopeCompatibility(logger) as Boolean {
 }
 
 (:test)
+function chatInvalidCanonicalSenderNeverUsesEventId(logger) as Boolean {
+    var chats = new ChatConversations();
+    var invalid = ["", null, 42];
+    for (var i = 0; i < invalid.size(); i++) {
+        Test.assert(!chats.receive({"uid" => "event-id", "senderUid" => invalid[i],
+            "senderCallsign" => "Sender", "msg" => "Private", "messageId" => "event-id",
+            "conversationUid" => "sender", "conversationTitle" => "Sender", "isGroup" => false}));
+        Test.assert(!chats.receive({"uid" => "event-id", "senderUid" => invalid[i],
+            "senderCallsign" => "Sender", "msg" => "Private"}));
+    }
+    Test.assert(!chats.receive({"uid" => "event-id", "senderCallsign" => "Sender",
+        "msg" => "Private", "messageId" => "event-id", "conversationUid" => "sender",
+        "conversationTitle" => "Sender", "isGroup" => false}));
+    Test.assert(!chats.receive({"uid" => "event-id", "msg" => "Private",
+        "messageId" => "event-id", "conversationUid" => "sender",
+        "conversationTitle" => "Sender", "isGroup" => false}));
+    Test.assertEqual(chats.rooms.size(), 0);
+    Test.assert(chats.receive({"uid" => "legacy-sender", "sender" => "Legacy", "text" => "Private"}));
+    Test.assert(chats.find("legacy-sender", false) != null);
+    return true;
+}
+
+(:test)
+function chatSkippedGroupsCannotBlockEmergencyAdmission(logger) as Boolean {
+    var relay = new TestReliableRelay();
+    relay.pointReplies.replies = [];
+    var saved = [] as Array<Dictionary>;
+    for (var i = 0; i < 20; i++) {
+        saved.add({"messageId" => "group-" + i.toString(), "createdAt" => relay.epoch,
+            "msgType" => "chat", "payload" => {"roomUid" => "team", "roomTitle" => "Team",
+                "isGroup" => true, "msg" => "Group"}, "key" => null});
+    }
+    relay.pointReplies.restore(saved, relay.epoch);
+    Test.assertEqual(relay.pointReplies.replies.size(), 20);
+    var before = relay.envelopes.size();
+    Test.assert(!relay.queueRelay("chat", {"roomUid" => "team", "isGroup" => true, "msg" => "Blocked"}, null));
+    Test.assertEqual(relay.pointReplies.replies.size(), 20);
+    Test.assertEqual(relay.envelopes.size(), before);
+    Test.assert(relay.queueRelay("emergency", {"uid" => "garmin-sos", "state" => "ALERT"}, "manual-alert"));
+    Test.assertEqual(relay.pointReplies.replies.size(), 1);
+    Test.assertEqual(relay.pointReplies.replies[0].get("msgType"), "emergency");
+    Test.assertEqual(relay.envelopes.size(), before + 1);
+    Test.assertEqual(relay.envelopes[before].get("msgType"), "emergency");
+    Test.assertEqual((relay.stored.get("pointReplies") as Array).size(), 1);
+    return true;
+}
+
+(:test)
+function chatGroupFilteringPreservesOrderAndStorageRollback(logger) as Boolean {
+    var relay = new TestReliableRelay();
+    relay.pointReplies.replies = [];
+    relay.addEvent("direct-first", null);
+    relay.pointReplies.add({"messageId" => "group", "createdAt" => relay.epoch,
+        "msgType" => "chat", "payload" => {"roomUid" => "team", "isGroup" => true, "msg" => "Group"}}, relay.epoch);
+    relay.addEvent("direct-second", null);
+    relay.status = :idle;
+    relay.storageAvailable = false;
+    Test.assert(!relay.queueRelay("emergency", {"state" => "ALERT"}, "manual-alert"));
+    Test.assertEqual(relay.pointReplies.replies.size(), 3);
+    Test.assertEqual(relay.pointReplies.replies[1].get("messageId"), "group");
+    relay.storageAvailable = true;
+    Test.assert(relay.queueRelay("emergency", {"state" => "ALERT"}, "manual-alert"));
+    Test.assertEqual(relay.pointReplies.replies.size(), 3);
+    Test.assertEqual(relay.pointReplies.replies[0].get("messageId"), "direct-first");
+    Test.assertEqual(relay.pointReplies.replies[1].get("messageId"), "direct-second");
+    Test.assertEqual(relay.pointReplies.replies[2].get("msgType"), "emergency");
+    Test.assertEqual(relay.envelopes.size(), 0);
+    return true;
+}
+
+(:test)
+function chatGroupFilteringProtectsInFlightAndFullQueue(logger) as Boolean {
+    var relay = new TestReliableRelay();
+    relay.pointReplies.replies = [];
+    relay.pointReplies.add({"messageId" => "group-in-flight", "createdAt" => relay.epoch,
+        "msgType" => "chat", "payload" => {"roomUid" => "team", "isGroup" => true, "msg" => "Group"}}, relay.epoch);
+    relay.pointReplyInFlight = "group-in-flight";
+    Test.assertEqual(relay.filterUnsupportedQueuedChats(), 0);
+    Test.assertEqual(relay.pointReplies.replies.size(), 1);
+    relay.pointReplyInFlight = null;
+    Test.assertEqual(relay.filterUnsupportedQueuedChats(), 1);
+    relay.status = :idle;
+    for (var i = 0; i < 20; i++) { relay.addEvent("direct-" + i.toString(), null); }
+    Test.assert(!relay.queueRelay("emergency", {"state" => "ALERT"}, "manual-alert"));
+    Test.assertEqual(relay.pointReplies.replies.size(), 20);
+    Test.assertEqual(relay.pointReplies.replies[0].get("messageId"), "direct-0");
+    Test.assertEqual(relay.pointReplies.replies[19].get("messageId"), "direct-19");
+    return true;
+}
+
+(:test)
 function chatDuplicateAndLimits(logger) as Boolean {
     var chats = new ChatConversations();
     var message = {"uid" => "event", "senderUid" => "sender",

@@ -57,8 +57,15 @@ class ChatConversations {
             return false;
         }
         var group = message.get("isGroup") == true;
+        var canonicalSender = message.hasKey("senderUid") || message.hasKey("senderCallsign");
+        var legacySender = !canonicalSender && message.get("sender") instanceof String
+            && message.get("text") instanceof String;
+        if (senderUid.length() == 0 && !legacySender) {
+            System.println("Chat rejected: invalid canonical sender");
+            return false;
+        }
         // iPhone envelopes retain uid as sender and identify the event with messageId.
-        if (senderUid.length() == 0 && (uid.length() == 0 && !group
+        if (legacySender && (uid.length() == 0 && !group
                 || stringValue(message, "messageId").length() > 0)) {
             senderUid = stringValue(message, "uid");
         }

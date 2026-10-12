@@ -384,15 +384,35 @@ class TakClient {
         payload.put("messageId", id);
         payload.put("createdAt", now);
         var previous = pointReplies.replies.slice(0, pointReplies.replies.size());
+        var discarded = filterUnsupportedQueuedChats();
         if (!pointReplies.add({"messageId" => id, "createdAt" => now,
                 "msgType" => msgType, "payload" => payload, "key" => key}, now)) {
+            pointReplies.replies = previous;
             WatchUi.showToast(WatchUi.loadResource(Rez.Strings.PointReplyQueueFull), null);
             return false;
         }
         if (!savePointReplies()) { pointReplies.replies = previous; return false; }
-        WatchUi.showToast(WatchUi.loadResource(msgType.equals("marker") ? Rez.Strings.MarkerStored : Rez.Strings.PointReplyQueued), null);
+        if (discarded > 0) {
+            System.println("TAK relay discarded unsupported queued group chats: " + discarded.toString());
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.ChatGroupsDiscarded), null);
+        } else {
+            WatchUi.showToast(WatchUi.loadResource(msgType.equals("marker") ? Rez.Strings.MarkerStored : Rez.Strings.PointReplyQueued), null);
+        }
         flushPointReplies();
         return true;
+    }
+
+    function filterUnsupportedQueuedChats() as Number {
+        var removed = 0;
+        for (var i = pointReplies.replies.size() - 1; i >= 0; i--) {
+            var entry = pointReplies.replies[i];
+            if (pointReplyInFlight != null && pointReplyInFlight.equals(entry.get("messageId"))) { continue; }
+            if (!canRouteChat(entry.get("msgType") as String, entry.get("payload") as Dictionary)) {
+                pointReplies.replies.remove(entry);
+                removed++;
+            }
+        }
+        return removed;
     }
 
     function savePointReplies() as Boolean {

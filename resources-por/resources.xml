@@ -140,4 +140,5 @@
     <string id="ChatSelectUser">Select User for Chat</string>
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
+    <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
 </resources>
