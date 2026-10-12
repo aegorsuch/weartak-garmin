@@ -63,8 +63,8 @@ Message envelopes are dictionaries of the form
 message families (`bloodhound_control`, `bloodhound_control_result`,
 `set_settings`, `settings_set_ack`, `request_settings`, `watch_settings`) use the
 same type names and payload field names as the WearOS WearTAK app's BLE
-protocol, so the companion can route one payload to either watch without a
-translation layer. The Garmin transport differs only in that payloads are
+protocol; a narrow companion adapter normalizes the envelope and adds
+session/correlation metadata for the Connect IQ link. Garmin payloads are
 Connect IQ dictionaries rather than newline-delimited JSON, and the watch never
 parses raw CoT XML — the companion must normalize ATAK markers, alerts, and chat
 into the `entity`, `entities`, and `chat` envelopes.
@@ -315,13 +315,16 @@ features currently available:
 - Bloodhound tracking is synchronized with the paired phone. Starting, moving, or
 	stopping a target on the watch sends a `bloodhound_control` message, and ATAK
 	can drive the watch with the same message; each command is acknowledged with
-	`bloodhound_control_result`. Sessions are identified by a UUID, unacknowledged
-	commands time out after 10 seconds, and when both sides start at once the lower
-	session id wins so exactly one target survives. Dropping the relay retires the
-	session and leaves watch tracking untouched. Phone-initiated commands only
-	apply to points the watch already holds; otherwise the watch replies with an
-	error instead of inventing a marker. This is the same contract the WearOS
-	WearTAK app uses, so one ATAK plugin drives both watches.
+	`bloodhound_control_result`. Garmin negotiates `bloodhoundVersion: 1`; commands
+	and results also carry the current `relaySession`, UUID `command_id`, UUID
+	`session_id`, target UID, and action for exact correlation. Unacknowledged
+	commands time out after 10 seconds, and when both sides start at once the
+	lower session ID wins so exactly one target survives. Dropping the relay
+	retires the session and leaves watch tracking untouched. Phone-initiated
+	commands only apply to points the watch already holds; otherwise the watch
+	replies with an error instead of inventing a marker. This is the same native
+	ATAK tracking contract as the WearOS WearTAK app, so one ATAK plugin drives
+	both watches.
 - Open **Bloodhound** from the main menu to browse incoming map points.
 	Active remote alerts appear first with an **(Alert)** prefix, followed by
 	**Remove All** and received points. Alerts disappear when their cancellation

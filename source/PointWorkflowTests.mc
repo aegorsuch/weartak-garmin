@@ -810,6 +810,7 @@ class BloodhoundSyncHarness {
 
     function initialize() {
         sync = new BloodhoundSync();
+        sync.relaySession = "fixture-link-1";
         sync.activeTargetCallback = method(:activeTarget);
         sync.startTrackingCallback = method(:startTracking);
         sync.stopTrackingCallback = method(:stopTracking);
@@ -842,7 +843,7 @@ class BloodhoundSyncHarness {
     function reportError(message as String) as Void { errors.add(message); }
 
     function nextSessionId() as String {
-        if (nextIds.size() == 0) { return "generated"; }
+        if (nextIds.size() == 0) { return sync.randomHex(8) + "-2222-4222-8222-222222222222"; }
         var id = nextIds[0] as String;
         nextIds.remove(id);
         return id;
@@ -859,32 +860,52 @@ function bloodhoundTestTarget(uid as String, latitude as Double) as Dictionary {
     return {"uid" => uid, "callsign" => uid, "lat" => latitude, "lon" => 20.0d, "hae" => 0.0d};
 }
 
+function bloodhoundFixture(action as String) as Dictionary {
+    return {"relaySession" => "fixture-link-1", "bloodhoundVersion" => 1,
+        "command_id" => "22222222-2222-4222-8222-222222222222",
+        "session_id" => "11111111-1111-4111-8111-111111111111", "action" => action,
+        "target_uid" => "remote-1", "target_callsign" => "Alpha",
+        "lat" => 38.5d, "lon" => -77.2d, "hae" => 100};
+}
+
+function bloodhoundAck(command as Dictionary, ok as Boolean) as Dictionary {
+    var result = {};
+    var keys = ["relaySession", "bloodhoundVersion", "command_id", "session_id", "action", "target_uid"];
+    for (var index = 0; index < keys.size(); index++) { result.put(keys[index], command.get(keys[index])); }
+    result.put("ok", ok);
+    if (!ok) { result.put("error", "Rejected"); }
+    return result;
+}
+
 (:test)
 function bloodhoundLocalTargetSync(logger) as Boolean {
     var harness = new BloodhoundSyncHarness();
-    harness.nextIds = ["session-1"];
+    harness.nextIds = ["11111111-1111-4111-8111-111111111111"];
     harness.sync.connectionChanged(true);
     harness.target = bloodhoundTestTarget("uid-1", 10.0d);
     harness.sync.localTargetChanged();
     Test.assertEqual(harness.lastType(), "bloodhound_control");
     Test.assertEqual(harness.lastPayload().get("action"), "start");
-    Test.assertEqual(harness.lastPayload().get("session_id"), "session-1");
+    Test.assertEqual(harness.lastPayload().get("session_id"), "11111111-1111-4111-8111-111111111111");
     Test.assertEqual(harness.lastPayload().get("target_uid"), "uid-1");
     Test.assertEqual(harness.lastPayload().get("lat"), 10.0d);
 
-    harness.sync.receiveResult({"session_id" => "session-1", "action" => "start", "ok" => true});
+    harness.sync.receiveResult(bloodhoundAck(harness.lastPayload(), true));
     Test.assertEqual(harness.sync.pending.size(), 0);
 
     // Moving the same target updates rather than restarting the session.
     harness.target = bloodhoundTestTarget("uid-1", 11.0d);
     harness.sync.localTargetChanged();
     Test.assertEqual(harness.lastPayload().get("action"), "update");
-    Test.assertEqual(harness.lastPayload().get("session_id"), "session-1");
+    Test.assertEqual(harness.lastPayload().get("session_id"), "11111111-1111-4111-8111-111111111111");
+    Test.assertEqual(harness.sync.pending.size(), 1);
+    harness.sync.receiveResult(bloodhoundAck(harness.lastPayload(), true));
+    Test.assertEqual(harness.sync.pending.size(), 0);
 
     harness.target = null;
     harness.sync.localTargetChanged();
     Test.assertEqual(harness.lastPayload().get("action"), "stop");
-    Test.assertEqual(harness.lastPayload().get("session_id"), "session-1");
+    Test.assertEqual(harness.lastPayload().get("session_id"), "11111111-1111-4111-8111-111111111111");
     Test.assert(harness.lastPayload().get("lat") == null);
     Test.assert(harness.sync.sessionId == null);
     Test.assertEqual(harness.errors.size(), 0);
@@ -895,46 +916,56 @@ function bloodhoundLocalTargetSync(logger) as Boolean {
 function bloodhoundPhoneControl(logger) as Boolean {
     var harness = new BloodhoundSyncHarness();
     harness.sync.connectionChanged(true);
-    harness.sync.receiveControl({"session_id" => "phone-1", "action" => "start", "target_uid" => "uid-2",
-        "target_callsign" => "Bravo", "lat" => 12.0d, "lon" => 21.0d, "hae" => 0.0d});
+    var command = bloodhoundFixture("start");
+    harness.sync.receiveControl(command);
     Test.assertEqual(harness.lastType(), "bloodhound_control_result");
     Test.assertEqual(harness.lastPayload().get("ok"), true);
-    Test.assertEqual(harness.lastPayload().get("session_id"), "phone-1");
-    Test.assertEqual(harness.target.get("uid"), "uid-2");
-    Test.assertEqual(harness.target.get("callsign"), "Bravo");
+    Test.assertEqual(harness.lastPayload().get("session_id"), command.get("session_id"));
+    Test.assertEqual(harness.lastPayload().get("command_id"), command.get("command_id"));
+    Test.assertEqual(harness.lastPayload().get("relaySession"), "fixture-link-1");
+    Test.assertEqual(harness.lastPayload().get("bloodhoundVersion"), 1);
+    Test.assertEqual(harness.lastPayload().get("target_uid"), "remote-1");
+    Test.assertEqual(harness.target.get("callsign"), "Alpha");
 
-    harness.sync.receiveControl({"session_id" => "phone-1", "action" => "stop", "target_uid" => "uid-2"});
+    harness.sync.receiveControl(bloodhoundFixture("update"));
+    Test.assertEqual(harness.lastPayload().get("ok"), true);
+    harness.updateResult = false;
+    harness.sync.receiveControl(bloodhoundFixture("update"));
+    Test.assertEqual(harness.lastPayload().get("ok"), false);
+    harness.sync.receiveControl(bloodhoundFixture("stop"));
     Test.assertEqual(harness.lastPayload().get("ok"), true);
     Test.assert(harness.target == null);
 
-    // A duplicate stop for a retired session is acknowledged rather than rejected.
-    harness.sync.receiveControl({"session_id" => "phone-1", "action" => "stop", "target_uid" => "uid-2"});
-    Test.assertEqual(harness.lastPayload().get("ok"), true);
+    harness.sync.receiveControl(bloodhoundFixture("update"));
+    Test.assertEqual(harness.lastPayload().get("ok"), false);
 
-    harness.sync.receiveControl({"session_id" => "phone-2", "action" => "start", "target_uid" => "uid-3"});
+    command = bloodhoundFixture("start");
+    command.put("session_id", "33333333-3333-4333-8333-333333333333");
+    command.put("lat", "38.5");
+    harness.sync.receiveControl(command);
     Test.assertEqual(harness.lastPayload().get("ok"), false);
     Test.assertEqual(harness.lastPayload().get("error"), "Tracking target has no valid location");
 
-    harness.sync.receiveControl({"session_id" => "phone-3", "action" => "launch", "target_uid" => "uid-3"});
-    Test.assertEqual(harness.lastPayload().get("error"), "Invalid tracking command");
+    var before = harness.sent.size();
+    harness.sync.receiveControl(bloodhoundFixture("launch"));
+    Test.assertEqual(harness.sent.size(), before);
     return true;
 }
 
 (:test)
 function bloodhoundConflictAndTimeout(logger) as Boolean {
     var harness = new BloodhoundSyncHarness();
-    harness.nextIds = ["a-session"];
+    harness.nextIds = ["00000000-1111-4111-8111-111111111111"];
     harness.sync.connectionChanged(true);
     harness.target = bloodhoundTestTarget("uid-1", 10.0d);
     harness.sync.localTargetChanged();
-    Test.assertEqual(harness.sync.sessionId, "a-session");
+    Test.assertEqual(harness.sync.sessionId, "00000000-1111-4111-8111-111111111111");
 
     // The lower session id wins when both sides start at once.
-    harness.sync.receiveControl({"session_id" => "b-session", "action" => "start", "target_uid" => "uid-9",
-        "lat" => 1.0d, "lon" => 2.0d, "hae" => 0.0d});
+    harness.sync.receiveControl(bloodhoundFixture("start"));
     Test.assertEqual(harness.lastPayload().get("ok"), false);
     Test.assertEqual(harness.lastPayload().get("error"), "Superseded by simultaneous tracking start");
-    Test.assertEqual(harness.sync.sessionId, "a-session");
+    Test.assertEqual(harness.sync.sessionId, "00000000-1111-4111-8111-111111111111");
 
     harness.clockValue += BLOODHOUND_ACK_TIMEOUT_SECONDS + 1;
     harness.sync.checkTimeouts();

@@ -49,6 +49,27 @@ class PointReplyListener extends Communications.ConnectionListener {
 }
 
 // Relays watch input to ATAK; server connectivity, credentials, identity, and PLI stay on the phone.
+class BloodhoundRelayListener extends Communications.ConnectionListener {
+    var client;
+    var generation as Number;
+    var payload as Dictionary;
+
+    function initialize(relayClient, command as Dictionary) {
+        ConnectionListener.initialize();
+        client = relayClient;
+        generation = client.relayGeneration;
+        payload = command;
+    }
+
+    function onComplete() as Void {}
+
+    function onError() as Void {
+        if (generation == client.relayGeneration) {
+            client.bloodhoundSync.transportError(payload);
+        }
+    }
+}
+
 class TakClient {
     var status as Symbol = :idle;
     var lastResponseCode as Number?  = null;
@@ -184,16 +205,18 @@ class TakClient {
             return;
         }
         status = :connecting;
+        bloodhoundSync.connectionChanged(false);
         chatGroupsSupported = false;
         relayGeneration++;
         pointReplyAttempt++;
         pointReplyInFlight = null;
         relaySession = relayEpochNow().toString() + "-" + relayNow().toString() + "-" + relayGeneration.toString();
+        bloodhoundSync.relaySession = relaySession;
         relayNegotiating = true;
         relayNegotiationAt = relayNow();
         pointReplyRetryAt = 0;
         transmit("relay_hello", {"watchLabel" => "Garmin watch", "protocolVersion" => 1,
-            "relaySession" => relaySession});
+            "relaySession" => relaySession, "bloodhoundVersion" => 1});
         notifyStatusChanged();
     }
 
@@ -219,7 +242,6 @@ class TakClient {
         }
         status = :connected;
         transmit("entity_sync_request", {"limit" => MAP_RETAINED_LIMIT, "protocolVersion" => 1});
-        bloodhoundSync.connectionChanged(true);
         flushPointReplies();
         notifyStatusChanged();
     }
@@ -242,8 +264,13 @@ class TakClient {
     }
 
     function sendBloodhoundMessage(msgType as String, payload as Dictionary) as Boolean {
-        if (!isConnected()) { return false; }
-        transmit(msgType, payload);
+        if (!isConnected() || !bloodhoundSync.connected) { return false; }
+        try {
+            transmitEnvelope({"msgType" => msgType, "payload" => payload},
+                new BloodhoundRelayListener(self, payload));
+        } catch (error) {
+            return false;
+        }
         return true;
     }
 
@@ -792,6 +819,9 @@ class TakClient {
                 !(payload.get("reliableDelivery") instanceof Boolean)) { return; }
         relayResultRequired = payload.get("reliableDelivery") == true;
         chatGroupsSupported = payload.get("chatGroups") == true;
+        bloodhoundSync.relaySession = relaySession;
+        bloodhoundSync.connectionChanged(payload.get("bloodhoundVersion") instanceof Number
+            && payload.get("bloodhoundVersion") == 1 && payload.get("bloodhoundControl") == true);
         relayNegotiating = false;
         flushPointReplies();
     }

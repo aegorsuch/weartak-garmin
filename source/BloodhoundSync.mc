@@ -5,6 +5,7 @@ import Toybox.Time;
 
 const BLOODHOUND_ACK_TIMEOUT_SECONDS = 10;
 const BLOODHOUND_RETIRED_LIMIT = 64;
+const BLOODHOUND_PENDING_LIMIT = 32;
 
 // Mirrors the WearOS companion Bloodhound contract so one ATAK plugin drives both watches.
 // Remote changes never echo a command back to the phone.
@@ -19,6 +20,7 @@ class BloodhoundSync {
     var clockCallback as Method? = null;
 
     var connected as Boolean = false;
+    var relaySession as String = "";
     var observedTarget as Dictionary? = null;
     var sessionId as String? = null;
     var sessionTarget as Dictionary? = null;
@@ -51,9 +53,7 @@ class BloodhoundSync {
             if (target != null && sessionId != null && isValidTarget(target as Dictionary)
                     && currentUid.equals(uidOf(sessionTarget))) {
                 sessionTarget = target;
-                if (!send("bloodhound_control", targetPayload(sessionId as String, "update", target as Dictionary))) {
-                    reportError("Could not update phone Bloodhound target");
-                }
+                sendCommand(sessionId as String, target as Dictionary, "update");
             }
             return;
         }
@@ -80,21 +80,24 @@ class BloodhoundSync {
             reportError("Bloodhound command received without a ready phone connection");
             return;
         }
+        if (!validIdentity(payload)) {
+            reportError("Invalid phone Bloodhound command");
+            return;
+        }
         var id = stringValue(payload, "session_id");
         var action = stringValue(payload, "action");
         var uid = stringValue(payload, "target_uid");
         if (id.length() == 0 || uid.length() == 0
                 || !(action.equals("start") || action.equals("stop") || action.equals("update"))) {
             reportError("Invalid phone Bloodhound command");
-            if (id.length() > 0) { result(id, action, false, "Invalid tracking command"); }
             return;
         }
         if (action.equals("stop")) {
-            receiveStop(id, action, uid);
+            receiveStop(payload, id, action, uid);
             return;
         }
         if (isRetired(id)) {
-            if (!action.equals("update")) { result(id, action, false, "Tracking session has ended"); }
+            result(payload, false, "Tracking session has ended");
             return;
         }
         var callsign = stringValue(payload, "target_callsign");
@@ -105,22 +108,23 @@ class BloodhoundSync {
             "lon" => numberValue(payload, "lon"),
             "hae" => numberValue(payload, "hae")
         };
-        if (!isValidTarget(target)) {
-            if (!action.equals("update")) { result(id, action, false, "Tracking target has no valid location"); }
+        if (!isValidTarget(target) || (payload.get("target_callsign") != null
+                && !validText(payload.get("target_callsign"), true))
+                || (payload.get("hae") != null && !finiteNumber(payload.get("hae")))) {
+            result(payload, false, "Tracking target has no valid location");
             reportError("Phone Bloodhound target has no valid location");
             return;
         }
         if (action.equals("update")) {
-            receiveUpdate(id, uid, target);
+            receiveUpdate(payload, id, uid, target);
             return;
         }
-        receiveStart(id, action, uid, target);
+        receiveStart(payload, id, action, uid, target);
     }
 
-    function receiveStop(id as String, action as String, uid as String) as Void {
+    function receiveStop(payload as Dictionary, id as String, action as String, uid as String) as Void {
         if (sessionId == null || !(sessionId as String).equals(id) || !uid.equals(uidOf(sessionTarget))) {
-            var known = isRetired(id);
-            result(id, action, known, known ? null : "Tracking session is not active");
+            result(payload, false, "Tracking session is not active");
             return;
         }
         // A delayed stop must not cancel a local replacement that has not been observed yet.
@@ -128,11 +132,11 @@ class BloodhoundSync {
             retire(id);
             sessionId = null;
             sessionTarget = null;
-            result(id, action, false, "Tracking target has changed");
+            result(payload, false, "Tracking target has changed");
             return;
         }
         if (!stopTracking(uid)) {
-            result(id, action, false, "Could not stop tracking");
+            result(payload, false, "Could not stop tracking");
             reportError("Could not stop phone Bloodhound tracking");
             return;
         }
@@ -140,35 +144,40 @@ class BloodhoundSync {
         sessionId = null;
         sessionTarget = null;
         observedTarget = activeTarget();
-        result(id, action, true, null);
+        result(payload, true, null);
     }
 
-    function receiveUpdate(id as String, uid as String, target as Dictionary) as Void {
+    function receiveUpdate(payload as Dictionary, id as String, uid as String, target as Dictionary) as Void {
         if (sessionId == null || !(sessionId as String).equals(id)
-                || !uid.equals(uidOf(sessionTarget)) || !uid.equals(uidOf(activeTarget()))) { return; }
+                || !uid.equals(uidOf(sessionTarget)) || !uid.equals(uidOf(activeTarget()))) {
+            result(payload, false, "Tracking session target mismatch");
+            return;
+        }
         if (!updateTracking(target)) {
             reportError("Could not update phone Bloodhound target on watch");
+            result(payload, false, "Could not update tracking target");
             return;
         }
         observedTarget = activeTarget();
         sessionTarget = observedTarget == null ? target : observedTarget;
+        result(payload, true, null);
     }
 
-    function receiveStart(id as String, action as String, uid as String, target as Dictionary) as Void {
+    function receiveStart(payload as Dictionary, id as String, action as String, uid as String, target as Dictionary) as Void {
         if (sessionId != null && (sessionId as String).equals(id)) {
             var matches = uid.equals(uidOf(sessionTarget)) && uid.equals(uidOf(activeTarget()));
-            result(id, action, matches, matches ? null : "Tracking session target mismatch");
+            result(payload, matches, matches ? null : "Tracking session target mismatch");
             return;
         }
         // Both sides started at once; the lower session id yields so exactly one target survives.
         if (sessionId != null && hasPendingStart(sessionId as String)
                 && compareStrings(sessionId as String, id) < 0) {
             retire(id);
-            result(id, action, false, "Superseded by simultaneous tracking start");
+            result(payload, false, "Superseded by simultaneous tracking start");
             return;
         }
         if (!startTracking(target)) {
-            result(id, action, false, "Could not activate tracking target");
+            result(payload, false, "Could not activate tracking target");
             reportError("Could not start phone Bloodhound target on watch");
             return;
         }
@@ -176,16 +185,17 @@ class BloodhoundSync {
         sessionId = id;
         sessionTarget = target;
         observedTarget = activeTarget();
-        result(id, action, true, null);
+        result(payload, true, null);
     }
 
     function receiveResult(payload as Dictionary) as Void {
+        if (!connected || !validIdentity(payload)) { return; }
         var id = stringValue(payload, "session_id");
         var action = stringValue(payload, "action");
-        var index = pendingIndex(id, action);
+        var index = exactPendingIndex(payload);
         if (index < 0) { return; }
         var ok = payload.get("ok");
-        if (!(ok instanceof Boolean)) {
+        if (!(ok instanceof Boolean) || (ok == false && !validText(payload.get("error"), false))) {
             reportError("Invalid phone Bloodhound acknowledgement");
             return;
         }
@@ -222,17 +232,31 @@ class BloodhoundSync {
     }
 
     function sendCommand(id as String, target as Dictionary, action as String) as Boolean {
-        if (!send("bloodhound_control", targetPayload(id, action, target))) {
+        if (pending.size() >= BLOODHOUND_PENDING_LIMIT) {
+            reportError("Too many unconfirmed Bloodhound commands");
+            return false;
+        }
+        var payload = targetPayload(id, action, target);
+        if (!validIdentity(payload)) {
+            reportError("Invalid local Bloodhound command");
+            return false;
+        }
+        var request = {"id" => id, "action" => action, "payload" => payload,
+            "deadline" => clock() + BLOODHOUND_ACK_TIMEOUT_SECONDS};
+        pending.add(request);
+        if (!send("bloodhound_control", payload)) {
+            pending.remove(request);
             reportError("Could not send phone Bloodhound " + action);
             return false;
         }
-        pending.add({"id" => id, "action" => action,
-            "deadline" => clock() + BLOODHOUND_ACK_TIMEOUT_SECONDS});
         return true;
     }
 
-    function result(id as String, action as String, ok as Boolean, error as String?) as Void {
-        var payload = {"session_id" => id, "action" => action, "ok" => ok};
+    function result(command as Dictionary, ok as Boolean, error as String?) as Void {
+        var action = command.get("action") as String;
+        var payload = {"relaySession" => relaySession, "bloodhoundVersion" => 1,
+            "command_id" => command.get("command_id"), "session_id" => command.get("session_id"),
+            "target_uid" => command.get("target_uid"), "action" => action, "ok" => ok};
         if (error != null) { payload.put("error", error); }
         if (!send("bloodhound_control_result", payload)) {
             reportError("Could not acknowledge phone Bloodhound " + action);
@@ -240,7 +264,8 @@ class BloodhoundSync {
     }
 
     function targetPayload(id as String, action as String, target as Dictionary) as Dictionary {
-        var payload = {"action" => action, "session_id" => id, "target_uid" => target.get("uid")};
+        var payload = {"relaySession" => relaySession, "bloodhoundVersion" => 1,
+            "command_id" => newSessionId(), "action" => action, "session_id" => id, "target_uid" => target.get("uid")};
         if (!action.equals("stop")) {
             payload.put("target_callsign", target.get("callsign"));
             payload.put("lat", target.get("lat"));
@@ -271,6 +296,74 @@ class BloodhoundSync {
 
     function hasPendingStart(id as String) as Boolean {
         return pendingIndex(id, "start") >= 0;
+    }
+
+    function exactPendingIndex(payload as Dictionary) as Number {
+        var keys = ["relaySession", "bloodhoundVersion", "command_id", "session_id", "target_uid", "action"];
+        for (var index = 0; index < pending.size(); index++) {
+            var expected = (pending[index] as Dictionary).get("payload") as Dictionary;
+            var matches = true;
+            for (var keyIndex = 0; keyIndex < keys.size(); keyIndex++) {
+                var key = keys[keyIndex] as String;
+                if (!expected.get(key).equals(payload.get(key))) { matches = false; break; }
+            }
+            if (matches) { return index; }
+        }
+        return -1;
+    }
+
+    function transportError(payload as Dictionary) as Void {
+        if (!connected || !validIdentity(payload)) { return; }
+        var index = exactPendingIndex(payload);
+        if (index >= 0) { pending.remove(pending[index]); }
+        var id = stringValue(payload, "session_id");
+        var action = stringValue(payload, "action");
+        if (action.equals("start") && sessionId != null && (sessionId as String).equals(id)) {
+            sessionId = null;
+            sessionTarget = null;
+            retire(id);
+        }
+        reportError("Could not hand off Bloodhound " + action);
+    }
+
+    function validIdentity(payload as Dictionary) as Boolean {
+        var action = payload.get("action");
+        var incomingRelaySession = payload.get("relaySession");
+        return incomingRelaySession instanceof String
+            && (incomingRelaySession as String).equals(relaySession) && relaySession.length() > 0
+            && payload.get("bloodhoundVersion") instanceof Number && payload.get("bloodhoundVersion") == 1
+            && validUuid(payload.get("command_id")) && validUuid(payload.get("session_id"))
+            && validText(payload.get("target_uid"), false) && action instanceof String
+            && (action.equals("start") || action.equals("stop") || action.equals("update"));
+    }
+
+    function validUuid(value) as Boolean {
+        if (!(value instanceof String) || value.length() != 36) { return false; }
+        var bytes = value.toUtf8Array();
+        for (var index = 0; index < bytes.size(); index++) {
+            var byte = bytes[index];
+            if (index == 8 || index == 13 || index == 18 || index == 23) {
+                if (byte != 45) { return false; }
+            } else if (!((byte >= 48 && byte <= 57) || (byte >= 97 && byte <= 102))) { return false; }
+        }
+        return true;
+    }
+
+    function validText(value, allowEmpty as Boolean) as Boolean {
+        if (!(value instanceof String) || value.length() > 256) { return false; }
+        if (value.length() == 0) { return allowEmpty; }
+        var bytes = value.toUtf8Array();
+        if (bytes[0] <= 32 || bytes[bytes.size() - 1] <= 32) { return false; }
+        for (var index = 0; index < bytes.size(); index++) {
+            if (bytes[index] < 32 || bytes[index] == 127) { return false; }
+        }
+        return true;
+    }
+
+    function finiteNumber(value) as Boolean {
+        if (!(value instanceof Float) && !(value instanceof Double) && !(value instanceof Number)) { return false; }
+        var number = value.toDouble();
+        return number == number && (number - number) == 0.0d;
     }
 
     function pendingIndex(id as String, action as String) as Number {
@@ -344,13 +437,14 @@ class BloodhoundSync {
     }
 
     function isValidTarget(target as Dictionary) as Boolean {
-        if (uidOf(target) == null) { return false; }
+        if (!validText(target.get("uid"), false) || (target.get("callsign") != null
+                && !validText(target.get("callsign"), true))
+                || (target.get("hae") != null && !finiteNumber(target.get("hae")))) { return false; }
         var latitude = target.get("lat");
         var longitude = target.get("lon");
-        if (!(latitude instanceof Float) && !(latitude instanceof Double) && !(latitude instanceof Number)) { return false; }
-        if (!(longitude instanceof Float) && !(longitude instanceof Double) && !(longitude instanceof Number)) { return false; }
-        var lat = latitude.toDouble();
-        var lon = longitude.toDouble();
+        if (!finiteNumber(latitude) || !finiteNumber(longitude)) { return false; }
+        var lat = (latitude as Number or Float or Double).toDouble();
+        var lon = (longitude as Number or Float or Double).toDouble();
         return lat >= -90.0d && lat <= 90.0d && lon >= -180.0d && lon <= 180.0d;
     }
 
