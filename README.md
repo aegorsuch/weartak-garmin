@@ -518,6 +518,54 @@ resource strings provide English fallbacks in all locales. `PluginsTests.mc`
 covers labels, repeated inert selections and mixed-case sorting alongside
 existing entries.
 
+### Commands and Ditto feasibility
+
+The Garmin application currently has no Commands plugin, Commands configuration
+schema, Ditto SDK, Community identity, or custom PDL setting. Bloodhound's
+`bloodhound_control` messages are a specific tracking protocol, not a general
+Commands implementation. `TakClient.mc` does not dispatch Commands/Ditto
+messages or negotiate their capabilities, and `StandaloneApp.mc` has no saved
+preferences for either feature. Consequently, no functional Commands or Ditto
+switch/configuration surface is advertised on Garmin.
+
+Native Ditto is blocked by the platform: the
+[published Ditto SDK installation guides](https://docs.ditto.live/llms.txt)
+do not provide a Connect IQ/Monkey C SDK. This watch app runs in Garmin's
+Connect IQ runtime, not a supported native Ditto host. Garmin's
+[BluetoothLowEnergy API](https://developer.garmin.com/connect-iq/api-docs/Toybox/BluetoothLowEnergy.html)
+provides central-role scanning and GATT client operations, not peripheral
+advertising/GATT server support. Its
+[Communications API](https://developer.garmin.com/connect-iq/api-docs/Toybox/Communications.html)
+provides phone messaging and web requests, not the raw socket/discovery
+interfaces required to substitute a native Ditto mesh transport. Adding a
+toggle, an HTTPS call, or the BLE permission does not install a Ditto engine.
+
+A viable architecture uses the supported Ditto SDK in the paired iOS companion
+or Android/ATAK companion. That companion owns the Ditto database, identity,
+licensing, credentials and mesh lifecycle. The Garmin app is a remote display
+and control client over its existing `Communications.transmit` /
+`registerForPhoneAppMessages` dictionary channel through Garmin Connect Mobile
+and the Connect IQ Mobile SDK. The watch would not be a standalone Ditto peer;
+loss of the phone link must be shown separately from the saved enablement choice.
+This bridge is proposed, not implemented or verified in this repository.
+
+Before exposing the requested controls, the companion and watch need an agreed,
+versioned protocol for Commands configuration and Ditto settings/status, with
+current-session capability negotiation, bounded payloads, correlated
+acknowledgements, explicit rejection/timeouts and authoritative settings readback.
+The protocol must define the actual Community identity and custom PDL format;
+these must not be guessed from display labels or logged as credentials.
+An SDK handoff must not be reported as successful configuration or active sync.
+
+Once that bridge is supported, the UI requirements are a separate Commands
+on/off switch and configuration row, and Ditto defaulting off only when no
+choice is saved. Ditto's configuration subtitle must show `Community` or a
+truncated custom PDL, with the full approved PDL Help text accessible by
+scrolling. Saved intent must remain distinct from confirmed runtime state.
+All plugin rows must use the shared case-insensitive sorter; Everywhere Comms
+and Somewear Labs must remain inert, off, and labelled `Unfunded Request`.
+These are acceptance requirements for the bridge, not current capabilities.
+
 ### DataSync watch-side preparation
 
 Open **Settings > Tool Preferences > Plugins > DataSync**, choose a TAK server,
