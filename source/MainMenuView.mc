@@ -535,6 +535,36 @@ function buildToolPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     return menu;
 }
 
+function buildPluginsMenu() as WatchUi.Menu2 {
+    return buildPluginsMenuWithItems([]);
+}
+
+function buildPluginsMenuWithItems(additionalItems as Array<WatchUi.MenuItem>) as WatchUi.Menu2 {
+    var menu = createMenu(WatchUi.loadResource(Rez.Strings.PluginsTitle));
+    var items = [
+        new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.DataSyncTitle), null, :dataSync, null),
+        new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginEverywhereComms),
+            WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :everywhereComms, false, null),
+        new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginSomewearLabs),
+            WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :somewearLabs, false, null)
+    ];
+    items.addAll(additionalItems);
+    for (var i = 1; i < items.size(); i++) {
+        var item = items[i];
+        var label = (item.getLabel() as String).toLower();
+        var j = i;
+        while (j > 0 && (items[j - 1].getLabel() as String).toLower().compareTo(label) > 0) {
+            items[j] = items[j - 1];
+            j--;
+        }
+        items[j] = item;
+    }
+    for (var index = 0; index < items.size(); index++) {
+        menu.addItem(items[index]);
+    }
+    return menu;
+}
+
 function buildBloodhoundMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu(app.text(Rez.Strings.TextBloodhoundCompass));
     addToggleEntry(menu, app.text(Rez.Strings.TextProximityVibration), app.isBloodhoundProximityVibrationEnabled(), :bloodhoundProximityVibrationToggle);
@@ -1555,9 +1585,12 @@ class ToolPreferencesDelegate extends WatchUi.Menu2InputDelegate {
         if (id == :bloodhoundCompass) {
             WatchUi.pushView(buildBloodhoundMenu(app), new BloodhoundDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :plugins) {
-            var plugins = createMenu(WatchUi.loadResource(Rez.Strings.PluginsTitle));
-            addMenuEntry(plugins, WatchUi.loadResource(Rez.Strings.DataSyncTitle), null, :dataSync);
-            WatchUi.pushView(plugins, new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
+            WatchUi.pushView(buildPluginsMenu(), new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :everywhereComms || id == :somewearLabs) {
+            // Menu2 toggles before onSelect; placeholders must never remain enabled.
+            if (item instanceof WatchUi.ToggleMenuItem) {
+                item.setEnabled(false);
+            }
         } else if (id == :dataSync) {
             openDataSync(app);
         } else if (id == :clearPoints) {

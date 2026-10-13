@@ -504,6 +504,20 @@ Failed handoffs remain queued; a failed relay must reconnect before replay.
 The current phone handoff still does not confirm TAK-server or recipient
 delivery. No direct Garmin Sit(x) data transport is introduced by this change.
 
+### Plugins placeholders (WEARTAK-142 / WEARTAK-143)
+
+**Settings > Tool Preferences > Plugins** includes **Everywhere Comms** and
+**Somewear Labs**, each with the exact subtitle **Unfunded Request** and a native
+off toggle. Selecting either row or toggle has no effect and leaves it off.
+These are placeholders only: no communications integration, relay traffic or
+saved enablement is added. DataSync retains its existing behavior.
+
+All plugin entries, including additional entries supplied to `buildPluginsMenuWithItems`,
+are sorted together by their displayed labels, case-insensitively. The plugin
+resource strings provide English fallbacks in all locales. `PluginsTests.mc`
+covers labels, repeated inert selections and mixed-case sorting alongside
+existing entries.
+
 ### DataSync watch-side preparation
 
 Open **Settings > Tool Preferences > Plugins > DataSync**, choose a TAK server,
