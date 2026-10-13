@@ -7,14 +7,17 @@ function pluginsPlaceholdersStayOff(logger) as Boolean {
     var app = Toybox.Application.getApp() as StandaloneApp;
     var menu = buildPluginsMenu();
     var delegate = new ToolPreferencesDelegate(app);
-    Test.assertEqual(menu.getItem(0).getId(), :dataSync);
-    var labels = ["Everywhere Comms", "Somewear Labs"];
-    var ids = [:everywhereComms, :somewearLabs];
+    Test.assertEqual(menu.getItem(1).getId(), :dataSync);
+    Test.assert(!(menu.getItem(1) instanceof WatchUi.ToggleMenuItem));
+    var labels = ["Commands", "Ditto", "Everywhere Comms", "Somewear Labs"];
+    var ids = [:commands, :ditto, :everywhereComms, :somewearLabs];
+    var positions = [0, 2, 3, 4];
+    var subtitles = ["Unavailable", "Unavailable", "Unfunded Request", "Unfunded Request"];
     for (var i = 0; i < labels.size(); i++) {
-        var item = menu.getItem(i + 1) as WatchUi.ToggleMenuItem;
+        var item = menu.getItem(positions[i]) as WatchUi.ToggleMenuItem;
         Test.assertEqual(item.getLabel(), labels[i]);
         Test.assertEqual(item.getId(), ids[i]);
-        Test.assertEqual(item.getSubLabel(), "Unfunded Request");
+        Test.assertEqual(item.getSubLabel(), subtitles[i]);
         Test.assert(!item.isEnabled());
         for (var tap = 0; tap < 3; tap++) {
             delegate.onSelect(item);
@@ -23,8 +26,12 @@ function pluginsPlaceholdersStayOff(logger) as Boolean {
             item.setEnabled(true);
             delegate.onSelect(item);
             Test.assert(!item.isEnabled());
-            Test.assertEqual(item.getSubLabel(), "Unfunded Request");
+            Test.assertEqual(item.getSubLabel(), subtitles[i]);
         }
+    }
+    var reopened = buildPluginsMenu();
+    for (var index = 0; index < positions.size(); index++) {
+        Test.assert(!(reopened.getItem(positions[index]) as WatchUi.ToggleMenuItem).isEnabled());
     }
     return true;
 }
@@ -39,7 +46,7 @@ function pluginsSortAllEntriesCaseInsensitively(logger) as Boolean {
         new WatchUi.MenuItem("somewear labs", null, :sameLabel, null)
     ];
     var menu = buildPluginsMenuWithItems(extra);
-    var expected = [:alpha, :bravo, :dataSync, :echo, :everywhereComms, :somewearLabs, :sameLabel, :zulu];
+    var expected = [:alpha, :bravo, :commands, :dataSync, :ditto, :echo, :everywhereComms, :somewearLabs, :sameLabel, :zulu];
     for (var i = 0; i < expected.size(); i++) {
         Test.assertEqual(menu.getItem(i).getId(), expected[i]);
     }

@@ -542,7 +542,11 @@ function buildPluginsMenu() as WatchUi.Menu2 {
 function buildPluginsMenuWithItems(additionalItems as Array<WatchUi.MenuItem>) as WatchUi.Menu2 {
     var menu = createMenu(WatchUi.loadResource(Rez.Strings.PluginsTitle));
     var items = [
+        new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginCommands),
+            WatchUi.loadResource(Rez.Strings.PluginUnavailable), :commands, false, null),
         new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.DataSyncTitle), null, :dataSync, null),
+        new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginDitto),
+            WatchUi.loadResource(Rez.Strings.PluginUnavailable), :ditto, false, null),
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginEverywhereComms),
             WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :everywhereComms, false, null),
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginSomewearLabs),
@@ -1586,7 +1590,7 @@ class ToolPreferencesDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.pushView(buildBloodhoundMenu(app), new BloodhoundDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :plugins) {
             WatchUi.pushView(buildPluginsMenu(), new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
-        } else if (id == :everywhereComms || id == :somewearLabs) {
+        } else if (id == :commands || id == :ditto || id == :everywhereComms || id == :somewearLabs) {
             // Menu2 toggles before onSelect; placeholders must never remain enabled.
             if (item instanceof WatchUi.ToggleMenuItem) {
                 item.setEnabled(false);

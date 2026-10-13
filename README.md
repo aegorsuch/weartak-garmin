@@ -512,6 +512,12 @@ off toggle. Selecting either row or toggle has no effect and leaves it off.
 These are placeholders only: no communications integration, relay traffic or
 saved enablement is added. DataSync retains its existing behavior.
 
+**Commands** and **Ditto** are also listed with the subtitle **Unavailable**
+and native off toggles. Selecting their rows or toggles does nothing and keeps
+them off; neither opens a configuration page or saves an enablement choice.
+`Unavailable` denotes missing platform/integration support, not the
+`Unfunded Request` status of Everywhere Comms and Somewear Labs.
+
 All plugin entries, including additional entries supplied to `buildPluginsMenuWithItems`,
 are sorted together by their displayed labels, case-insensitively. The plugin
 resource strings provide English fallbacks in all locales. `PluginsTests.mc`
@@ -520,13 +526,14 @@ existing entries.
 
 ### Commands and Ditto feasibility
 
-The Garmin application currently has no Commands plugin, Commands configuration
+The Garmin application currently has no functional Commands plugin, Commands configuration
 schema, Ditto SDK, Community identity, or custom PDL setting. Bloodhound's
 `bloodhound_control` messages are a specific tracking protocol, not a general
 Commands implementation. `TakClient.mc` does not dispatch Commands/Ditto
 messages or negotiate their capabilities, and `StandaloneApp.mc` has no saved
 preferences for either feature. Consequently, no functional Commands or Ditto
-switch/configuration surface is advertised on Garmin.
+switch/configuration surface is advertised on Garmin; the Plugins entries are
+explicitly unavailable placeholders only.
 
 Native Ditto is blocked by the platform: the
 [published Ditto SDK installation guides](https://docs.ditto.live/llms.txt)

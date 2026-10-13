@@ -1,4 +1,7 @@
 <resources>
+    <string id="PluginCommands">Commands</string>
+    <string id="PluginDitto">Ditto</string>
+    <string id="PluginUnavailable">Unavailable</string>
     <string id="PluginEverywhereComms">Everywhere Comms</string>
     <string id="PluginSomewearLabs">Somewear Labs</string>
     <string id="PluginUnfundedRequest">Unfunded Request</string>
