@@ -504,13 +504,14 @@ Failed handoffs remain queued; a failed relay must reconnect before replay.
 The current phone handoff still does not confirm TAK-server or recipient
 delivery. No direct Garmin Sit(x) data transport is introduced by this change.
 
-### Plugins placeholders (WEARTAK-142 / WEARTAK-143)
+### Plugins placeholders (WEARTAK-142 / WEARTAK-143 / WEARTAK-147)
 
 **Settings > Tool Preferences > Plugins** includes **Everywhere Comms** and
-**Somewear Labs**, each with the exact subtitle **Unfunded Request** and a native
-off toggle. Selecting either row or toggle has no effect and leaves it off.
-These are placeholders only: no communications integration, relay traffic or
-saved enablement is added. DataSync retains its existing behavior.
+**GoTenna** and **Somewear Labs**, each with the exact subtitle
+**Unfunded Request** and a native off toggle. Selecting any of these rows or
+toggles has no effect and leaves it off. These are placeholders only: no
+communications integration, relay traffic or saved enablement is added.
+DataSync retains its existing behavior.
 
 **Commands** and **Ditto** are also listed with the subtitle **Unavailable**
 and native off toggles. Selecting their rows or toggles does nothing and keeps
