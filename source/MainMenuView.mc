@@ -64,16 +64,20 @@ function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
         app.isNetworkPreferencesLocked() || app.isPhoneManagedSettings() ? "Locked" : null, :networkPreferences);
     addMenuEntry(menu, app.text(Rez.Strings.TextAlertingPreferences), null, :alertingPreferences);
     addMenuEntry(menu, app.text(Rez.Strings.TextToolPreferences), null, :toolPreferences);
+    addMenuEntry(menu, "Admin Preferences", null, :adminPreferences);
+    addMenuEntry(menu, "Developer Preferences", null, :developerPreferences);
     addMenuEntry(menu, "Version " + app.getAppVersion(), null, :appVersion);
-    if (app.isDevModeEnabled()) {
-        addMenuEntry(menu, "Developer Options", null, :developerOptions);
-    }
     return menu;
 }
 
-function buildDeveloperOptionsMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = createMenu("Developer Options");
+function buildAdminPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = createMenu("Admin Preferences");
     addToggleEntry(menu, "Network Preferences Lock", app.isNetworkPreferencesLocked(), :networkPreferencesLockToggle);
+    return menu;
+}
+
+function buildDeveloperPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = createMenu("Developer Preferences");
     addMenuEntry(menu, "Verbose Logging", toolToggleLabel(app.isVerboseLoggingEnabled()), :verboseLoggingToggle);
     addMenuEntry(menu, "Diagnostics", null, :diagnostics);
     return menu;
@@ -739,9 +743,17 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.pushView(alertingMenu, new AlertingPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :toolPreferences) {
             WatchUi.pushView(buildToolPreferencesMenu(app), new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
-        } else if (id == :developerOptions) {
-            var developerMenu = buildDeveloperOptionsMenu(app);
-            WatchUi.pushView(developerMenu, new DeveloperOptionsDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :adminPreferences) {
+            // Menu2 has no disabled item state; admin/developer entries stay visible but inert until dev mode.
+            if (!app.isDevModeEnabled()) {
+                return;
+            }
+            WatchUi.pushView(buildAdminPreferencesMenu(app), new DeveloperOptionsDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :developerPreferences) {
+            if (!app.isDevModeEnabled()) {
+                return;
+            }
+            WatchUi.pushView(buildDeveloperPreferencesMenu(app), new DeveloperOptionsDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :appVersion) {
             if (app.registerVersionTap()) {
                 WatchUi.showToast("Developer mode " + (app.isDevModeEnabled() ? "enabled" : "disabled"), null);

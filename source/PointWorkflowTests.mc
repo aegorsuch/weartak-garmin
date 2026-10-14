@@ -21,15 +21,12 @@ function sharedMenuConstruction(logger) as Boolean {
     Test.assertEqual(app.text(Rez.Strings.TextBloodhound),
         Toybox.WatchUi.loadResource(Rez.Strings.TextBloodhound));
     var settings = buildSettingsMenu(app);
-    var ids = [:devicePreferences, :networkPreferences, :alertingPreferences, :toolPreferences, :appVersion];
+    var ids = [:devicePreferences, :networkPreferences, :alertingPreferences, :toolPreferences,
+        :adminPreferences, :developerPreferences, :appVersion];
     for (var index = 0; index < ids.size(); index++) {
         Test.assertEqual(settings.getItem(index).getId(), ids[index]);
     }
-    if (app.isDevModeEnabled()) {
-        Test.assertEqual(settings.getItem(5).getId(), :developerOptions);
-    } else {
-        Test.assert(settings.getItem(5) == null);
-    }
+    Test.assert(settings.getItem(ids.size()) == null);
     return true;
 }
 

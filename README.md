@@ -275,9 +275,11 @@ features currently available:
 	tracking when it arrives. These action refreshes are throttled to avoid excess
 	relay traffic. The companion continues to supply the authoritative phone
 	location.
-- Unlock Developer Options by tapping the version row eight times within
-	1.5 seconds. Developer Options includes the Network Preferences admin lock;
-	when locked, Network Preferences cannot be opened from Settings.
+- Admin Preferences and Developer Preferences always appear in Settings but
+	do nothing until developer mode is unlocked by tapping the version row eight
+	times within 1.5 seconds. Admin Preferences holds the Network Preferences
+	Lock; when locked, Network Preferences cannot be opened from Settings.
+	Developer Preferences holds Verbose Logging and Diagnostics.
 - The paired phone can manage watch identity and reporting. A `set_settings`
 	message applies `callsign`, `team`, `role`, and `reportIntSecs`, and the watch
 	replies with `settings_set_ack` followed by a `watch_settings` echo of the
