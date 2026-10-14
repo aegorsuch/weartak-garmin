@@ -551,6 +551,8 @@ function buildPluginsMenuWithItems(additionalItems as Array<WatchUi.MenuItem>) a
             WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :everywhereComms, false, null),
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginGoTenna),
             WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :goTenna, false, null),
+        new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.PluginSensorManager),
+            WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :sensorManager, null),
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginSomewearLabs),
             WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :somewearLabs, false, null)
     ];
@@ -568,6 +570,15 @@ function buildPluginsMenuWithItems(additionalItems as Array<WatchUi.MenuItem>) a
     for (var index = 0; index < items.size(); index++) {
         menu.addItem(items[index]);
     }
+    return menu;
+}
+
+function buildSensorManagerMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = createMenu(WatchUi.loadResource(Rez.Strings.PluginSensorManager));
+    addToggleEntry(menu, WatchUi.loadResource(Rez.Strings.LabelEnabled), app.isSensorManagerEnabled(), :sensorManagerEnabledToggle);
+    addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), null, :sensorManagerUnfundedRequest);
+    addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.PluginButtonIsPlaceholder), null, :sensorManagerPlaceholder);
+    addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.PluginScan), null, :sensorManagerScan);
     return menu;
 }
 
@@ -1598,6 +1609,11 @@ class ToolPreferencesDelegate extends WatchUi.Menu2InputDelegate {
             if (item instanceof WatchUi.ToggleMenuItem) {
                 item.setEnabled(false);
             }
+        } else if (id == :sensorManager) {
+            WatchUi.pushView(buildSensorManagerMenu(app), new ToolPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :sensorManagerEnabledToggle) {
+            app.setSensorManagerEnabled(!app.isSensorManagerEnabled());
+            item.setSubLabel(toolToggleLabel(app.isSensorManagerEnabled()));
         } else if (id == :dataSync) {
             openDataSync(app);
         } else if (id == :clearPoints) {

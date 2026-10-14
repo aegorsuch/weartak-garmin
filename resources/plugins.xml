@@ -3,7 +3,10 @@
     <string id="PluginDitto">Ditto</string>
     <string id="PluginEverywhereComms">Everywhere Comms</string>
     <string id="PluginGoTenna">GoTenna</string>
+    <string id="PluginSensorManager">Sensor Manager</string>
     <string id="PluginSomewearLabs">Somewear Labs</string>
+    <string id="PluginButtonIsPlaceholder">Button is Placeholder</string>
+    <string id="PluginScan">Scan</string>
     <string id="PluginUnavailable">Unavailable</string>
     <string id="PluginUnfundedRequest">Unfunded Request</string>
 </resources>

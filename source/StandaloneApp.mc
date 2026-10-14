@@ -59,6 +59,7 @@ class StandaloneApp extends Application.AppBase {
     private var bloodhoundProximityVibrationEnabled as Boolean = true;
     private var bloodhoundProximityRadius as Number = 50;
     private var bloodhoundProximityIntensity as String = "Single Burst";
+    private var sensorManagerEnabled as Boolean = false;
     private var highRestingHeartRate as Number = 120;
     private var highRestingWarningLength as Number = 5;
     private var highRestingAlertLength as Number = 10;
@@ -659,6 +660,7 @@ class StandaloneApp extends Application.AppBase {
         bloodhoundProximityVibrationEnabled = storedBoolean("bloodhoundProximityVibrationEnabled", bloodhoundProximityVibrationEnabled);
         bloodhoundProximityRadius = storedNumber("bloodhoundProximityRadius", bloodhoundProximityRadius);
         bloodhoundProximityIntensity = storedString("bloodhoundProximityIntensity", bloodhoundProximityIntensity);
+        sensorManagerEnabled = storedBoolean("sensorManagerEnabled", sensorManagerEnabled);
         highRestingHeartRate = storedNumber("highRestingHeartRate", highRestingHeartRate);
         highRestingWarningLength = storedNumber("highRestingWarningLength", highRestingWarningLength);
         highRestingAlertLength = storedNumber("highRestingAlertLength", highRestingAlertLength);
@@ -862,6 +864,15 @@ class StandaloneApp extends Application.AppBase {
     function setBloodhoundProximityIntensity(intensity as String) as Void {
         bloodhoundProximityIntensity = intensity;
         Application.Storage.setValue("bloodhoundProximityIntensity", intensity);
+    }
+
+    function isSensorManagerEnabled() as Boolean {
+        return sensorManagerEnabled;
+    }
+
+    function setSensorManagerEnabled(enabled as Boolean) as Void {
+        sensorManagerEnabled = enabled;
+        Application.Storage.setValue("sensorManagerEnabled", enabled);
     }
 
     function getAlertSetting(setting as Symbol) as Number {

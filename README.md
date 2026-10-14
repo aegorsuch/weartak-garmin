@@ -504,14 +504,20 @@ Failed handoffs remain queued; a failed relay must reconnect before replay.
 The current phone handoff still does not confirm TAK-server or recipient
 delivery. No direct Garmin Sit(x) data transport is introduced by this change.
 
-### Plugins placeholders (WEARTAK-142 / WEARTAK-143 / WEARTAK-147)
+### Plugins placeholders (WEARTAK-142 / WEARTAK-143 / WEARTAK-147 / WEARTAK-148)
 
 **Settings > Tool Preferences > Plugins** includes **Everywhere Comms** and
-**GoTenna** and **Somewear Labs**, each with the exact subtitle
-**Unfunded Request** and a native off toggle. Selecting any of these rows or
-toggles has no effect and leaves it off. These are placeholders only: no
-communications integration, relay traffic or saved enablement is added.
-DataSync retains its existing behavior.
+**GoTenna**, **Sensor Manager**, and **Somewear Labs**, each with the exact
+subtitle **Unfunded Request**. Everywhere Comms, GoTenna, and Somewear Labs use
+native off toggles; selecting any of those rows or toggles has no effect and
+leaves it off. Sensor Manager opens a placeholder configuration menu because
+Connect IQ menu rows do not provide a separate built-in toggle plus drill-in
+action on one row. Its configuration menu contains a persisted, default-off
+**Enabled** toggle plus inert **Unfunded Request**, **Button is Placeholder**,
+and **Scan** rows. These are placeholders only: no communications integration,
+sensor scanning, pairing, BLE, permissions, relay traffic or saved enablement is
+added beyond Sensor Manager's local enabled preference. DataSync retains its
+existing behavior.
 
 **Commands** and **Ditto** are also listed with the subtitle **Unavailable**
 and native off toggles. Selecting their rows or toggles does nothing and keeps
@@ -522,8 +528,8 @@ them off; neither opens a configuration page or saves an enablement choice.
 All plugin entries, including additional entries supplied to `buildPluginsMenuWithItems`,
 are sorted together by their displayed labels, case-insensitively. The plugin
 resource strings provide English fallbacks in all locales. `PluginsTests.mc`
-covers labels, repeated inert selections and mixed-case sorting alongside
-existing entries.
+covers labels, repeated inert selections, Sensor Manager's default-off persisted
+toggle, and mixed-case sorting alongside existing entries.
 
 ### Commands and Ditto feasibility
 
