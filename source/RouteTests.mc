@@ -227,3 +227,86 @@ function routeEnvelopeDispatchAndCapability(logger) as Boolean {
     }
     return true;
 }
+
+(:test)
+function routePointListDistinguishesRepeatedNames(logger) as Boolean {
+    var map = new TestMapSelectionView();
+    var payload = RouteFixtures.payload("s", "r", 2);
+    (payload.get("points") as Array)[1].put("name", "Start");
+    map.receiveRoute("route", payload);
+    var menu = buildRoutePointsMenu(map, map.routeStore.find("s", "r"));
+    Test.assertEqual(menu.getItem(0).getLabel(), "Start");
+    Test.assertEqual(menu.getItem(1).getLabel(), "Start");
+    Test.assertEqual(menu.getItem(0).getSubLabel(), "#1 0.00000, 0.00000");
+    Test.assertEqual(menu.getItem(1).getSubLabel(), "#2 0.00000, 0.10000");
+    Test.assert(!menu.getItem(0).getId().equals(menu.getItem(1).getId()));
+    Test.assertEqual(menu.getItem(2).getId(), :cancel);
+    return true;
+}
+
+(:test)
+class RouteUnavailableCapture extends TestMapSelectionView {
+    var unavailable as Boolean = false;
+    function initialize() { TestMapSelectionView.initialize(); }
+    function routeUnavailable() as Void { unavailable = true; }
+}
+
+(:test)
+function routeStaleChatActionRejectsRemovedSender(logger) as Boolean {
+    var map = new RouteUnavailableCapture();
+    var payload = RouteFixtures.payload("s", "r", 2);
+    map.receiveRoute("route", payload);
+    var id = map.routeStore.pointId(map.routeStore.find("s", "r"), 0);
+    var menu = buildRoutePointMenu(map, id);
+    var chat = menu.getItem(7);
+    Test.assertEqual(chat.getId(), :chat);
+    payload.put("senderUid", null);
+    map.receiveRoute("route", payload);
+    var rooms = map.application.chats.rooms.size();
+    new RoutePointMenuDelegate(map, id).onSelect(chat);
+    Test.assert(map.unavailable);
+    Test.assertEqual(map.application.chats.rooms.size(), rooms);
+    Test.assertEqual(buildRoutePointMenu(map, id).getItem(7).getId(), :cancel);
+    return true;
+}
+
+(:test)
+function routeProjectionWaitsForValidMapBounds(logger) as Boolean {
+    var map = new TestMapSelectionView();
+    map.receiveRoute("route", RouteFixtures.payload("s", "r", 2));
+    var point = {"lat" => 0.0, "lon" => 0.0};
+    map.mapBottomRight = map.mapTopLeft;
+    Test.assert(map.routeScreenPoint(point) == null);
+    var capture = new RouteDrawingCapture();
+    map.drawRoutes(capture);
+    Test.assertEqual(capture.lines.size(), 0);
+    Test.assertEqual(capture.circles.size(), 0);
+    Test.assertEqual(map.pointsAtScreen(100, 100).size(), 0);
+    map.mapBottomRight = null;
+    Test.assert(map.routeScreenPoint(point) == null);
+    map.mapBottomRight = new Position.Location({:latitude => -1.0, :longitude => 1.0, :format => :degrees});
+    Test.assert(map.routeScreenPoint(point) != null);
+    map.drawRoutes(capture);
+    Test.assertEqual(capture.lines.size(), 1);
+    return true;
+}
+
+(:test)
+function routeGeometryReevaluatesProximityAndResetStopsTracking(logger) as Boolean {
+    var map = new TestMapSelectionView();
+    var payload = RouteFixtures.payload("s", "r", 2);
+    map.receiveRoute("route", payload);
+    var id = map.routeStore.pointId(map.routeStore.find("s", "r"), 0);
+    map.toggleRouteBloodhound(id);
+    map.currentPosition = new Position.Location({:latitude => 0.0, :longitude => 0.0, :format => :degrees});
+    map.bloodhoundProximityNotified = true;
+    (payload.get("points") as Array)[0].put("lon", 90.0);
+    map.receiveRoute("route", payload);
+    Test.assert(!map.bloodhoundProximityNotified);
+    Test.assert(map.isBloodhoundActive());
+    map.receiveRoute("routes_reset", {"routeVersion" => 1});
+    Test.assert(!map.isBloodhoundActive());
+    Test.assert(!map.pointLocations.hasKey(id));
+    Test.assert(map.bloodhoundPointId == null);
+    return true;
+}

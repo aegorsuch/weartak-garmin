@@ -19,6 +19,9 @@ use the existing **Select Map Item** list. Details show the route, source server
 mission, sender UID and coordinates, with **Bloodhound** / **Stop Bloodhound** and
 sender **Chat** when available. Bloodhound uses the existing GPS range/bearing
 display and proximity alerts; this is not turn-by-turn navigation.
+The route-point list includes vertex numbers and coordinates so repeated point
+names remain distinguishable. Chat actions recheck the current sender before
+opening a conversation when route metadata changes.
 
 **Show Routes** controls route lines and point hit-testing without stopping an
 active Bloodhound target. Point selection and tracking identities include the
@@ -26,6 +29,8 @@ source server and route UID, so identical UIDs on different servers stay separat
 All vertices are selectable; the watch does not simplify the route. Geometry
 updates move the active target at its vertex index. Removal of that route stops
 tracking. A changed vertex order therefore changes the target at that index.
+Geometry updates immediately reevaluate proximity; invalid or not-yet-available
+map bounds temporarily skip route drawing and hit-testing until bounds recover.
 
 **Routes > Refresh** requests an authoritative reset/replay from the current phone
 companion. Route snapshots and phone-relay disable clear routes and stop route
@@ -837,6 +842,81 @@ The non-Pro Fenix 6 and 6S can compile after these changes, but remain unsupport
 the Fenix 6 simulator still runs out of memory while loading the application,
 and Garmin's native `WatchUi.MapView` is unavailable on both non-Pro models.
 Compilation alone is not sufficient to add them to a release.
+
+## Continuous integration and signed builds
+
+The automation follows the Tracker split:
+
+- [GitHub Actions](.github/workflows/garmin.yml) validates localization on pull
+  requests and pushes to `main`/`develop`. Trusted pushes to those branches (or a
+  manual run on either branch) also run the entire Monkey C simulator test suite
+  on `fenix7x` and export an optimized `.iq` bundle. The bundle uses a disposable
+  key, **not the production signing identity**. Download it and test logs from
+  workflow artifacts; CI bundles are not official releases.
+- [Government GitLab CI](.gitlab-ci.yml) runs tests and produces production-key
+  `.prg` files for every manifest product plus the `.iq` bundle on protected
+  `develop` pushes (30-day artifacts) and protected version tags such as
+  `v5.8.3` or `v5.8.0.8` (non-expiring artifacts). Logs are retained even on
+  failure; distribution packages are exposed only after all builds succeed.
+  Neither pipeline publishes a store release or automatically creates a Git
+  tag/release.
+
+### Runner setup
+
+Garmin's device definitions and simulator are installed through its SDK Manager,
+not restored by a package manager. Provision a dedicated Windows x64 runner with:
+
+1. Connect IQ SDK **9.2.0**, the manifest's nine product definitions, and the
+   `fenix7x` simulator device installed for the runner account. Set
+   `CONNECTIQ_SDK` to the SDK directory containing `bin\monkeyc.bat`.
+2. Java 17 on `PATH`, Windows PowerShell 5.1+, and OpenSSL on `PATH` (or the
+   standard Git for Windows installation at
+   `C:\Program Files\Git\usr\bin\openssl.exe`).
+3. An interactive Windows desktop session for that account: do not run the GUI
+   simulator as a headless Windows service. Run only one Garmin job at a time,
+   with no pre-existing simulator session.
+4. For GitHub, runner labels `self-hosted`, `Windows`, `X64`, `garmin-ci`.
+   Use an isolated/disposable runner; only trusted `main`/`develop` code is
+   allowed to execute there. Pull requests run localization on GitHub-hosted
+   Windows runners, **not** the simulator or self-hosted build. A successful
+   PR localization check alone is not a successful build/test run.
+5. For GitLab, a Windows shell runner with tags `windows`, `garmin-ci`,
+   restricted to this project and protected refs. Protect `develop` and the
+   release-tag pattern before enabling signed jobs. Use a separate runner
+   account/machine from public CI and restrict who can modify protected code.
+
+Configure these **protected** GitLab CI/CD variables, without committing keys:
+
+- `GARMIN_DEVELOPER_KEY_B64`: base64 of the existing production DER developer
+  key; masked/hidden.
+- `GARMIN_DEVELOPER_KEY_SHA256`: SHA-256 fingerprint of that exact DER file,
+  obtained with `Get-FileHash -Algorithm SHA256`. The build refuses a mismatched
+  key, preserving the watch application's signing identity.
+
+No production key is needed by GitHub. Keys are written to a private temporary
+directory and deleted in `finally`; they are never included in artifacts.
+Disposable runners are still required to handle externally cancelled jobs.
+Both pipelines emit `SHA256SUMS.txt` for the distribution packages.
+
+### Running the same checks locally
+
+Use [Invoke-CI.ps1](tools/Invoke-CI.ps1):
+
+```powershell
+.\tools\Invoke-CI.ps1
+.\tools\Invoke-CI.ps1 -Mode Release
+```
+
+Release mode requires the two signing variables above. The default output is
+`bin\ci`, which must be empty at startup so stale builds cannot be uploaded.
+Choose a new `-OutputDirectory` for another local run. `-TestNames` accepts
+specific simulator tests for local diagnosis; pipelines omit it to run all
+tests. A missing SDK, signing variable, simulator result, or failed test/build
+fails the job. SDK 9.2's Java test launcher can return exit code 1 after a
+passing run; the script requires a complete zero-failure summary whose count
+matches `Ran N tests`, with empty stderr, rather than trusting that exit code.
+Runner registration and GitLab signing variables must be
+configured before remote build jobs can run.
 
 ## Git workflow
 

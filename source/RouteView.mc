@@ -31,16 +31,22 @@ class RoutesMenuDelegate extends WatchUi.Menu2InputDelegate {
         else if (route instanceof Dictionary) {
             var current = map.routeStore.find(route.get("serverId") as String, route.get("uid") as String);
             if (current == null) { map.routeUnavailable(); return; }
-            var menu = createMenu(current.get("name") as String);
-            var points = current.get("points") as Array;
-            for (var i = 0; i < points.size(); i++) {
-                var id = map.routeStore.pointId(current, i);
-                var selected = map.routeStore.point(id);
-                addMenuEntry(menu, map.routeStore.title(selected), null, id);
-            }
-            WatchUi.pushView(menu, new RoutePointListDelegate(map), WatchUi.SLIDE_LEFT);
+            WatchUi.pushView(buildRoutePointsMenu(map, current), new RoutePointListDelegate(map), WatchUi.SLIDE_LEFT);
         }
     }
+}
+
+function buildRoutePointsMenu(map as StandaloneMapView, route as Dictionary) as WatchUi.Menu2 {
+    var menu = createMenu(route.get("name") as String);
+    var points = route.get("points") as Array;
+    for (var i = 0; i < points.size(); i++) {
+        var id = map.routeStore.pointId(route, i);
+        var selected = map.routeStore.point(id);
+        var coordinates = map.latLonLabel(map.routeStore.location(points[i]));
+        addMenuEntry(menu, map.routeStore.title(selected), "#" + (i + 1).toString() + " " + coordinates, id);
+    }
+    addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel);
+    return menu;
 }
 
 class RoutePointListDelegate extends WatchUi.Menu2InputDelegate {
@@ -48,7 +54,8 @@ class RoutePointListDelegate extends WatchUi.Menu2InputDelegate {
     function initialize(view as StandaloneMapView) { Menu2InputDelegate.initialize(); map = view; }
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
-        if (id instanceof String) { map.showRoutePoint(id); }
+        if (id == :cancel) { WatchUi.popView(WatchUi.SLIDE_RIGHT); }
+        else if (id instanceof String) { map.showRoutePoint(id); }
     }
 }
 
@@ -91,6 +98,10 @@ class RoutePointMenuDelegate extends WatchUi.Menu2InputDelegate {
         } else if (item.getId() == :chat) {
             var route = selected.get("route") as Dictionary;
             var sender = route.get("senderUid");
+            if (!(sender instanceof String) || sender.length() == 0) {
+                map.routeUnavailable();
+                return;
+            }
             var room = map.application.chats.open(sender, sender, false);
             if (room != null) { openChatConversation(map.application, room); }
         }

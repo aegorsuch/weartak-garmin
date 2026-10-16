@@ -75,6 +75,7 @@ class StandaloneMapView extends WatchUi.MapView {
             setBloodhoundPoint(null);
         } else {
             pointLocations.put(bloodhoundPointId, routeStore.location(selected.get("point") as Dictionary));
+            evaluateBloodhoundProximity();
         }
         notifyBloodhoundChanged();
     }
@@ -105,11 +106,13 @@ class StandaloneMapView extends WatchUi.MapView {
         WatchUi.pushView(menu, new RoutePointMenuDelegate(self, id), WatchUi.SLIDE_LEFT);
     }
 
-    function routeScreenPoint(point as Dictionary) as Array {
+    function routeScreenPoint(point as Dictionary) as Array? {
+        if (mapTopLeft == null || mapBottomRight == null || screenWidth <= 0 || screenHeight <= 0) { return null; }
         var left = mapTopLeft.toDegrees();
         var right = mapBottomRight.toDegrees();
         var span = right[1] - left[1];
         if (span < 0) { span += 360; }
+        if (span == 0 || left[0] == right[0]) { return null; }
         var delta = point.get("lon") - (left[1] + span / 2.0);
         while (delta < -180) { delta += 360; }
         while (delta > 180) { delta -= 360; }
@@ -125,6 +128,7 @@ class StandaloneMapView extends WatchUi.MapView {
             var previous = [];
             for (var p = 0; p < points.size(); p++) {
                 var screen = routeScreenPoint(points[p]);
+                if (screen == null) { previous = []; continue; }
                 var lonSpan = mapBottomRight.toDegrees()[1] - mapTopLeft.toDegrees()[1];
                 if (lonSpan < 0) { lonSpan += 360; }
                 var dx = previous.size() == 0 ? 0 : screen[0] - previous[0];
@@ -1729,6 +1733,7 @@ class StandaloneMapView extends WatchUi.MapView {
                 var points = route.get("points") as Array;
                 for (var p = 0; p < points.size(); p++) {
                     var screen = routeScreenPoint(points[p]);
+                    if (screen == null) { continue; }
                     var dx = screen[0] - x;
                     var dy = screen[1] - y;
                     if (screen[0] >= 0 && screen[0] < screenWidth && screen[1] >= 0 && screen[1] < screenHeight
