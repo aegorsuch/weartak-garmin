@@ -10,6 +10,73 @@ and fenix 8 (47 mm and 51 mm variants).
 - Personal GitHub: https://github.com/aegorsuch/weartak-garmin
 - Government repo: https://git.tak.gov/core/weartak-core/weartak-garmin
 
+## Routes (phone companion route protocol v1)
+
+Updated iPhone and ATAK companions can send route geometry to the watch. Open
+**Map > Layers > Routes** to browse routes and every individual point, including
+unnamed vertices. Tapping a point on the map opens its details; overlapping points
+use the existing **Select Map Item** list. Details show the route, source server,
+mission, sender UID and coordinates, with **Bloodhound** / **Stop Bloodhound** and
+sender **Chat** when available. Bloodhound uses the existing GPS range/bearing
+display and proximity alerts; this is not turn-by-turn navigation.
+
+**Show Routes** controls route lines and point hit-testing without stopping an
+active Bloodhound target. Point selection and tracking identities include the
+source server and route UID, so identical UIDs on different servers stay separate.
+All vertices are selectable; the watch does not simplify the route. Geometry
+updates move the active target at its vertex index. Removal of that route stops
+tracking. A changed vertex order therefore changes the target at that index.
+
+**Routes > Refresh** requests an authoritative reset/replay from the current phone
+companion. Route snapshots and phone-relay disable clear routes and stop route
+tracking; routes are held in memory, not saved across watch restarts. Refresh after
+a failed handoff repairs the watch display. Route delivery uses SDK handoff rather
+than end-to-end acknowledgements; physical phone/watch acceptance is still needed.
+Route-point range/bearing and proximity alerts run locally with either companion.
+Synthetic route-point IDs are not sent as native ATAK Bloodhound targets because
+intermediate vertices need not exist as ATAK point map items. Switching from a
+synchronized ordinary point to a route vertex stops the previous phone track.
+Existing ordinary-point Bloodhound synchronization is unchanged; the iPhone
+companion does not provide phone Bloodhound coordination.
+
+The watch advertises numeric `routeVersion: 1` in `relay_hello` and
+`entity_sync_request`. Companions gate route messages on that capability:
+
+| Message | Payload |
+| --- | --- |
+| `route` | `routeVersion`, `serverId`, `uid`, `name`, `points: [{lat, lon, name?}]`, optional `missionName`, `senderUid` |
+| `route_remove` | `routeVersion`, `serverId`, `uid` |
+| `routes_reset` | `routeVersion` |
+| `routes_error` | `routeVersion`, `error` |
+
+Each route is replaced atomically after validation. Bounds are **8 routes**,
+**2–64 vertices per route**, **128 vertices total**, and **6,000 UTF-8 bytes per
+serialized envelope** on the companion. Text bounds in UTF-8 bytes are server ID
+64, UID 128, route/point name 64, mission/sender UID 128, error 256. Latitude and
+longitude must be finite and within geographic ranges. Over-capacity/invalid
+updates produce an explicit error and retain the previous valid geometry, if any;
+tracking that older geometry continues until corrected, removed or refreshed.
+The ATAK companion automatically fills freed capacity after route removal or
+shrinking geometry. Existing published routes take priority; new candidates are
+selected in source-server/UID order. Immediately rejected SDK updates and removals
+remain pending for the next map/link reconciliation, without resetting local
+tracking. Invalid geometry is retained only for its originating ATAK map item,
+never for a different server's route with the same UID.
+No raw route CoT XML is logged by the adapters.
+
+Bloodhound route target IDs use
+`route-point:<server UTF-8 length>:<server><route UID UTF-8 length>:<UID>:<zero-based vertex index>`.
+This length-prefixed encoding avoids delimiter collisions.
+
+[RouteTests.mc](source/RouteTests.mc) covers atomic validation, capacity boundaries,
+same-UID/different-server selection, individual point coordinates, active target
+updates/removal, clipped lines, overlap menus and route envelope dispatch.
+New route labels use English fallback resources pending translation.
+`monkey.jungle` limits compilation to `source` so nested Git worktrees are not
+compiled as duplicate application sources. Test-enabled builds can be run with
+`monkeydo ... fenix7x /t`; the full test-enabled fenix6pro build currently exceeds
+that device's global-member limit.
+
 ## Rights and contacts
 
 ### Rights

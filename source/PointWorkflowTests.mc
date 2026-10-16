@@ -575,7 +575,8 @@ function bloodhoundRemoteAlerts(logger) as Boolean {
     Test.assert(!map.dismissedIncomingPoints.hasKey("cot-alert-first"));
     map.updateIncomingCot("alert-first", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,
         {"time" => "revision-2"});
-    Test.assertEqual(menu.getItem(0).getId(), "cot-alert-first");
+    Test.assertEqual(menu.getItem(0).getId(), :removeAll);
+    Test.assertEqual(menu.getItem(1).getId(), "cot-alert-first");
     map.toggleBloodhound("cot-alert-first");
     (map.incomingDetails.get("cot-alert-first") as Dictionary).put("staleDeadline", "2000-01-01T00:00:00Z");
     map.pruneIncomingEntities();
@@ -588,7 +589,8 @@ function bloodhoundRemoteAlerts(logger) as Boolean {
     map.updateIncomingCot("alert-user", 38.0, -77.0, "a-f-G-U-C", "User", null, null, {});
     Test.assert(map.incomingDetails.hasKey("cot-alert-user"));
     Test.assert(!map.isBloodhoundActive());
-    Test.assertEqual(menu.getItem(0).getId(), "cot-alert-first");
+    Test.assertEqual(menu.getItem(0).getId(), :removeAll);
+    Test.assertEqual(menu.getItem(1).getId(), "cot-alert-first");
     map.removeIncomingPoint("cot-alert-user", false);
     menu.onHide();
     map.updateIncomingCot("alert-notify", 38.0, -77.0, "b-a-o-tbl", "Medic", null, null,

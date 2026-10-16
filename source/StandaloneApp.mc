@@ -123,6 +123,7 @@ class StandaloneApp extends Application.AppBase {
         takClient = new TakClient();
         sitxClient = new SitxClient();
         takClient.incomingCotCallback = method(:onIncomingCot);
+        takClient.incomingRouteCallback = method(:onIncomingRoute);
         takClient.incomingSourceRemovedCallback = method(:onIncomingCotSourceRemoved);
         takClient.incomingChatCallback = method(:onIncomingChat);
         takClient.phoneSettingsCallback = method(:applyPhoneSettings);
@@ -1476,8 +1477,14 @@ class StandaloneApp extends Application.AppBase {
 
     function onIncomingCotSourceRemoved(source as String) as Void {
         getMapView().removeIncomingAlertSource(source);
+        if (source.equals("phone-relay")) {
+            getMapView().receiveRoute("routes_reset", {"routeVersion" => 1});
+        }
     }
 
+    function onIncomingRoute(kind as String, payload as Dictionary) as Void {
+        getMapView().receiveRoute(kind, payload);
+    }
     function onIncomingChat(message as Dictionary) as Void {
         if (!chats.receive(message)) {
             WatchUi.showToast(WatchUi.loadResource(Rez.Strings.ChatInvalidDestination), null);

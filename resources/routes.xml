@@ -1,0 +1,11 @@
+<resources>
+    <string id="RoutesTitle">Routes</string>
+    <string id="RoutesEmpty">No routes received</string>
+    <string id="RoutesVisible">Show Routes</string>
+    <string id="RoutesServer">Server</string>
+    <string id="RoutesMission">Mission</string>
+    <string id="RoutesSender">Sent by</string>
+    <string id="RoutesUnavailable">Route point is no longer available</string>
+    <string id="RoutesLatitude">Latitude</string>
+    <string id="RoutesLongitude">Longitude</string>
+</resources>

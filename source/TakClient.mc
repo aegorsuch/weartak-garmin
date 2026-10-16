@@ -81,6 +81,7 @@ class TakClient {
     var automatedAlertSequence as Number = 0;
     var statusCallback as Method?  = null;
     var incomingCotCallback as Method? = null;
+    var incomingRouteCallback as Method? = null;
     var incomingSourceRemovedCallback as Method? = null;
     var incomingChatCallback as Method? = null;
     var channelsCallback as Method? = null;
@@ -216,7 +217,7 @@ class TakClient {
         relayNegotiationAt = relayNow();
         pointReplyRetryAt = 0;
         transmit("relay_hello", {"watchLabel" => "Garmin watch", "protocolVersion" => 1,
-            "relaySession" => relaySession, "bloodhoundVersion" => 1});
+            "relaySession" => relaySession, "bloodhoundVersion" => 1, "routeVersion" => 1});
         notifyStatusChanged();
     }
 
@@ -241,7 +242,7 @@ class TakClient {
             return;
         }
         status = :connected;
-        transmit("entity_sync_request", {"limit" => MAP_RETAINED_LIMIT, "protocolVersion" => 1});
+        transmit("entity_sync_request", {"limit" => MAP_RETAINED_LIMIT, "protocolVersion" => 1, "routeVersion" => 1});
         flushPointReplies();
         notifyStatusChanged();
     }
@@ -631,6 +632,11 @@ class TakClient {
         lastRelayMessageTime = Time.now();
         if (verboseLoggingEnabled) {
             System.println("TAK relay in: " + msgType.toString());
+        }
+        if (msgType.equals("route") || msgType.equals("route_remove") || msgType.equals("routes_reset")
+                || msgType.equals("routes_error")) {
+            if (incomingRouteCallback != null) { incomingRouteCallback.invoke(msgType, payload); }
+            return;
         }
         if (msgType.equals("missions_servers_response") || msgType.equals("missions_response")
                 || msgType.equals("missions_error")) {
