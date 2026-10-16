@@ -918,6 +918,13 @@ matches `Ran N tests`, with empty stderr, rather than trusting that exit code.
 Runner registration and GitLab signing variables must be
 configured before remote build jobs can run.
 
+The signed job intentionally enforces each device's memory limit; exporting an
+`.iq` alone does not prove every device-specific `.prg` fits. During initial
+validation, the current route-display worktree exceeded the `fenix6` watch-app
+limit (180,116 bytes versus 131,072). Signed release validation is blocked until
+that device-size issue is resolved; the pipeline does not drop manifest devices
+or publish a partial release to hide the error.
+
 ## Git workflow
 
 The government repository (`origin`) is the canonical repository. New work starts

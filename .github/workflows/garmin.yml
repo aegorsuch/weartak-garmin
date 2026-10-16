@@ -1,0 +1,54 @@
+name: Garmin CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: garmin-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  localization:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate localization
+        shell: powershell
+        run: .\tools\Validate-Localization.ps1
+
+  # Public pull-request code must never execute on a persistent self-hosted runner.
+  build:
+    needs: localization
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.repository == 'aegorsuch/weartak-garmin' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    runs-on: [self-hosted, Windows, X64, garmin-ci]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test and build with disposable key
+        shell: powershell
+        run: .\tools\Invoke-CI.ps1
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Garmin-test-logs-${{ github.sha }}
+          path: bin/ci/*.log
+          if-no-files-found: warn
+      - name: Upload CI bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: WearTAK-Garmin-CI-${{ github.sha }}
+          path: |
+            bin/ci/WearTAK-Garmin.iq
+            bin/ci/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30

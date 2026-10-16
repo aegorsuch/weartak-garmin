@@ -1,0 +1,37 @@
+stages:
+  - build
+
+.garmin_build:
+  stage: build
+  tags:
+    - windows
+    - garmin-ci
+  timeout: 30 minutes
+  script:
+    - powershell -NoProfile -ExecutionPolicy Bypass -File tools\Invoke-CI.ps1 -Mode Release
+
+develop_release:
+  extends: .garmin_build
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - bin/ci/WearTAK-Garmin*.prg
+      - bin/ci/WearTAK-Garmin.iq
+      - bin/ci/SHA256SUMS.txt
+      - bin/ci/*.log
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_PROTECTED == "true"'
+
+official_release:
+  extends: .garmin_build
+  artifacts:
+    when: always
+    expire_in: never
+    paths:
+      - bin/ci/WearTAK-Garmin*.prg
+      - bin/ci/WearTAK-Garmin.iq
+      - bin/ci/SHA256SUMS.txt
+      - bin/ci/*.log
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$/ && $CI_COMMIT_REF_PROTECTED == "true"'
