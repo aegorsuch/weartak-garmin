@@ -141,6 +141,41 @@ Connect IQ dictionaries rather than newline-delimited JSON, and the watch never
 parses raw CoT XML — the companion must normalize ATAK markers, alerts, and chat
 into the `entity`, `entities`, and `chat` envelopes.
 
+### Phone-relayed remote users (WEARTAK-160)
+
+The watch advertises `entitySyncVersion: 2`, `watchUid`, and its current
+`relaySession` in `relay_hello`. Companion v2 `entity`, `entities`, and
+`entity_remove` messages carry that session on the top-level envelope. Missing
+or stale sessions cannot update or remove v2 phone-user records. Only one active
+Companion watch link may receive the v2 user stream; ambiguous routing clears
+phone-user copies until an exclusive route is available. The watch excludes
+phone/watch UIDs, not matching callsigns, and accepts supported remote contacts
+across ATAK contact types rather than only `a-*-G-U-C`.
+
+A replacement `entities` payload carries `entities`, `replaceUsers: true`,
+`scope: "phone-relay-users"`, `excludedUids`, `limit`, and `truncated`. It removes
+only absent phone-relay user sources; direct-network users with the same UID and
+dropped points survive. `entity_remove` uses `{uid, scope: "phone-relay-users"}`
+with the same source-only semantics. When one source expires or is removed,
+another source can supply its coordinates. Explicit relay stop/new session
+clears phone-user copies; transport loss retains them only until their stale
+deadline. Expiry is checked on ingress and the 60-second prune timer; legacy
+users without a deadline retain the five-minute fallback. V2 user updates are
+ignored until a current-session snapshot supplies distinct phone/watch UIDs,
+including the watch's own UID; missing identity data fails closed.
+
+Snapshots are limited to the nearest 50 entities and the watch bounds live
+phone-user state at 50, requesting a fresh snapshot on overflow. The companion
+reports truncation and the watch displays a warning. The existing 999-entity /
+nearest-99 drawing limits remain; the watch warns before replacing the oldest
+retained user at capacity. Pending phone changes coalesce by UID and cap at 512.
+SDK handoff is not watch receipt or TAK delivery, and entity sync has no
+delivery-ACK/retry guarantee; a new hello/sync rebuilds state and stale
+deadlines clean up lost removals. `PhoneAppMessage` exposes data, not an
+authenticated sender-phone/app identity, so session fencing relies on Garmin
+Connect Mobile's app routing rather than independent authentication. Simulator
+tests do not establish paired-hardware delivery behavior.
+
 Garmin settings use a bounded UUID `transactionId` in the request or set payload.
 The watch copies it to `watch_settings` and `settings_set_ack`; the companion only
 confirms a settings write after both the positive acknowledgement and the matching,
@@ -152,6 +187,35 @@ Legacy untagged settings requests still receive untagged responses for older
 clients, but the current Android companion never treats an untagged response as
 confirmation. Watch/phone link loss, a new settings attempt, and a changed profile
 fence out delayed replies; confirmation expires after 15 seconds.
+
+### Releasing phone-managed settings (WEARTAK-161)
+
+Intentional phone Disconnect, disassociation, or unpair sends
+`release_phone_management` with payload `{"requestId": "<UUID>"}` before stopping
+the route. Its envelope must also carry the current `relaySession` from
+`relay_hello`. The watch replies `phone_management_release_ack` with
+`{"requestId": "<same UUID>", "ok": <Boolean>, "error": "<optional reason>"}`.
+The companion must wait for a positive, correlated acknowledgement; timeout or
+failure is not permission to claim the settings were unlocked. There is no
+untagged/legacy release fallback. Invalid request IDs receive a negative reply
+without a correlation ID.
+
+Only an active matching relay session may release ownership, including an
+idempotent repeat when already unmanaged. Missing/stale sessions and stopped
+relays fail without changing settings. The watch persists only the management
+flag before acknowledging; callsign, team, role, and reporting values remain.
+The watch's explicit relay Disconnect/stop control uses the same release helper.
+A storage failure retains the lock and reports failure (the local stop is
+aborted). GCM/BLE interruptions, transmit errors/retries, suspension, and app
+relaunch do not clear persisted ownership. Existing manual settings controls
+remain available.
+
+Unpairing outside Companion cannot itself unlock settings: use Companion's
+acknowledged release before unpairing or the explicit watch relay stop while
+active. The watch cannot distinguish two senders with access to the same GCM
+route and current session. The phone must validate its intended association
+before sending and keep the route open until the ACK arrives. Hardware
+association/replay behavior still needs paired-device acceptance testing.
 
 The watch can also use the iPhone WearTAK Companion's Garmin route without an
 ATAK plugin or an Apple Watch. That route owns TAK connections and phone GPS;

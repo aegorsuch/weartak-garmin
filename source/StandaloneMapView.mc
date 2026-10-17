@@ -26,6 +26,10 @@ class StandaloneMapView extends WatchUi.MapView {
     var pendingIncomingPoints as Array<String> = [];
     var dismissedIncomingPoints = {};
     var alertSourceStates = {};
+    var userSourceStates = {};
+    var phoneUserExcludedUids = [];
+    var phoneUserIdentityReady as Boolean = false;
+    var phoneUserSyncRequested as Boolean = false;
     var alertOrdering = {};
     var hiddenMapTeams as Array<String> = [];
     var hiddenMapRoles as Array<String> = [];
@@ -530,6 +534,10 @@ class StandaloneMapView extends WatchUi.MapView {
     function updateIncomingCot(uid as String, latitude, longitude, cotType as String, callSign as String?, team as String?, role as String?, metadata as Dictionary) as Void {
         var markerId = "cot-" + uid;
         if (metadata == null) { metadata = {}; }
+        if (isIncomingUser(cotType, metadata) && metadata.get("__userRebuild") != true) {
+            updateIncomingUser(uid, latitude, longitude, cotType, callSign, team, role, metadata);
+            return;
+        }
         var alertType = isIncomingAlert(cotType, metadata);
         if (alertType) {
             if (isSelfIncomingAlert(uid, metadata)) {
@@ -581,6 +589,8 @@ class StandaloneMapView extends WatchUi.MapView {
             "team" => team == null ? "" : trimMapText(team),
             "role" => role == null ? "" : trimMapText(role),
             "isPoint" => isPoint, "isAlert" => isAlert,
+            "isUser" => isIncomingUser(cotType, metadata),
+            "source" => incomingPointSource(metadata),
             "senderUID" => incomingPointSender(metadata),
             "revision" => revision,
             "stale" => false,
@@ -598,9 +608,234 @@ class StandaloneMapView extends WatchUi.MapView {
                 : WatchUi.loadResource(Rez.Strings.IncomingPointReceived), null);
         }
         application.refreshIncomingPointCount();
-        pruneIncomingEntities();
+        if (metadata.get("__userRebuild") != true) { pruneIncomingEntities(); }
         markersDirty = true;
         WatchUi.requestUpdate();
+    }
+
+    function applyPhoneUserLifecycle(action as String, payload as Dictionary) as Void {
+        if (action.equals("remove")) {
+            var uid = payload.get("uid");
+            if (uid instanceof String) {
+                var sources = userSourceStates.get(uid);
+                var previous = sources instanceof Dictionary ? sources.get("phone-relay") : null;
+                var revision = incomingPointRevision(payload);
+                if (previous instanceof Dictionary && revision.length() > 0
+                        && compareIncomingRevision(revision, previous.get("revision") as String) < 0) { return; }
+                removeIncomingUserSource(uid as String, "phone-relay");
+            }
+            return;
+        }
+        if (action.equals("snapshot")) {
+            var excluded = payload.get("excludedUids");
+            var deviceId = System.getDeviceSettings().uniqueIdentifier;
+            if (!(excluded instanceof Array) || deviceId == null) {
+                System.println("Phone user snapshot rejected: identity exclusions are missing");
+                return;
+            }
+            var validatedExcluded = [];
+            for (var index = 0; index < excluded.size(); index++) {
+                var uid = excluded[index];
+                if (!(uid instanceof String) || (uid as String).length() == 0) {
+                    System.println("Phone user snapshot rejected: invalid identity exclusion");
+                    return;
+                }
+                if (validatedExcluded.indexOf(uid) == -1) { validatedExcluded.add(uid); }
+            }
+            if (validatedExcluded.size() < 2 || validatedExcluded.indexOf(deviceId) == -1) {
+                System.println("Phone user snapshot rejected: phone/watch identities are incomplete");
+                return;
+            }
+            phoneUserSyncRequested = false;
+            phoneUserExcludedUids = validatedExcluded;
+            phoneUserIdentityReady = true;
+            var retained = [];
+            var entities = payload.get("entities");
+            if (!(entities instanceof Array)) { return; }
+            for (var index = 0; index < entities.size(); index++) {
+                var entity = entities[index];
+                if (entity instanceof Dictionary && entity.get("uid") instanceof String
+                        && entity.get("type") instanceof String
+                        && isIncomingUser(entity.get("type") as String, entity as Dictionary)) {
+                    retained.add(entity.get("uid"));
+                }
+            }
+            if (payload.get("truncated") == true) {
+                WatchUi.showToast("Phone map limited to nearest 50 entities", null);
+            }
+            var ids = userSourceStates.keys();
+            for (var index = 0; index < ids.size(); index++) {
+                var uid = ids[index] as String;
+                if (retained.indexOf(uid) == -1 || phoneUserExcludedUids.indexOf(uid) != -1) {
+                    removeIncomingUserSource(uid, "phone-relay");
+                }
+            }
+            return;
+        }
+        if (!action.equals("reset")) {
+            System.println("Phone user lifecycle rejected: unknown action");
+            return;
+        }
+        phoneUserExcludedUids = [];
+        phoneUserIdentityReady = false;
+        phoneUserSyncRequested = false;
+        var ids = userSourceStates.keys();
+        for (var index = 0; index < ids.size(); index++) {
+            removeIncomingUserSource(ids[index] as String, "phone-relay");
+        }
+    }
+
+    function updateIncomingUser(uid as String, latitude, longitude, cotType as String,
+            callSign as String?, team as String?, role as String?, metadata as Dictionary) as Void {
+        var source = incomingPointSource(metadata);
+        var revision = incomingPointRevision(metadata);
+        var sources = userSourceStates.get(uid);
+        var previous = sources instanceof Dictionary ? sources.get(source) : null;
+        if (previous instanceof Dictionary
+                && compareIncomingRevision(revision, previous.get("revision") as String) < 0) { return; }
+        if (source.equals("phone-relay") && metadata.get("isUser") == true && !phoneUserIdentityReady) {
+            System.println("Phone user update ignored until identity snapshot is available");
+            return;
+        }
+        var deviceId = System.getDeviceSettings().uniqueIdentifier;
+        if ((deviceId != null && uid.equals(deviceId))
+                || (source.equals("phone-relay") && phoneUserExcludedUids.indexOf(uid) != -1)) {
+            removeIncomingUserSource(uid, source);
+            return;
+        }
+        var stale = incomingPointStaleDeadline(metadata);
+        if (stale.length() > 0 && userDeadlineExpired(stale)) {
+            removeIncomingUserSource(uid, source);
+            return;
+        }
+        if (!isIncomingCoordinateValue(latitude) || !isIncomingCoordinateValue(longitude)
+                || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) { return; }
+        var boundedPhoneUser = source.equals("phone-relay") && metadata.get("isUser") == true;
+        if (boundedPhoneUser && previous == null && phoneRelayUserCount() >= PHONE_USER_RETAINED_LIMIT) {
+            if (!phoneUserSyncRequested) {
+                phoneUserSyncRequested = true;
+                if (takClient != null) {
+                    takClient.transmit("entity_sync_request", {
+                        "limit" => PHONE_USER_RETAINED_LIMIT, "protocolVersion" => 1, "routeVersion" => 1
+                    });
+                    System.println("Phone user map full; requesting a fresh nearest-user snapshot");
+                } else {
+                    System.println("Phone user map full; relay unavailable for snapshot request");
+                }
+            }
+            return;
+        }
+        if (!(sources instanceof Dictionary)) {
+            if (userSourceStates.size() >= MAP_RETAINED_LIMIT) {
+                WatchUi.showToast("User map capacity reached (999); oldest user replaced", null);
+                if (!evictOldestIncomingUser()) { return; }
+            }
+            sources = {};
+            userSourceStates.put(uid, sources);
+        }
+        var copy = {};
+        var keys = metadata.keys();
+        for (var index = 0; index < keys.size(); index++) { copy.put(keys[index], metadata.get(keys[index])); }
+        copy.put("__userRebuild", true);
+        sources.put(source, {
+            "uid" => uid, "lat" => latitude, "lon" => longitude, "type" => cotType,
+            "callSign" => callSign, "team" => team, "role" => role, "metadata" => copy,
+            "revision" => revision, "staleDeadline" => stale, "seen" => Time.now().value(),
+            "boundedPhoneUser" => boundedPhoneUser
+        });
+        rebuildIncomingUser(uid);
+    }
+
+    function evictOldestIncomingUser() as Boolean {
+        for (var index = 0; index < incomingIds.size(); index++) {
+            var id = incomingIds[index] as String;
+            var details = incomingDetails.get(id);
+            if (details instanceof Dictionary && details.get("isUser") == true) {
+                removeIncomingPoint(id, false);
+                return true;
+            }
+        }
+        var oldestUid = null;
+        var oldestSeen = null;
+        var ids = userSourceStates.keys();
+        for (var index = 0; index < ids.size(); index++) {
+            var sources = userSourceStates.get(ids[index]);
+            var sourceKeys = sources.keys();
+            for (var sourceIndex = 0; sourceIndex < sourceKeys.size(); sourceIndex++) {
+                var record = sources.get(sourceKeys[sourceIndex]);
+                var seen = record.get("seen");
+                if (seen instanceof Number && (oldestSeen == null || seen < oldestSeen)) {
+                    oldestUid = ids[index];
+                    oldestSeen = seen;
+                }
+            }
+        }
+        if (oldestUid == null) { return false; }
+        userSourceStates.remove(oldestUid);
+        return true;
+    }
+
+    function phoneRelayUserCount() as Number {
+        var count = 0;
+        var ids = userSourceStates.keys();
+        for (var index = 0; index < ids.size(); index++) {
+            var sources = userSourceStates.get(ids[index]);
+            var record = sources instanceof Dictionary ? sources.get("phone-relay") : null;
+            if (record instanceof Dictionary && record.get("boundedPhoneUser") == true) { count++; }
+        }
+        return count;
+    }
+
+    function userDeadlineExpired(deadline as String) as Boolean {
+        if (deadline.length() < 20) { return true; }
+        var digits = "0123456789";
+        for (var index = 0; index < 19; index++) {
+            var character = deadline.substring(index, index + 1);
+            if (index == 4 || index == 7) {
+                if (!character.equals("-")) { return true; }
+            } else if (index == 10) {
+                if (!character.equals("T")) { return true; }
+            } else if (index == 13 || index == 16) {
+                if (!character.equals(":")) { return true; }
+            } else if (digits.find(character) == null) { return true; }
+        }
+        if (!deadline.substring(deadline.length() - 1, deadline.length()).equals("Z")) { return true; }
+        return compareCotTimestamp(deadline, currentCotTimestamp()) <= 0;
+    }
+
+    function removeIncomingUserSource(uid as String, source as String) as Void {
+        var sources = userSourceStates.get(uid);
+        if (!(sources instanceof Dictionary) || !sources.hasKey(source)) { return; }
+        sources.remove(source);
+        if (sources.size() == 0) { userSourceStates.remove(uid); }
+        rebuildIncomingUser(uid);
+    }
+
+    function rebuildIncomingUser(uid as String) as Void {
+        var sources = userSourceStates.get(uid);
+        var selected = null;
+        if (sources instanceof Dictionary) {
+            var keys = sources.keys();
+            for (var index = 0; index < keys.size(); index++) {
+                var candidate = sources.get(keys[index]);
+                if (selected == null || compareIncomingRevision(candidate.get("revision") as String,
+                        selected.get("revision") as String) > 0) { selected = candidate; }
+            }
+        }
+        var markerId = "cot-" + uid;
+        var visible = incomingDetails.get(markerId);
+        // Removing a user copy must not erase a dropped point or an alert sharing its UID.
+        if (visible instanceof Dictionary && visible.get("isPoint") == true) { return; }
+        if (selected == null) {
+            if (visible instanceof Dictionary && visible.get("isUser") == true) {
+                removeIncomingPoint(markerId, false);
+            }
+            return;
+        }
+        var selectedRecord = selected as Dictionary;
+        updateIncomingCot(uid, selectedRecord.get("lat"), selectedRecord.get("lon"), selectedRecord.get("type") as String,
+            selectedRecord.get("callSign") as String?, selectedRecord.get("team") as String?,
+            selectedRecord.get("role") as String?, selectedRecord.get("metadata") as Dictionary);
     }
 
     function updateIncomingAlert(uid as String, latitude, longitude, cotType as String, callSign as String?,
@@ -860,6 +1095,9 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function removeIncomingPoint(id as String, dismiss as Boolean) as Void {
         var details = incomingDetails.get(id);
+        if (details instanceof Dictionary && details.get("isUser") == true) {
+            userSourceStates.remove(details.get("uid"));
+        }
         if (dismiss && details instanceof Dictionary) {
             if (dismissedIncomingPoints.size() >= MAP_RETAINED_LIMIT) {
                 dismissedIncomingPoints.remove(dismissedIncomingPoints.keys()[0]);
@@ -896,6 +1134,10 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function removeIncomingAlertSource(source as String) as Void {
+        var users = userSourceStates.keys();
+        for (var userIndex = 0; userIndex < users.size(); userIndex++) {
+            removeIncomingUserSource(users[userIndex] as String, source);
+        }
         var alertIds = alertSourceStates.keys();
         for (var index = 0; index < alertIds.size(); index++) {
             var markerId = alertIds[index] as String;
@@ -933,8 +1175,7 @@ class StandaloneMapView extends WatchUi.MapView {
             var details = incomingDetails.get(markerId);
             if (!(details instanceof Dictionary)) { continue; }
             if (details.get("isPoint") == true) { continue; }
-            var type = (details as Dictionary).get("type");
-            if (!(type instanceof String) || !isUserCotType(type as String) || isSelfIncomingUser(details as Dictionary)) { continue; }
+            if (details.get("isUser") != true || isSelfIncomingUser(details as Dictionary)) { continue; }
             var value = (details as Dictionary).get(isTeam ? "team" : "role");
             if (!(value instanceof String)) { continue; }
             var displayName = trimMapText(value as String);
@@ -957,8 +1198,8 @@ class StandaloneMapView extends WatchUi.MapView {
         var details = incomingDetails.get(markerId);
         if (!(details instanceof Dictionary)) { return true; }
         if (details.get("isPoint") == true) { return true; }
-        var eventType = (details as Dictionary).get("type");
-        if (!(eventType instanceof String) || !isUserCotType(eventType as String) || isSelfIncomingUser(details as Dictionary)) { return true; }
+        if (details.get("isUser") != true) { return true; }
+        if (isSelfIncomingUser(details as Dictionary)) { return false; }
         var teamValue = (details as Dictionary).get("team");
         var roleValue = (details as Dictionary).get("role");
         var team = teamValue instanceof String ? teamValue as String : "";
@@ -984,9 +1225,6 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function isSelfIncomingUser(details as Dictionary) as Boolean {
         if (application == null) { return false; }
-        var callSignValue = details.get("callSign");
-        var ownCallSign = application.getCallsign();
-        if (callSignValue instanceof String && ownCallSign.length() > 0 && normalizeMapGroup(callSignValue as String).equals(normalizeMapGroup(ownCallSign))) { return true; }
         var deviceId = System.getDeviceSettings().uniqueIdentifier;
         var uid = details.get("uid");
         return deviceId != null && uid instanceof String && (uid as String).equals(deviceId);
@@ -1181,7 +1419,7 @@ class StandaloneMapView extends WatchUi.MapView {
         for (var index = 0; index < drawnPointIds.size(); index++) {
             var markerId = drawnPointIds[index];
             var details = incomingDetails.get(markerId);
-            if (!(details instanceof Dictionary) || details.get("isPoint") == true || !isUserCotType((details as Dictionary).get("type").toString()) || !isIncomingUserVisible(markerId)) { continue; }
+            if (!(details instanceof Dictionary) || details.get("isPoint") == true || details.get("isUser") != true || !isIncomingUserVisible(markerId)) { continue; }
             var location = pointLocations.get(markerId);
             if (location == null) { continue; }
             var screen = pointScreenPosition(location);
@@ -2017,8 +2255,26 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function pruneIncomingEntities() as Boolean {
         var now = Time.now().value();
+        var usersChanged = false;
+        var users = userSourceStates.keys();
+        for (var userIndex = 0; userIndex < users.size(); userIndex++) {
+            var uid = users[userIndex] as String;
+            var sources = userSourceStates.get(uid);
+            var sourceKeys = sources.keys();
+            for (var sourceIndex = 0; sourceIndex < sourceKeys.size(); sourceIndex++) {
+                var record = sources.get(sourceKeys[sourceIndex]);
+                var deadline = record.get("staleDeadline") as String;
+                if ((deadline.length() > 0 && userDeadlineExpired(deadline))
+                        || (deadline.length() == 0 && (now - record.get("seen") > 300
+                            || (incomingLastSeen.get("cot-" + uid) instanceof Number
+                                && now - incomingLastSeen.get("cot-" + uid) > 300)))) {
+                    removeIncomingUserSource(uid, sourceKeys[sourceIndex] as String);
+                    usersChanged = true;
+                }
+            }
+        }
         var staleIds = [];
-        var changed = false;
+        var changed = usersChanged;
         var ids = incomingLastSeen.keys();
         for (var i = 0; i < ids.size(); i++) {
             var id = ids[i] as String;
@@ -2029,6 +2285,8 @@ class StandaloneMapView extends WatchUi.MapView {
                     details.put("stale", stale);
                     changed = true;
                 }
+            } else if (details instanceof Dictionary && details.get("isUser") == true) {
+                continue;
             } else if (now - incomingLastSeen.get(id) > 300) {
                 staleIds.add(id);
             }

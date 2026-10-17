@@ -2,6 +2,7 @@ import Toybox.Lang;
 
 const MAP_RETAINED_LIMIT = 999;
 const MAP_DRAWN_LIMIT = 99;
+const PHONE_USER_RETAINED_LIMIT = 50;
 
 class NearestMapItems {
     var pointIds as Array<String> = [];

@@ -1,5 +1,12 @@
 import Toybox.Lang;
 
+function isIncomingUser(cotType as String, metadata as Dictionary) as Boolean {
+    return !isIncomingAlert(cotType, metadata)
+        && (metadata.get("isUser") == true ? metadata.get("isPoint") != true : !isIncomingMapPoint(cotType, metadata))
+        && cotType.find("a-") == 0
+        && (metadata.get("isUser") == true || cotType.find("-G-U-C") != null);
+}
+
 function isIncomingCoordinateValue(value) as Boolean {
     return value instanceof Number || value instanceof Float || value instanceof Double
         || value instanceof Long;

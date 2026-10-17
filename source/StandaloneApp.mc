@@ -125,6 +125,7 @@ class StandaloneApp extends Application.AppBase {
         takClient.incomingCotCallback = method(:onIncomingCot);
         takClient.incomingRouteCallback = method(:onIncomingRoute);
         takClient.incomingSourceRemovedCallback = method(:onIncomingCotSourceRemoved);
+        takClient.incomingUserLifecycleCallback = method(:onIncomingUserLifecycle);
         takClient.incomingChatCallback = method(:onIncomingChat);
         takClient.phoneSettingsCallback = method(:applyPhoneSettings);
         takClient.watchSettingsCallback = method(:buildWatchSettings);
@@ -293,22 +294,23 @@ class StandaloneApp extends Application.AppBase {
         Application.Storage.setValue("networkPreferencesLocked", locked);
     }
 
-    // True while a paired phone owns identity and reporting; cleared when the relay drops.
+    // Ownership survives transport loss and restart; only intentional release clears it.
     function isPhoneManagedSettings() as Boolean {
         return phoneManagedSettings;
     }
 
-    function setPhoneManagedSettings(managed as Boolean) as Void {
-        if (phoneManagedSettings == managed) { return; }
+    function setPhoneManagedSettings(managed as Boolean) as String? {
+        if (phoneManagedSettings == managed) { return null; }
+        var error = persistPhoneSetting("phoneManagedSettings", managed);
+        if (error != null) { return "Could not save phone management (" + error + ")"; }
         phoneManagedSettings = managed;
-        Application.Storage.setValue("phoneManagedSettings", managed);
+        return null;
     }
 
-    // A null payload means the relay dropped, so the watch takes its settings back.
+    // A null payload explicitly releases ownership without rewriting provisioned values.
     function applyPhoneSettings(payload) as String? {
         if (payload == null) {
-            setPhoneManagedSettings(false);
-            return null;
+            return setPhoneManagedSettings(false);
         }
         if (!(payload instanceof Dictionary)) { return "Invalid settings payload"; }
         var settings = payload as Dictionary;
@@ -1480,6 +1482,10 @@ class StandaloneApp extends Application.AppBase {
         if (source.equals("phone-relay")) {
             getMapView().receiveRoute("routes_reset", {"routeVersion" => 1});
         }
+    }
+
+    function onIncomingUserLifecycle(action as String, payload as Dictionary) as Void {
+        getMapView().applyPhoneUserLifecycle(action, payload);
     }
 
     function onIncomingRoute(kind as String, payload as Dictionary) as Void {

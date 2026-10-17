@@ -83,6 +83,7 @@ class TakClient {
     var incomingCotCallback as Method? = null;
     var incomingRouteCallback as Method? = null;
     var incomingSourceRemovedCallback as Method? = null;
+    var incomingUserLifecycleCallback as Method? = null;
     var incomingChatCallback as Method? = null;
     var channelsCallback as Method? = null;
     var phoneSettingsCallback as Method? = null;
@@ -206,6 +207,7 @@ class TakClient {
             return;
         }
         status = :connecting;
+        if (incomingUserLifecycleCallback != null) { incomingUserLifecycleCallback.invoke("reset", {}); }
         bloodhoundSync.connectionChanged(false);
         chatGroupsSupported = false;
         relayGeneration++;
@@ -217,11 +219,17 @@ class TakClient {
         relayNegotiationAt = relayNow();
         pointReplyRetryAt = 0;
         transmit("relay_hello", {"watchLabel" => "Garmin watch", "protocolVersion" => 1,
-            "relaySession" => relaySession, "bloodhoundVersion" => 1, "routeVersion" => 1});
+            "relaySession" => relaySession, "bloodhoundVersion" => 1, "routeVersion" => 1,
+            "entitySyncVersion" => 2, "watchUid" => System.getDeviceSettings().uniqueIdentifier});
         notifyStatusChanged();
     }
 
     function disconnect() as Void {
+        var error = phoneSettingsCallback != null ? releasePhoneManagement() : null;
+        if (error != null) {
+            WatchUi.showToast(error, null);
+            return;
+        }
         if (dataSync.requestId != null) { dataSync.fail(Rez.Strings.DataSyncRelayOff); }
         automatedAlertSentAt = {};
         relayGeneration++;
@@ -231,8 +239,8 @@ class TakClient {
         status = :idle;
         chatGroupsSupported = false;
         bloodhoundSync.connectionChanged(false);
-        if (phoneSettingsCallback != null) { phoneSettingsCallback.invoke(null); }
         if (incomingSourceRemovedCallback != null) { incomingSourceRemovedCallback.invoke("phone-relay"); }
+        if (incomingUserLifecycleCallback != null) { incomingUserLifecycleCallback.invoke("reset", {}); }
         notifyStatusChanged();
         WatchUi.requestUpdate();
     }
@@ -259,7 +267,6 @@ class TakClient {
         status = :failed;
         chatGroupsSupported = false;
         bloodhoundSync.connectionChanged(false);
-        if (phoneSettingsCallback != null) { phoneSettingsCallback.invoke(null); }
         notifyStatusChanged();
         WatchUi.requestUpdate();
     }
@@ -663,6 +670,10 @@ class TakClient {
             applyPhoneSettings(payload as Dictionary, transactionId);
             return;
         }
+        if (msgType.equals("release_phone_management")) {
+            receivePhoneManagementRelease(envelope, payload as Dictionary);
+            return;
+        }
         if (msgType.equals("request_settings")) {
             var requestPayload = payload as Dictionary;
             var transactionId = settingsTransactionId(requestPayload);
@@ -685,6 +696,15 @@ class TakClient {
             applyRelayResult(payload as Dictionary);
             return;
         }
+        if (msgType.equals("entity_remove")) {
+            if (isCurrentEntitySession(envelope)
+                    && payload.get("scope") instanceof String
+                    && (payload.get("scope") as String).equals("phone-relay-users")
+                    && incomingUserLifecycleCallback != null) {
+                incomingUserLifecycleCallback.invoke("remove", payload);
+            }
+            return;
+        }
         if ((msgType.equals("chat") || msgType.equals("chat_received")) && incomingChatCallback != null) {
             incomingChatCallback.invoke(payload as Dictionary);
             return;
@@ -694,24 +714,40 @@ class TakClient {
             channelsCallback.invoke(msgType.toString(), payload as Dictionary);
             return;
         }
-        if ((msgType != "entity" && msgType != "entities") || incomingCotCallback == null) {
-            if (msgType == "entity" || msgType == "entities") {
+        if ((!msgType.equals("entity") && !msgType.equals("entities")) || incomingCotCallback == null) {
+            if (msgType.equals("entity") || msgType.equals("entities")) {
                 System.println("TAK relay ingress absent: no entity callback");
             }
             return;
         }
-        if (msgType == "entity") {
+        if (msgType.equals("entity")) {
+            if (payload.get("isUser") == true && !isCurrentEntitySession(envelope)) { return; }
             forwardEntity(payload as Dictionary);
             return;
         }
         var entities = (payload as Dictionary).get("entities");
+        if (payload.get("replaceUsers") == true) {
+            if (!isCurrentEntitySession(envelope) || !(payload.get("scope") instanceof String)
+                    || !(payload.get("scope") as String).equals("phone-relay-users")
+                    || !(entities instanceof Array)) { return; }
+            if (incomingUserLifecycleCallback != null) {
+                incomingUserLifecycleCallback.invoke("snapshot", payload);
+            }
+        }
         if (entities instanceof Array) {
             for (var index = 0; index < entities.size(); index++) {
                 if (entities[index] instanceof Dictionary) {
+                    if (entities[index].get("isUser") == true && !isCurrentEntitySession(envelope)) { continue; }
                     forwardEntity(entities[index] as Dictionary);
                 }
             }
         }
+    }
+
+    function isCurrentEntitySession(envelope as Dictionary) as Boolean {
+        var session = envelope.get("relaySession");
+        return (status == :connecting || status == :connected) && relaySession.length() > 0
+            && session instanceof String && relaySession.equals(session as String);
     }
 
     function settingsTransactionId(payload as Dictionary) as String? {
@@ -721,6 +757,36 @@ class TakClient {
             return null;
         }
         return value as String;
+    }
+
+    function releasePhoneManagement() as String? {
+        if (phoneSettingsCallback == null) { return "Settings are not available"; }
+        var error = phoneSettingsCallback.invoke(null);
+        if (error instanceof String) { return error as String; }
+        if (error != null) { return "Phone management could not be released"; }
+        return null;
+    }
+
+    function receivePhoneManagementRelease(envelope as Dictionary, request as Dictionary) as Void {
+        var requestId = request.get("requestId");
+        var session = envelope.get("relaySession");
+        var ack = {"ok" => false};
+        var error = null;
+        if (requestId instanceof String && isValidSettingsTransactionId(requestId as String)) {
+            ack.put("requestId", requestId);
+            // GCM supplies no sender identity. Fence destructive requests to the current hello.
+            if ((status != :connecting && status != :connected) || relaySession.length() == 0
+                    || !(session instanceof String) || !relaySession.equals(session as String)) {
+                error = "No matching active relay session";
+            } else {
+                error = releasePhoneManagement();
+            }
+        } else {
+            error = "Invalid release request ID";
+        }
+        ack.put("ok", error == null);
+        if (error != null) { ack.put("error", error); }
+        transmit("phone_management_release_ack", ack);
     }
 
     function isValidSettingsTransactionId(value as String) as Boolean {
