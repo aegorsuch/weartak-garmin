@@ -81,6 +81,9 @@ function buildIncomingPointActions(map as StandaloneMapView, id as String) as Wa
             addMenuEntry(menu, "nPos", WatchUi.loadResource(Rez.Strings.IncomingPointNpos), :npos);
         }
     }
+    if (incomingUserChatUid(map, id) != null) {
+        addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.MenuTitleChat), null, :chat);
+    }
     if (hasLocation) {
         addMenuEntry(menu, map.isBloodhoundTarget(id) ? map.application.text(Rez.Strings.TextStopBloodhound)
             : map.application.text(isAlert ? Rez.Strings.IncomingAlertBloodhound : Rez.Strings.TextBloodhound),
@@ -90,6 +93,29 @@ function buildIncomingPointActions(map as StandaloneMapView, id as String) as Wa
         ? Rez.Strings.IncomingAlertDismiss : Rez.Strings.IncomingPointRemove), null, :remove);
     addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel);
     return menu;
+}
+
+// Direct-chat UID for a selected map user; null for points, alerts, self or the broadcast room.
+function incomingUserChatUid(map as StandaloneMapView, id as String) as String? {
+    var details = map.incomingDetails.get(id);
+    if (!(details instanceof Dictionary) || details.get("isUser") != true
+            || details.get("isPoint") == true || details.get("isAlert") == true
+            || map.isSelfIncomingUser(details as Dictionary)) { return null; }
+    var uid = details.get("uid");
+    if (!(uid instanceof String) || uid.length() == 0 || uid.equals("All Chat Rooms")) { return null; }
+    return uid as String;
+}
+
+function incomingUserChatRoom(map as StandaloneMapView, id as String) as Dictionary? {
+    var uid = incomingUserChatUid(map, id);
+    return uid == null ? null : map.application.chats.open(uid, map.bloodhoundTargetLabel(id, uid), false);
+}
+
+function openIncomingUserChat(map as StandaloneMapView, id as String) as Boolean {
+    var room = incomingUserChatRoom(map, id);
+    if (room == null) { return false; }
+    openChatConversation(map.application, room);
+    return true;
 }
 
 class IncomingPointsDelegate extends WatchUi.Menu2InputDelegate {
@@ -141,6 +167,10 @@ class IncomingPointActionsDelegate extends WatchUi.Menu2InputDelegate {
                 new IncomingPointActionsDelegate(map, pointId), WatchUi.SLIDE_LEFT);
         } else if (id == :npos) {
             if (map.markIncomingPointInPosition(pointId)) { WatchUi.popView(WatchUi.SLIDE_RIGHT); }
+        } else if (id == :chat) {
+            if (!openIncomingUserChat(map, pointId)) {
+                WatchUi.showToast(WatchUi.loadResource(Rez.Strings.IncomingPointUnavailable), null);
+            }
         } else if (id == :remove) {
             map.removeIncomingPoint(pointId, true);
             WatchUi.popView(WatchUi.SLIDE_RIGHT);

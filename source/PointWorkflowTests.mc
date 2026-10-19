@@ -1059,3 +1059,53 @@ function phoneManagedSettingsLock(logger) as Boolean {
     app.setDynamicReportingEnabled(dynamic);
     return true;
 }
+
+(:test)
+function selectedMapUserMenuOffersChatAboveBloodhound(logger) as Boolean {
+    var map = new TestMapSelectionView();
+    var app = map.application;
+    var previousChats = app.chats;
+    app.chats = new ChatConversations();
+    map.updateIncomingCot("remote", 0.0, 0.1, "a-f-G-U-C", "Alpha", "Blue", null, {});
+    var menu = buildIncomingPointActions(map, "cot-remote");
+    Test.assertEqual(menu.getItem(0).getId(), :range);
+    Test.assertEqual(menu.getItem(1).getId(), :chat);
+    Test.assertEqual(menu.getItem(1).getLabel(), Toybox.WatchUi.loadResource(Rez.Strings.MenuTitleChat));
+    Test.assertEqual(menu.getItem(2).getId(), :track);
+    Test.assertEqual(menu.getItem(2).getLabel(), app.text(Rez.Strings.TextBloodhound));
+    Test.assertEqual(menu.getItem(3).getId(), :remove);
+    Test.assertEqual(menu.getItem(4).getId(), :cancel);
+    Test.assert(menu.getItem(5) == null);
+
+    var room = incomingUserChatRoom(map, "cot-remote") as Dictionary;
+    Test.assertEqual(room.get("uid"), "remote");
+    Test.assertEqual(room.get("title"), "Alpha");
+    Test.assertEqual(room.get("isGroup"), false);
+
+    map.toggleBloodhound("cot-remote");
+    Test.assert(map.isBloodhoundTarget("cot-remote"));
+    Test.assertEqual(map.bloodhoundTarget().get("uid"), "remote");
+    menu = buildIncomingPointActions(map, "cot-remote");
+    Test.assertEqual(menu.getItem(1).getId(), :chat);
+    Test.assertEqual(menu.getItem(2).getLabel(), app.text(Rez.Strings.TextStopBloodhound));
+    map.toggleBloodhound("cot-remote");
+
+    map.updateIncomingCot("marker", 0.0, 0.1, "a-n-G", "Marker", null, null, {"isPoint" => true});
+    map.updateIncomingCot("alert", 0.0, 0.1, "b-a-o-tbl", "Medic", null, null, {});
+    map.updateIncomingCot("broadcast", 0.0, 0.1, "a-f-G-U-C", "All", null, null, {});
+    (map.incomingDetails.get("cot-broadcast") as Dictionary).put("uid", "All Chat Rooms");
+    var ids = ["cot-marker", "cot-alert", "cot-broadcast"];
+    for (var i = 0; i < ids.size(); i++) {
+        Test.assert(incomingUserChatUid(map, ids[i] as String) == null);
+        var other = buildIncomingPointActions(map, ids[i] as String);
+        for (var j = 0; other.getItem(j) != null; j++) { Test.assert(other.getItem(j).getId() != :chat); }
+    }
+    var deviceId = System.getDeviceSettings().uniqueIdentifier;
+    if (deviceId != null) {
+        map.updateIncomingCot(deviceId, 0.0, 0.1, "a-f-G-U-C", "Me", null, null, {});
+        var selfId = "cot-" + deviceId;
+        if (map.incomingDetails.hasKey(selfId)) { Test.assert(incomingUserChatUid(map, selfId) == null); }
+    }
+    app.chats = previousChats;
+    return true;
+}
