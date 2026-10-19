@@ -432,6 +432,10 @@ features currently available:
 	title, remark, marker-type, move, delete, and back actions.
 - View self coordinates in latitude/longitude and MGRS.
 - Tap the self marker to view separate latitude and longitude rows and MGRS.
+- Tap a remote map user to open Range, **Chat**, **Bloodhound** / **Stop
+	Bloodhound**, Remove locally, and Cancel. Chat opens that user's direct
+	conversation; Bloodhound, directly below it, starts tracking the user with the
+	existing range/bearing display and proximity alerts.
 - Tap overlapping or closely spaced map markers to open a native text-only
 	Select Map Item list with their titles/callsigns and details. Choose a row to
 	open its usual actions, or Cancel/back to return to the map. Self is included
