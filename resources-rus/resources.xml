@@ -117,4 +117,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">Начать с ближайшей</string>
+    <string id="RouteStartBeginning">Начать с начала</string>
+    <string id="RouteNeedsLocation">Требуется местоположение</string>
+    <string id="RouteStop">Остановить маршрут</string>
+    <string id="RouteProgress">Точка $1$ из $2$</string>
+    <string id="RouteRemaining">Осталось $1$ м</string>
+    <string id="RouteComplete">Маршрут завершён</string>
+    <string id="RoutePointCount">$1$ точек</string>
+    <string id="PickerRoute">Маршрут</string>
+    <string id="PickerMarker">Маркер</string>
+    <string id="PickerContact">Контакт</string>
+    <string id="PickerPoint">Точка</string>
+    <string id="PickerShowOnMap">Показать на карте</string>
+    <string id="PickerDetails">Подробности</string>
+    <string id="PickerRemaining">Осталось $1$</string>
 </resources>

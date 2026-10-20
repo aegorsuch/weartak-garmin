@@ -2,7 +2,7 @@
 
 WearTAK-Garmin is a standalone Garmin Connect IQ watch application for basic
 Team Awareness Kit (TAK) operational awareness. It is designed for Garmin
-watches with maps and GPS, currently supporting the fenix 6 family, fenix 7X,
+watches with maps and GPS, currently supporting the fenix 6 Pro family (6 Pro, 6S Pro, 6X Pro), fenix 7X,
 and fenix 8 (47 mm and 51 mm variants).
 
 ## Project links
@@ -13,15 +13,120 @@ and fenix 8 (47 mm and 51 mm variants).
 ## Routes (phone companion route protocol v1)
 
 Updated iPhone and ATAK companions can send route geometry to the watch. Open
-**Map > Layers > Routes** to browse routes and every individual point, including
-unnamed vertices. Tapping a point on the map opens its details; overlapping points
-use the existing **Select Map Item** list. Details show the route, source server,
+**Map > Layers > Routes** to browse routes and their nonblank named points.
+Selecting a route opens whole-route details (named/total point counts,
+source server, mission and sender), with **Select named point** and **Remove from this
+watch**. Tapping a visible route line also selects the whole route. Tapping a
+point offers both that point and its whole route in **Select Map Item**;
+overlapping routes remain separate by source server. Point details include a
+**Whole route** action. Details show the route, source server,
 mission, sender UID and coordinates, with **Bloodhound** / **Stop Bloodhound** and
 sender **Chat** when available. Bloodhound uses the existing GPS range/bearing
 display and proximity alerts; this is not turn-by-turn navigation.
-The route-point list includes vertex numbers and coordinates so repeated point
-names remain distinguishable. Chat actions recheck the current sender before
+
+### Bloodhound picker (Garmin button-first layout)
+
+The picker uses one native row per route, received point, visible contact, or
+locally placed marker. Rows have a type glyph, name and a localized subtitle
+(`Route / point count / nearest distance`, or `Marker`, `Point`, `Contact` and
+distance). Distances use meters below 1 km and kilometers above it. Active route
+subtitles show **Point X of N / remaining distance left**, and the active type
+glyph is amber. Native rows are used on every supported Garmin: two independent in-row touch buttons and a custom amber
+row background/border are **not** implemented on Garmin's Menu2. Native focus and
+row colors remain device-specific; the amber glyph identifies the active row.
+
+Selecting a row opens the approved Garmin action-menu fallback:
+
+- **Show on map** (grey crosshair): centers tightly on a point without changing
+  Bloodhound. For routes it enables the route layer and fits the entire received
+  geometry with padding, including routes crossing the date line.
+- **Bloodhound** (green ATAK hound): starts a point/marker/contact immediately.
+  For a route it opens **Start nearest**, **Start from beginning**, **Cancel**.
+  Nearest has a grey hound and **Location required** when no position is known;
+  choosing it cannot change the active target. Nearest's available icon is green.
+- **Stop Bloodhound** (red circle, white stop square): replaces the hound action
+  for the sole active target, including whole routes.
+- **Details** retains the existing route/point/contact details, point RGR/nPos,
+  chat and removal flows. **Cancel** returns without changing the target.
+
+This menu fallback deliberately avoids touch-only controls and large image
+assets. Action icons are 24 x 24 px. The picker refreshes on route delivery,
+GPS updates, target changes and when shown again. **Remove All Points** retains
+its existing received-point/alert scope; it does not remove routes, contacts or
+local markers. Native picker layout, icon legibility and translations still
+need physical-watch/native-speaker acceptance.
+
+#### ATAK artwork attribution
+
+The resized/composited hound and crosshair artwork in
+`resources/images/picker-hound*.png` and `picker-crosshair.png` comes from
+[deptofdefense/AndroidTacticalAssaultKit-CIV](https://github.com/deptofdefense/AndroidTacticalAssaultKit-CIV),
+**GPLv3**: [`nav_bloodhound.png`](https://github.com/deptofdefense/AndroidTacticalAssaultKit-CIV/blob/main/atak/ATAK/app/src/main/res/drawable-xxxhdpi/nav_bloodhound.png)
+and [`ic_crosshair.png`](https://github.com/deptofdefense/AndroidTacticalAssaultKit-CIV/blob/main/atak/ATAK/app/src/main/res/drawable-hdpi/ic_crosshair.png).
+The source copies were provided by the user. The user approved their use and
+will review licensing/distribution obligations before release; this attribution
+is not a completed licensing review. The stop square and type glyphs are drawn
+for this app rather than copied from ATAK.
+
+### Follow a whole route with Bloodhound
+
+The **Bloodhound** picker lists each received route once, with its name, total
+vertex count and distance to its nearest vertex when GPS is available. Select a
+route, choose **Bloodhound**, then **Start nearest** or **Start from beginning**. Nearest requires a
+known position (otherwise the menu explains **Location required**, with no silent
+fallback); ties use the earliest vertex. Beginning targets original vertex zero.
+Both modes follow the original received order, including unnamed vertices, not
+the filtered named-point list. Whole-route details also provide a **Bloodhound**
+action; individual point Bloodhound remains available and does not auto-advance.
+
+The existing map/compass shows the route name, **Point X of N** (one-based), and
+remaining distance: current position to the target plus every remaining route
+segment. The arrow continues to point at the current vertex. Within
+`ROUTE_ARRIVAL_RADIUS_METERS` (**20 m**, inclusive), tracking advances in order,
+skipping all consecutive vertices inside the radius in the same GPS update.
+Reaching the last vertex displays **Route complete** and clears the target.
+Missing GPS never advances the route; beginning can wait for the first fix.
+This is vertex guidance, not road routing, turn instructions, or off-route
+recalculation. Arrival uses distance to a vertex, not crossing its segment.
+
+Select the active route again for **Stop Bloodhound**, open its Bloodhound
+chooser/details for progress and **Stop route**, or tap the map's
+Bloodhound panel. Starting a different route or selecting any other Bloodhound
+target stops the previous route. Removing/resetting its route also stops it.
+Geometry updates retain the original target index (or stop if that index no
+longer exists), so changed vertex order changes the target at that index.
+Follow state is in memory and local only; no route-follow messages are sent.
+Switching away from a synchronized ordinary point still stops its previous
+phone Bloodhound session, as with individual route-point tracking.
+
+[RouteNavigation.mc](source/RouteNavigation.mc) contains pure nearest-index,
+arrival advancement and remaining-distance logic. The simulator suite in
+[RouteNavigationTests.mc](source/RouteNavigationTests.mc) covers missing GPS,
+nearest ties, dense vertices, the arrival threshold, completion, original vertex
+order, dateline distance, switching targets, route removal/reset/update, picker
+summaries, GPS-dependent chooser refresh and local-only tracking.
+[BloodhoundPickerTests.mc](source/BloodhoundPickerTests.mc) covers icon resources,
+point/route map focus (including date-line and polar coordinates), immediate
+point/marker/contact tracking, active summaries, stop actions and stale/no-fix
+rejection. New labels have resource entries in every
+supported locale; physical watch acceptance and native-speaker review remain
+required. The non-Pro fenix 6/6S are no longer supported (128 KiB memory limit).
+
+The route-point list hides missing, empty and whitespace-only names, with a
+localized **No named points** empty state when needed. It retains original vertex
+numbers and coordinates so repeated point names remain distinguishable; selecting
+a filtered row still targets that original vertex, not its position in the list.
+All geometry and unnamed map-point/Bloodhound access remain unchanged.
+Chat actions recheck the current sender before
 opening a conversation when route metadata changes.
+
+**Remove from this watch** requires a second confirmation, initially focused on
+**Cancel**, and names the route and server. It removes only the current in-memory
+watch copy and stops Bloodhound only if tracking one of that route's vertices.
+It sends no route-delete command to the phone or TAK server, does not affect
+another server's route with the same UID, and does not delete individual vertices.
+The confirmation warns that subsequent phone updates or refresh/reconnect replay
+may restore the route; this is not a permanent source-route dismissal.
 
 **Show Routes** controls route lines and point hit-testing without stopping an
 active Bloodhound target. Point selection and tracking identities include the
@@ -75,12 +180,51 @@ This length-prefixed encoding avoids delimiter collisions.
 
 [RouteTests.mc](source/RouteTests.mc) covers atomic validation, capacity boundaries,
 same-UID/different-server selection, individual point coordinates, active target
-updates/removal, clipped lines, overlap menus and route envelope dispatch.
+updates/removal, clipped-line hit thresholds, date-line/overlap selection,
+whole-route menus, confirmation/cancellation, watch-only removal and unchanged
+route envelope dispatch. Named-list tests cover blank names, duplicate names,
+original source/index identities, named/total counts, empty state, unchanged
+geometry and unnamed map/Bloodhound access.
 New route labels use English fallback resources pending translation.
 `monkey.jungle` limits compilation to `source` so nested Git worktrees are not
 compiled as duplicate application sources. Test-enabled builds can be run with
 `monkeydo ... fenix7x /t`; the full test-enabled fenix6pro build currently exceeds
 that device's global-member limit.
+
+### TAK-server Data Package delivery boundary
+
+This repository contains only the Connect IQ watch application. `TakClient`
+receives normalized route dictionaries over the existing phone relay; it does
+not parse raw `b-m-r` route CoT, handle `b-f-t-r` package advertisements, download
+`Marti/sync/content?hash=...`, or parse ZIP/XML. No new package capability is
+advertised by this change. A `routeVersion: 1` watch can display package routes
+**only after a compatible ATAK/iPhone companion imports and normalizes them**.
+Package import is not operational end-to-end from this watch-only change.
+
+The required companion implementation must:
+
+- Accept route-only TAK Data Package ZIPs, validate the advertised SHA-256 and
+  bounded download size, and fetch only from the configured TAK HTTPS origin
+  with TLS validation. Bind credentials to that origin; reject untrusted
+  redirects/URLs rather than forwarding credentials or permitting SSRF.
+- Bound ZIP entry count, compressed/uncompressed sizes, expansion ratio and XML
+  complexity; reject unsafe/duplicate archive paths without writing entries to
+  arbitrary filesystem locations. Disable DTDs/external entities.
+- Read `MissionPackageManifest` content entries, import only non-ignored route
+  CoT through the companion's existing `b-m-r` route parser, and ignore package
+  execution/import/delete instructions (`onReceiveImport`, `onReceiveDelete`).
+  Do not execute arbitrary package contents or delete source/server data.
+- Send validated routes through the existing route v1 envelopes and enforce
+  their capacity/text/envelope limits without silently simplifying geometry;
+  report failures through `routes_error`. No raw archives, URLs, credentials or
+  XML should be sent to the watch.
+
+Remaining physical-device acceptance: import a route-only TAK-server package on
+each companion, check Connect IQ delivery/replay/error reporting, tap lines and
+overlapping vertices (including across the date line), select an unnamed point
+for GPS Bloodhound, cancel then confirm watch-only removal, and verify that the
+phone/server route and other watch routes remain unchanged. Confirm label
+wrapping, button navigation and memory use on supported devices.
 
 ## Rights and contacts
 
@@ -795,7 +939,7 @@ fields or provide an end-to-end delivery acknowledgement.
 Connect IQ storage is not an OS Keychain; credentials persisted by this app are
 not protected by an equivalent secure-token store.
 
-The manifest currently targets Fenix 6, 7, and 8 products and requires Connect
+The manifest currently targets Fenix 6 Pro, 7X, and 8 products and requires Connect
 IQ 3.3.0; Fenix 3 HD is not supported by this build.
 
 Garmin localized resources are selected automatically by the watch's system
@@ -893,7 +1037,7 @@ physical watch with Garmin Connect and the ATAK plugin. Do not commit generated
 build output or the private `developer_key.der`; both are ignored by Git.
 
 Use size optimization and release mode (`-O 3z -r`) for distributable builds,
-particularly on the memory-constrained Fenix 6 family. To compile and run the
+particularly on the memory-constrained Fenix 6 Pro family. To compile and run the
 focused point workflow tests with the Connect IQ simulator already running:
 
 ```powershell
@@ -906,10 +1050,8 @@ if ($LASTEXITCODE -eq 0) {
 Menu construction is shared across devices, and localized labels use resource
 IDs directly rather than an eagerly initialized symbol-to-resource dictionary.
 These optimizations preserve the same features and translations for every target.
-The non-Pro Fenix 6 and 6S can compile after these changes, but remain unsupported:
-the Fenix 6 simulator still runs out of memory while loading the application,
-and Garmin's native `WatchUi.MapView` is unavailable on both non-Pro models.
-Compilation alone is not sufficient to add them to a release.
+The non-Pro Fenix 6 and 6S are not supported: they exceed the 128 KiB watch-app
+memory limit, and Garmin's native `WatchUi.MapView` is unavailable on both.
 
 ## Continuous integration and signed builds
 
@@ -987,11 +1129,13 @@ Runner registration and GitLab signing variables must be
 configured before remote build jobs can run.
 
 The signed job intentionally enforces each device's memory limit; exporting an
-`.iq` alone does not prove every device-specific `.prg` fits. During initial
-validation, the current route-display worktree exceeded the `fenix6` watch-app
-limit (180,116 bytes versus 131,072). Signed release validation is blocked until
-that device-size issue is resolved; the pipeline does not drop manifest devices
-or publish a partial release to hide the error.
+`.iq` alone does not prove every device-specific `.prg` fits. The non-Pro
+`fenix6` and `fenix6s` were removed from the manifest on 2026-10-20: their
+128 KiB watch-app limit was already exceeded by the current release (`develop`
+needs 187,380 bytes; whole-route Bloodhound needs 199,900 versus 131,072), and
+neither model supports Garmin's native map API. Optimized device builds pass for
+all seven remaining manifest devices. The full fenix7x simulator suite passes
+**120/120** tests; these are not hardware results.
 
 ## Git workflow
 

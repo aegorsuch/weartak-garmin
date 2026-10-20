@@ -192,4 +192,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">从最近点开始</string>
+    <string id="RouteStartBeginning">从起点开始</string>
+    <string id="RouteNeedsLocation">需要位置信息</string>
+    <string id="RouteStop">停止路线</string>
+    <string id="RouteProgress">第 $1$ / $2$ 个点</string>
+    <string id="RouteRemaining">剩余 $1$ 米</string>
+    <string id="RouteComplete">路线完成</string>
+    <string id="RoutePointCount">$1$ 个点</string>
+    <string id="PickerRoute">路线</string>
+    <string id="PickerMarker">标记</string>
+    <string id="PickerContact">联系人</string>
+    <string id="PickerPoint">点</string>
+    <string id="PickerShowOnMap">在地图上显示</string>
+    <string id="PickerDetails">详情</string>
+    <string id="PickerRemaining">剩余 $1$</string>
 </resources>

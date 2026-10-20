@@ -117,4 +117,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">最寄りから開始</string>
+    <string id="RouteStartBeginning">最初から開始</string>
+    <string id="RouteNeedsLocation">位置情報が必要です</string>
+    <string id="RouteStop">ルートを停止</string>
+    <string id="RouteProgress">地点 $1$ / $2$</string>
+    <string id="RouteRemaining">残り $1$ m</string>
+    <string id="RouteComplete">ルート完了</string>
+    <string id="RoutePointCount">$1$ 地点</string>
+    <string id="PickerRoute">ルート</string>
+    <string id="PickerMarker">マーカー</string>
+    <string id="PickerContact">連絡先</string>
+    <string id="PickerPoint">地点</string>
+    <string id="PickerShowOnMap">地図に表示</string>
+    <string id="PickerDetails">詳細</string>
+    <string id="PickerRemaining">残り $1$</string>
 </resources>

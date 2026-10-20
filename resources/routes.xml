@@ -5,7 +5,15 @@
     <string id="RoutesServer">Server</string>
     <string id="RoutesMission">Mission</string>
     <string id="RoutesSender">Sent by</string>
-    <string id="RoutesUnavailable">Route point is no longer available</string>
+    <string id="RoutesUnavailable">Route or point is no longer available</string>
+    <string id="RoutesWhole">Whole route</string>
+    <string id="RoutesPoints">Select named point</string>
+    <string id="RoutesPointCounts">$1$ named / $2$ total</string>
+    <string id="RoutesNoNamedPoints">No named points</string>
+    <string id="RoutesRemove">Remove from this watch</string>
+    <string id="RoutesRemoveConfirm">Remove route?</string>
+    <string id="RoutesRemoveScope">Server route is unchanged</string>
+    <string id="RoutesRemoveReplay">Phone updates may restore it</string>
     <string id="RoutesLatitude">Latitude</string>
     <string id="RoutesLongitude">Longitude</string>
 </resources>

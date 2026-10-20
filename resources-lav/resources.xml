@@ -165,4 +165,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">Sākt no tuvākā</string>
+    <string id="RouteStartBeginning">Sākt no sākuma</string>
+    <string id="RouteNeedsLocation">Nepieciešama atrašanās vieta</string>
+    <string id="RouteStop">Apturēt maršrutu</string>
+    <string id="RouteProgress">Punkts $1$ no $2$</string>
+    <string id="RouteRemaining">Atlikuši $1$ m</string>
+    <string id="RouteComplete">Maršruts pabeigts</string>
+    <string id="RoutePointCount">$1$ punkti</string>
+    <string id="PickerRoute">Maršruts</string>
+    <string id="PickerMarker">Marķieris</string>
+    <string id="PickerContact">Kontakts</string>
+    <string id="PickerPoint">Punkts</string>
+    <string id="PickerShowOnMap">Rādīt kartē</string>
+    <string id="PickerDetails">Informācija</string>
+    <string id="PickerRemaining">Atlikuši $1$</string>
 </resources>

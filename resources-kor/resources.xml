@@ -117,4 +117,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">가장 가까운 지점부터</string>
+    <string id="RouteStartBeginning">처음부터 시작</string>
+    <string id="RouteNeedsLocation">위치가 필요합니다</string>
+    <string id="RouteStop">경로 중지</string>
+    <string id="RouteProgress">지점 $1$ / $2$</string>
+    <string id="RouteRemaining">남은 거리 $1$ m</string>
+    <string id="RouteComplete">경로 완료</string>
+    <string id="RoutePointCount">$1$개 지점</string>
+    <string id="PickerRoute">경로</string>
+    <string id="PickerMarker">마커</string>
+    <string id="PickerContact">연락처</string>
+    <string id="PickerPoint">지점</string>
+    <string id="PickerShowOnMap">지도에 표시</string>
+    <string id="PickerDetails">세부 정보</string>
+    <string id="PickerRemaining">남은 거리 $1$</string>
 </resources>

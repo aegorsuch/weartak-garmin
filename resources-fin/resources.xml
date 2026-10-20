@@ -165,4 +165,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">Aloita lähimmästä</string>
+    <string id="RouteStartBeginning">Aloita alusta</string>
+    <string id="RouteNeedsLocation">Sijainti tarvitaan</string>
+    <string id="RouteStop">Lopeta reitti</string>
+    <string id="RouteProgress">Piste $1$ / $2$</string>
+    <string id="RouteRemaining">Jäljellä $1$ m</string>
+    <string id="RouteComplete">Reitti valmis</string>
+    <string id="RoutePointCount">$1$ pistettä</string>
+    <string id="PickerRoute">Reitti</string>
+    <string id="PickerMarker">Merkki</string>
+    <string id="PickerContact">Kontakti</string>
+    <string id="PickerPoint">Piste</string>
+    <string id="PickerShowOnMap">Näytä kartalla</string>
+    <string id="PickerDetails">Tiedot</string>
+    <string id="PickerRemaining">Jäljellä $1$</string>
 </resources>

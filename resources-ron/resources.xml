@@ -117,4 +117,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">Începe de la cel mai apropiat</string>
+    <string id="RouteStartBeginning">Începe de la început</string>
+    <string id="RouteNeedsLocation">Este necesară locația</string>
+    <string id="RouteStop">Oprește ruta</string>
+    <string id="RouteProgress">Punctul $1$ din $2$</string>
+    <string id="RouteRemaining">Au rămas $1$ m</string>
+    <string id="RouteComplete">Rută finalizată</string>
+    <string id="RoutePointCount">$1$ puncte</string>
+    <string id="PickerRoute">Rută</string>
+    <string id="PickerMarker">Marcaj</string>
+    <string id="PickerContact">Contact</string>
+    <string id="PickerPoint">Punct</string>
+    <string id="PickerShowOnMap">Arată pe hartă</string>
+    <string id="PickerDetails">Detalii</string>
+    <string id="PickerRemaining">Au rămas $1$</string>
 </resources>

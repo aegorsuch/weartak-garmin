@@ -117,4 +117,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">התחלה מהקרובה ביותר</string>
+    <string id="RouteStartBeginning">התחלה מההתחלה</string>
+    <string id="RouteNeedsLocation">נדרש מיקום</string>
+    <string id="RouteStop">עצירת מסלול</string>
+    <string id="RouteProgress">נקודה $1$ מתוך $2$</string>
+    <string id="RouteRemaining">נותרו $1$ מ׳</string>
+    <string id="RouteComplete">המסלול הושלם</string>
+    <string id="RoutePointCount">$1$ נקודות</string>
+    <string id="PickerRoute">מסלול</string>
+    <string id="PickerMarker">סמן</string>
+    <string id="PickerContact">איש קשר</string>
+    <string id="PickerPoint">נקודה</string>
+    <string id="PickerShowOnMap">הצגה במפה</string>
+    <string id="PickerDetails">פרטים</string>
+    <string id="PickerRemaining">נותרו $1$</string>
 </resources>

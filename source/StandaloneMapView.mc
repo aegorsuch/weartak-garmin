@@ -50,6 +50,70 @@ class StandaloneMapView extends WatchUi.MapView {
     var drawnPointIds as Array<String> = [];
     var routeStore as RouteStore = new RouteStore();
     var routesVisible as Boolean = true;
+    var followingRouteId as String? = null;
+    var followingRouteIndex as Number = 0;
+    var routeFollowMenu as RouteFollowMenu? = null;
+
+    function startRoute(id as String, nearest as Boolean) as Boolean {
+        var route = routeStore.route(id);
+        if (route == null) { routeUnavailable(); return false; }
+        var points = route.get("points") as Array;
+        var index = nearest ? RouteNavigation.nearest(points, currentPosition) : 0;
+        if (index == null) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.RouteNeedsLocation), null);
+            return false;
+        }
+        setBloodhoundPoint(null);
+        followingRouteId = id;
+        followingRouteIndex = index;
+        updateRouteFollow();
+        refreshBloodhoundPicker();
+        notifyBloodhoundChanged();
+        WatchUi.requestUpdate();
+        return true;
+    }
+
+    function stopRoute() as Void {
+        if (followingRouteId == null) { return; }
+        setBloodhoundPoint(null);
+        notifyBloodhoundChanged();
+    }
+
+    function updateRouteFollow() as Void {
+        if (followingRouteId == null) { return; }
+        var route = routeStore.route(followingRouteId);
+        if (route == null || followingRouteIndex >= (route.get("points") as Array).size()) {
+            stopRoute();
+            return;
+        }
+        var points = route.get("points") as Array;
+        followingRouteIndex = RouteNavigation.advance(points, followingRouteIndex, currentPosition);
+        if (followingRouteIndex == points.size()) {
+            stopRoute();
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.RouteComplete), null);
+            return;
+        }
+        var id = routeStore.pointId(route, followingRouteIndex);
+        if (bloodhoundPointId != null && !id.equals(bloodhoundPointId)) {
+            pointLocations.remove(bloodhoundPointId);
+            bloodhoundProximityNotified = false;
+        }
+        bloodhoundPointId = id;
+        pointLocations.put(id, routeStore.location(points[followingRouteIndex]));
+    }
+
+    function routeProgress() as String {
+        var route = followingRouteId == null ? null : routeStore.route(followingRouteId);
+        return route == null ? "" : Lang.format(WatchUi.loadResource(Rez.Strings.RouteProgress),
+            [followingRouteIndex + 1, (route.get("points") as Array).size()]);
+    }
+
+    function routeRemainingLabel() as String {
+        if (currentPosition == null) { return WatchUi.loadResource(Rez.Strings.RouteNeedsLocation); }
+        var route = followingRouteId == null ? null : routeStore.route(followingRouteId);
+        return route == null ? "" : Lang.format(WatchUi.loadResource(Rez.Strings.RouteRemaining),
+            [RouteNavigation.remaining(route.get("points") as Array, followingRouteIndex, currentPosition).toNumber()]);
+    }
 
     function receiveRoute(kind as String, payload as Dictionary) as Void {
         if (kind.equals("routes_error")) {
@@ -68,10 +132,13 @@ class StandaloneMapView extends WatchUi.MapView {
             return;
         }
         refreshRouteBloodhound();
+        if (application != null) { application.refreshIncomingPointCount(); }
+        refreshBloodhoundPicker();
         WatchUi.requestUpdate();
     }
 
     function refreshRouteBloodhound() as Void {
+        if (followingRouteId != null) { updateRouteFollow(); evaluateBloodhoundProximity(); return; }
         if (!(bloodhoundPointId instanceof String) || bloodhoundPointId.find("route-point:") != 0) { return; }
         var selected = routeStore.point(bloodhoundPointId);
         if (selected == null) {
@@ -102,6 +169,52 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function routeUnavailable() as Void {
         WatchUi.showToast(WatchUi.loadResource(Rez.Strings.RoutesUnavailable), null);
+    }
+
+    function removeLocalRoute(id as String) as Boolean {
+        if (!routeStore.removeLocal(id)) { routeUnavailable(); return false; }
+        refreshRouteBloodhound();
+        if (application != null) { application.refreshIncomingPointCount(); }
+        refreshBloodhoundPicker();
+        WatchUi.requestUpdate();
+        return true;
+    }
+
+    function focusBloodhoundItem(id as String) as Boolean {
+        var route = routeStore.route(id);
+        var points;
+        if (route != null) { points = route.get("points") as Array; routesVisible = true; }
+        else {
+            var location = pointLocations.get(id);
+            if (location == null) {
+                WatchUi.showToast(WatchUi.loadResource(Rez.Strings.TextLocationUnavailable), null); return false;
+            }
+            var degrees = location.toDegrees();
+            points = [{"lat" => degrees[0], "lon" => degrees[1]}];
+        }
+        var bounds = RouteNavigation.bounds(points);
+        mapTopLeft = RouteNavigation.location({"lat" => bounds[0], "lon" => bounds[1]});
+        mapBottomRight = RouteNavigation.location({"lat" => bounds[2], "lon" => bounds[3]});
+        hasInitialPosition = true;
+        markersDirty = true;
+        applyMapVisibleArea();
+        return true;
+    }
+
+    function refreshBloodhoundPicker() as Void {
+        if (routeFollowMenu != null) { routeFollowMenu.refresh(); }
+        if (application != null && application.incomingPointsMenu != null) { application.incomingPointsMenu.refresh(); }
+    }
+
+    function showRouteFollow(id as String) as Void {
+        if (routeStore.route(id) == null) { routeUnavailable(); return; }
+        WatchUi.pushView(new RouteFollowMenu(self, id), new RouteFollowDelegate(self, id), WatchUi.SLIDE_LEFT);
+    }
+
+    function showRoute(id as String) as Void {
+        var menu = buildRouteMenu(self, id);
+        if (menu == null) { routeUnavailable(); return; }
+        WatchUi.pushView(menu, new RouteMenuDelegate(self, id), WatchUi.SLIDE_LEFT);
     }
 
     function showRoutePoint(id as String) as Void {
@@ -148,6 +261,34 @@ class StandaloneMapView extends WatchUi.MapView {
                 previous = screen;
             }
         }
+    }
+
+    function routesAtScreen(x, y) as Array<String> {
+        var hits = [];
+        if (!routesVisible || mapTopLeft == null || mapBottomRight == null
+                || x < 0 || x >= screenWidth || y < 0 || y >= screenHeight) { return hits; }
+        var lonSpan = mapBottomRight.toDegrees()[1] - mapTopLeft.toDegrees()[1];
+        if (lonSpan < 0) { lonSpan += 360; }
+        if (lonSpan == 0) { return hits; }
+        for (var r = 0; r < routeStore.routes.size(); r++) {
+            var route = routeStore.routes[r];
+            var points = route.get("points") as Array;
+            var previous = [];
+            for (var p = 0; p < points.size(); p++) {
+                var screen = routeScreenPoint(points[p]);
+                if (screen == null) { previous = []; continue; }
+                var dx = previous.size() == 0 ? 0 : screen[0] - previous[0];
+                if (previous.size() > 0 && dx.abs() <= screenWidth * 180.0 / lonSpan) {
+                    var line = clippedRouteSegment(previous, screen, screenWidth - 1, screenHeight - 1);
+                    if (line != null && routeSegmentAtScreen(line, x, y)) {
+                        hits.add(routeStore.routeId(route));
+                        break;
+                    }
+                }
+                previous = screen;
+            }
+        }
+        return hits;
     }
 
     function initialize() {
@@ -297,6 +438,8 @@ class StandaloneMapView extends WatchUi.MapView {
         currentPosition = info.position;
         markersDirty = true;
         if (info.accuracy >= Position.QUALITY_USABLE) { resolvePendingPoints(info.position); }
+        updateRouteFollow();
+        refreshBloodhoundPicker();
         evaluateBloodhoundProximity();
 
         if (!hasInitialPosition) {
@@ -354,6 +497,7 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function showPointTypeMenu(pointId) as Void {
+        if (routeStore.route(pointId) != null) { showRoute(pointId); return; }
         if (routeStore.point(pointId) != null) { showRoutePoint(pointId); return; }
         if (incomingDetails.hasKey(pointId)) {
             WatchUi.pushView(buildIncomingPointActions(self, pointId),
@@ -372,6 +516,8 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function showMapItemsAtScreen(x, y) as Void {
         var ids = pointsAtScreen(x, y);
+        var routes = routesAtScreen(x, y);
+        for (var i = 0; i < routes.size(); i++) { ids.add(routes[i]); }
         var includeSelf = isSelfAtScreen(x, y);
         if (ids.size() + (includeSelf ? 1 : 0) > 1) {
             showMapSelectionMenu(ids, includeSelf);
@@ -395,6 +541,7 @@ class StandaloneMapView extends WatchUi.MapView {
             }
             showSelfMenu();
         } else if (id instanceof String) {
+            if (id.find("route:") == 0) { showRoute(id); return; }
             if (routeStore.point(id) != null) { showRoutePoint(id); return; }
             if (!pointLocations.hasKey(id) || !isIncomingUserVisible(id)) {
                 WatchUi.showToast(WatchUi.loadResource(Rez.Strings.IncomingPointUnavailable), null);
@@ -414,6 +561,8 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function setBloodhoundPoint(pointId) as Void {
+        followingRouteId = null;
+        followingRouteIndex = 0;
         if (bloodhoundPointId instanceof String && bloodhoundPointId.find("route-point:") == 0
                 && !bloodhoundPointId.equals(pointId)) { pointLocations.remove(bloodhoundPointId); }
         bloodhoundPointId = pointId;
@@ -426,6 +575,7 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         bloodhoundProximityNotified = false;
         evaluateBloodhoundProximity();
+        refreshBloodhoundPicker();
         WatchUi.requestUpdate();
     }
 
@@ -1064,7 +1214,7 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         if (takClient == null || !takClient.queuePointReply(details.get("senderUID") as String,
                 details.get("uid") as String, "Roger, bloodhounding to " + incomingPointTitle(id))) { return false; }
-        bloodhoundPointId = null;
+        setBloodhoundPoint(null);
         toggleBloodhound(id);
         pendingIncomingPoints.remove(id);
         application.refreshIncomingPointCount();
@@ -1478,10 +1628,7 @@ class StandaloneMapView extends WatchUi.MapView {
         if (bloodhoundPointId == null || pointLocations.hasKey(bloodhoundPointId) == false) {
             return;
         }
-        var title = getPointText(bloodhoundPointId, "title");
-        if (title.equals("")) {
-            title = "Bloodhound";
-        }
+        var title = getBloodhoundTitle();
         var panelHeight = 58;
         var panelTop = screenHeight - panelHeight - 4;
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
@@ -1489,7 +1636,10 @@ class StandaloneMapView extends WatchUi.MapView {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawRectangle(4, panelTop, screenWidth - 8, panelHeight);
             dc.drawText(screenWidth / 2, panelTop + 4, Graphics.FONT_XTINY, title, Graphics.TEXT_JUSTIFY_CENTER);
-        if (currentPosition == null) {
+        if (followingRouteId != null) {
+            dc.drawText(screenWidth / 2, panelTop + 22, Graphics.FONT_XTINY, routeProgress(), Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(screenWidth / 2, panelTop + 40, Graphics.FONT_XTINY, routeRemainingLabel(), Graphics.TEXT_JUSTIFY_CENTER);
+        } else if (currentPosition == null) {
                 dc.drawText(screenWidth / 2, panelTop + 30, Graphics.FONT_XTINY, application.text(Rez.Strings.TextWaitingForLocation), Graphics.TEXT_JUSTIFY_CENTER);
         } else {
             var target = pointLocations.get(bloodhoundPointId);
@@ -1509,23 +1659,14 @@ class StandaloneMapView extends WatchUi.MapView {
             showPointTypeMenu(bloodhoundPointId);
             return;
         }
+        if (followingRouteId != null) { showRouteFollow(followingRouteId); return; }
         var menu = createMenu(application.text(Rez.Strings.TextBloodhoundCompass));
         addMenuEntry(menu, application.text(Rez.Strings.TextStopBloodhound), null, :cancelBloodhound);
         WatchUi.pushView(menu, new BloodhoundCancelDelegate(self), WatchUi.SLIDE_UP);
     }
 
     function distanceMeters(fromLocation, toLocation) {
-        var fromDegrees = fromLocation.toDegrees();
-        var toDegrees = toLocation.toDegrees();
-        var fromLat = Math.toRadians(fromDegrees[0]);
-        var toLat = Math.toRadians(toDegrees[0]);
-        var deltaLat = Math.toRadians(toDegrees[0] - fromDegrees[0]);
-        var deltaLon = Math.toRadians(toDegrees[1] - fromDegrees[1]);
-        var sinHalfLat = Math.sin(deltaLat / 2);
-        var sinHalfLon = Math.sin(deltaLon / 2);
-        var a = sinHalfLat * sinHalfLat + Math.cos(fromLat) * Math.cos(toLat) * sinHalfLon * sinHalfLon;
-        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return 6371000 * c;
+        return RouteNavigation.distance(fromLocation, toLocation);
     }
 
     function bearingDegrees(fromLocation, toLocation) {
@@ -1551,6 +1692,10 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function getBloodhoundTitle() as String {
+        if (followingRouteId != null) {
+            var route = routeStore.route(followingRouteId);
+            if (route != null) { return route.get("name") as String; }
+        }
         if (bloodhoundPointId instanceof String) {
             var selected = routeStore.point(bloodhoundPointId);
             if (selected != null) { return routeStore.title(selected); }
@@ -2458,8 +2603,12 @@ function buildMapSelectionMenu(map as StandaloneMapView, ids as Array<String>, i
     var menu = createMenu("Select Map Item");
     for (var index = 0; index < ids.size(); index++) {
         var id = ids[index];
+        var route = map.routeStore.route(id);
         var routePoint = map.routeStore.point(id);
-        if (routePoint != null) {
+        if (route != null) {
+            addMenuEntry(menu, route.get("name") as String,
+                WatchUi.loadResource(Rez.Strings.RoutesWhole) + " | " + route.get("serverId"), id);
+        } else if (routePoint != null) {
             addMenuEntry(menu, map.routeStore.title(routePoint),
                 (routePoint.get("route") as Dictionary).get("name"), id);
         } else if (map.incomingDetails.hasKey(id)) {

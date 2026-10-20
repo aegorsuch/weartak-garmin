@@ -154,4 +154,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">Bắt đầu từ điểm gần nhất</string>
+    <string id="RouteStartBeginning">Bắt đầu từ đầu</string>
+    <string id="RouteNeedsLocation">Cần vị trí</string>
+    <string id="RouteStop">Dừng tuyến</string>
+    <string id="RouteProgress">Điểm $1$ / $2$</string>
+    <string id="RouteRemaining">Còn $1$ m</string>
+    <string id="RouteComplete">Hoàn thành tuyến</string>
+    <string id="RoutePointCount">$1$ điểm</string>
+    <string id="PickerRoute">Tuyến</string>
+    <string id="PickerMarker">Dấu mốc</string>
+    <string id="PickerContact">Liên hệ</string>
+    <string id="PickerPoint">Điểm</string>
+    <string id="PickerShowOnMap">Hiện trên bản đồ</string>
+    <string id="PickerDetails">Chi tiết</string>
+    <string id="PickerRemaining">Còn $1$</string>
 </resources>
