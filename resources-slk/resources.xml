@@ -154,4 +154,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">Začať od najbližšieho</string>
+    <string id="RouteStartBeginning">Začať od začiatku</string>
+    <string id="RouteNeedsLocation">Vyžaduje sa poloha</string>
+    <string id="RouteStop">Zastaviť trasu</string>
+    <string id="RouteProgress">Bod $1$ z $2$</string>
+    <string id="RouteRemaining">Zostáva $1$ m</string>
+    <string id="RouteComplete">Trasa dokončená</string>
+    <string id="RoutePointCount">$1$ bodov</string>
+    <string id="PickerRoute">Trasa</string>
+    <string id="PickerMarker">Značka</string>
+    <string id="PickerContact">Kontakt</string>
+    <string id="PickerPoint">Bod</string>
+    <string id="PickerShowOnMap">Zobraziť na mape</string>
+    <string id="PickerDetails">Podrobnosti</string>
+    <string id="PickerRemaining">Zostáva $1$</string>
 </resources>

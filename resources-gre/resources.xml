@@ -165,4 +165,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">Έναρξη από το κοντινότερο</string>
+    <string id="RouteStartBeginning">Έναρξη από την αρχή</string>
+    <string id="RouteNeedsLocation">Απαιτείται θέση</string>
+    <string id="RouteStop">Διακοπή διαδρομής</string>
+    <string id="RouteProgress">Σημείο $1$ από $2$</string>
+    <string id="RouteRemaining">Απομένουν $1$ μ</string>
+    <string id="RouteComplete">Η διαδρομή ολοκληρώθηκε</string>
+    <string id="RoutePointCount">$1$ σημεία</string>
+    <string id="PickerRoute">Διαδρομή</string>
+    <string id="PickerMarker">Δείκτης</string>
+    <string id="PickerContact">Επαφή</string>
+    <string id="PickerPoint">Σημείο</string>
+    <string id="PickerShowOnMap">Εμφάνιση στον χάρτη</string>
+    <string id="PickerDetails">Λεπτομέρειες</string>
+    <string id="PickerRemaining">Απομένουν $1$</string>
 </resources>

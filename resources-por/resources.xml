@@ -141,4 +141,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">Iniciar no mais próximo</string>
+    <string id="RouteStartBeginning">Iniciar do início</string>
+    <string id="RouteNeedsLocation">Localização necessária</string>
+    <string id="RouteStop">Parar rota</string>
+    <string id="RouteProgress">Ponto $1$ de $2$</string>
+    <string id="RouteRemaining">Restam $1$ m</string>
+    <string id="RouteComplete">Rota concluída</string>
+    <string id="RoutePointCount">$1$ pontos</string>
+    <string id="PickerRoute">Rota</string>
+    <string id="PickerMarker">Marcador</string>
+    <string id="PickerContact">Contato</string>
+    <string id="PickerPoint">Ponto</string>
+    <string id="PickerShowOnMap">Mostrar no mapa</string>
+    <string id="PickerDetails">Detalhes</string>
+    <string id="PickerRemaining">Restam $1$</string>
 </resources>

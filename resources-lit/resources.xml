@@ -154,4 +154,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">Pradėti nuo artimiausio</string>
+    <string id="RouteStartBeginning">Pradėti nuo pradžios</string>
+    <string id="RouteNeedsLocation">Reikalinga vieta</string>
+    <string id="RouteStop">Sustabdyti maršrutą</string>
+    <string id="RouteProgress">Taškas $1$ iš $2$</string>
+    <string id="RouteRemaining">Liko $1$ m</string>
+    <string id="RouteComplete">Maršrutas baigtas</string>
+    <string id="RoutePointCount">$1$ taškai</string>
+    <string id="PickerRoute">Maršrutas</string>
+    <string id="PickerMarker">Žymeklis</string>
+    <string id="PickerContact">Kontaktas</string>
+    <string id="PickerPoint">Taškas</string>
+    <string id="PickerShowOnMap">Rodyti žemėlapyje</string>
+    <string id="PickerDetails">Informacija</string>
+    <string id="PickerRemaining">Liko $1$</string>
 </resources>

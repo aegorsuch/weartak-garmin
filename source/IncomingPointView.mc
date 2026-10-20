@@ -52,15 +52,22 @@ class IncomingPointsMenu extends WatchUi.Menu2 {
             var alertDetails = map.incomingDetails.get(alertId) as Dictionary;
             if (alertDetails.get("isAlert") != true) { continue; }
             pointCount += 1;
-            addItem(new WatchUi.MenuItem(map.incomingPointTitle(alertId), map.incomingPointDetailLabel(alertId), alertId, null));
+            addPickerTarget(self, map, alertId);
         }
         for (var i = map.incomingIds.size() - 1; i >= 0; i--) {
             var id = map.incomingIds[i] as String;
             var details = map.incomingDetails.get(id) as Dictionary;
-            if (details.get("isPoint") != true) { continue; }
+            if (details.get("isAlert") == true || !map.isIncomingUserVisible(id)) { continue; }
             pointCount += 1;
-            addItem(new WatchUi.MenuItem(map.incomingPointTitle(id), map.incomingPointDetailLabel(id), id, null));
+            addPickerTarget(self, map, id);
         }
+        for (var p = 0; p < map.pointOrder.size(); p++) {
+            var id = map.pointOrder[p];
+            if (!map.pointLocations.hasKey(id) || map.incomingDetails.hasKey(id)) { continue; }
+            addPickerTarget(self, map, id);
+            pointCount++;
+        }
+        pointCount += addBloodhoundRoutes(self, map);
         if (pointCount == 0) {
             addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.IncomingPointsEmpty), null, :empty, null));
         }
@@ -132,13 +139,10 @@ class IncomingPointsDelegate extends WatchUi.Menu2InputDelegate {
             app.getMapView().removeAllIncomingPoints();
             WatchUi.switchToView(buildIncomingPointsMenu(app), new IncomingPointsDelegate(app), WatchUi.SLIDE_RIGHT);
         } else if (id instanceof String) {
-            app.getMapView().pruneIncomingEntities();
-            if (!app.getMapView().incomingDetails.hasKey(id)) {
-                WatchUi.showToast(WatchUi.loadResource(Rez.Strings.IncomingPointUnavailable), null);
-                WatchUi.switchToView(buildIncomingPointsMenu(app), new IncomingPointsDelegate(app), WatchUi.SLIDE_RIGHT);
-                return;
-            }
-            app.getMapView().showPointTypeMenu(id);
+            var map = app.getMapView();
+            map.pruneIncomingEntities();
+            if (!pickerTargetExists(map, id)) { map.routeUnavailable(); return; }
+            WatchUi.pushView(buildPickerTargetActions(map, id), new PickerTargetActionsDelegate(map, id), WatchUi.SLIDE_LEFT);
         }
     }
 }

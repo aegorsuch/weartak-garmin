@@ -91,8 +91,8 @@ class BloodhoundCompassView extends WatchUi.View {
             var bearing = mapView.getBloodhoundBearingDegrees();
             drawArrow(dc, centerX, centerY - 4, bearing, 42);
             dc.drawText(centerX, centerY + 58, Graphics.FONT_XTINY, mapView.getBloodhoundTitle(), Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(centerX, centerY + 76, Graphics.FONT_XTINY, app.text(Rez.Strings.TextRange) + ": " + mapView.getBloodhoundRangeMeters().toString() + " m", Graphics.TEXT_JUSTIFY_CENTER);
-            dc.drawText(centerX, centerY + 94, Graphics.FONT_XTINY, app.text(Rez.Strings.TextBearing) + ": " + bearing.toString() + " deg", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(centerX, centerY + 76, Graphics.FONT_XTINY, mapView.followingRouteId != null ? mapView.routeProgress() : app.text(Rez.Strings.TextRange) + ": " + mapView.getBloodhoundRangeMeters().toString() + " m", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(centerX, centerY + 94, Graphics.FONT_XTINY, mapView.followingRouteId != null ? mapView.routeRemainingLabel() : app.text(Rez.Strings.TextBearing) + ": " + bearing.toString() + " deg", Graphics.TEXT_JUSTIFY_CENTER);
         } else {
             drawArrow(dc, centerX, centerY - 4, 0, 42);
             dc.drawText(centerX, centerY + 66, Graphics.FONT_XTINY, app.text(Rez.Strings.TextNoBloodhoundTarget), Graphics.TEXT_JUSTIFY_CENTER);

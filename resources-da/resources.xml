@@ -117,4 +117,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">Start ved nærmeste</string>
+    <string id="RouteStartBeginning">Start fra begyndelsen</string>
+    <string id="RouteNeedsLocation">Position påkrævet</string>
+    <string id="RouteStop">Stop rute</string>
+    <string id="RouteProgress">Punkt $1$ af $2$</string>
+    <string id="RouteRemaining">$1$ m tilbage</string>
+    <string id="RouteComplete">Rute fuldført</string>
+    <string id="RoutePointCount">$1$ punkter</string>
+    <string id="PickerRoute">Rute</string>
+    <string id="PickerMarker">Markør</string>
+    <string id="PickerContact">Kontakt</string>
+    <string id="PickerPoint">Punkt</string>
+    <string id="PickerShowOnMap">Vis på kort</string>
+    <string id="PickerDetails">Detaljer</string>
+    <string id="PickerRemaining">$1$ tilbage</string>
 </resources>

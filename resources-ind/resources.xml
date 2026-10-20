@@ -165,4 +165,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">Mulai dari terdekat</string>
+    <string id="RouteStartBeginning">Mulai dari awal</string>
+    <string id="RouteNeedsLocation">Lokasi diperlukan</string>
+    <string id="RouteStop">Hentikan rute</string>
+    <string id="RouteProgress">Titik $1$ dari $2$</string>
+    <string id="RouteRemaining">Sisa $1$ m</string>
+    <string id="RouteComplete">Rute selesai</string>
+    <string id="RoutePointCount">$1$ titik</string>
+    <string id="PickerRoute">Rute</string>
+    <string id="PickerMarker">Penanda</string>
+    <string id="PickerContact">Kontak</string>
+    <string id="PickerPoint">Titik</string>
+    <string id="PickerShowOnMap">Tampilkan di peta</string>
+    <string id="PickerDetails">Detail</string>
+    <string id="PickerRemaining">Sisa $1$</string>
 </resources>

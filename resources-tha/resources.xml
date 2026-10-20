@@ -117,4 +117,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">เริ่มจากจุดใกล้สุด</string>
+    <string id="RouteStartBeginning">เริ่มจากจุดแรก</string>
+    <string id="RouteNeedsLocation">ต้องมีตำแหน่ง</string>
+    <string id="RouteStop">หยุดเส้นทาง</string>
+    <string id="RouteProgress">จุด $1$ จาก $2$</string>
+    <string id="RouteRemaining">เหลือ $1$ ม.</string>
+    <string id="RouteComplete">เส้นทางเสร็จสิ้น</string>
+    <string id="RoutePointCount">$1$ จุด</string>
+    <string id="PickerRoute">เส้นทาง</string>
+    <string id="PickerMarker">เครื่องหมาย</string>
+    <string id="PickerContact">ผู้ติดต่อ</string>
+    <string id="PickerPoint">จุด</string>
+    <string id="PickerShowOnMap">แสดงบนแผนที่</string>
+    <string id="PickerDetails">รายละเอียด</string>
+    <string id="PickerRemaining">เหลือ $1$</string>
 </resources>

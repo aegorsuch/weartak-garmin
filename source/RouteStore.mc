@@ -90,11 +90,55 @@ class RouteStore {
         return null;
     }
 
+    function routeId(route as Dictionary) as String {
+        var server = route.get("serverId") as String;
+        var uid = route.get("uid") as String;
+        return "route:" + server.toUtf8Array().size().toString() + ":" + server
+            + uid.toUtf8Array().size().toString() + ":" + uid;
+    }
+
+    function route(id as String) as Dictionary? {
+        for (var i = 0; i < routes.size(); i++) {
+            if (id.equals(routeId(routes[i]))) { return routes[i]; }
+        }
+        return null;
+    }
+
+    function removeLocal(id as String) as Boolean {
+        var selected = route(id);
+        if (selected == null) { return false; }
+        routes.remove(selected);
+        return true;
+    }
+
     function pointId(route as Dictionary, index as Number) as String {
         var server = route.get("serverId") as String;
         var uid = route.get("uid") as String;
         return "route-point:" + server.toUtf8Array().size().toString() + ":" + server
             + uid.toUtf8Array().size().toString() + ":" + uid + ":" + index.toString();
+    }
+
+    function namedPointIndices(route as Dictionary) as Array<Number> {
+        var indices = [];
+        var points = route.get("points") as Array;
+        for (var i = 0; i < points.size(); i++) {
+            if (hasPointName(points[i])) { indices.add(i); }
+        }
+        return indices;
+    }
+
+    function hasPointName(point as Dictionary) as Boolean {
+        var name = point.get("name");
+        if (!(name instanceof String)) { return false; }
+        var chars = name.toCharArray();
+        for (var i = 0; i < chars.size(); i++) {
+            var code = chars[i].toNumber();
+            if (code <= 32 || code == 0x85 || code == 0xa0 || code == 0x1680
+                    || (code >= 0x2000 && code <= 0x200a) || code == 0x2028
+                    || code == 0x2029 || code == 0x202f || code == 0x205f || code == 0x3000) { continue; }
+            return true;
+        }
+        return false;
     }
 
     function point(id as String) as Dictionary? {

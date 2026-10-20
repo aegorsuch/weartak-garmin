@@ -154,4 +154,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">Indítás a legközelebbitől</string>
+    <string id="RouteStartBeginning">Indítás az elejéről</string>
+    <string id="RouteNeedsLocation">Helyzet szükséges</string>
+    <string id="RouteStop">Útvonal leállítása</string>
+    <string id="RouteProgress">$1$. pont / $2$</string>
+    <string id="RouteRemaining">Hátravan $1$ m</string>
+    <string id="RouteComplete">Útvonal teljesítve</string>
+    <string id="RoutePointCount">$1$ pont</string>
+    <string id="PickerRoute">Útvonal</string>
+    <string id="PickerMarker">Jelölő</string>
+    <string id="PickerContact">Kapcsolat</string>
+    <string id="PickerPoint">Pont</string>
+    <string id="PickerShowOnMap">Megjelenítés térképen</string>
+    <string id="PickerDetails">Részletek</string>
+    <string id="PickerRemaining">Hátravan $1$</string>
 </resources>

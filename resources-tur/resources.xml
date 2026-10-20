@@ -154,4 +154,19 @@
     <string id="ChatSend">Send</string>
     <string id="ChatGroupUnsupported">Companion group chat unavailable</string>
     <string id="ChatGroupsDiscarded">Unsupported queued group chats removed</string>
+    <string id="RouteStartNearest">En yakından başla</string>
+    <string id="RouteStartBeginning">Baştan başla</string>
+    <string id="RouteNeedsLocation">Konum gerekli</string>
+    <string id="RouteStop">Rotayı durdur</string>
+    <string id="RouteProgress">Nokta $1$ / $2$</string>
+    <string id="RouteRemaining">Kalan $1$ m</string>
+    <string id="RouteComplete">Rota tamamlandı</string>
+    <string id="RoutePointCount">$1$ nokta</string>
+    <string id="PickerRoute">Rota</string>
+    <string id="PickerMarker">İşaretçi</string>
+    <string id="PickerContact">Kişi</string>
+    <string id="PickerPoint">Nokta</string>
+    <string id="PickerShowOnMap">Haritada göster</string>
+    <string id="PickerDetails">Ayrıntılar</string>
+    <string id="PickerRemaining">Kalan $1$</string>
 </resources>
