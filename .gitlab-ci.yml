@@ -10,7 +10,7 @@ stages:
   script:
     - powershell -NoProfile -ExecutionPolicy Bypass -File tools\Invoke-CI.ps1 -Mode Release
 
-develop_release:
+main_release:
   extends: .garmin_build
   artifacts:
     when: always
