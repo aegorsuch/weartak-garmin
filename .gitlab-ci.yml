@@ -21,7 +21,7 @@ develop_release:
       - bin/ci/SHA256SUMS.txt
       - bin/ci/*.log
   rules:
-    - if: '$CI_COMMIT_BRANCH == "develop" && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_PROTECTED == "true"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_PROTECTED == "true"'
 
 official_release:
   extends: .garmin_build

@@ -1058,14 +1058,14 @@ memory limit, and Garmin's native `WatchUi.MapView` is unavailable on both.
 The automation follows the Tracker split:
 
 - [GitHub Actions](.github/workflows/garmin.yml) validates localization on pull
-  requests and pushes to `main`/`develop`. Trusted pushes to those branches (or a
-  manual run on either branch) also run the entire Monkey C simulator test suite
+  requests and pushes to `main`. Trusted pushes to that branch (or a
+  manual run on it) also run the entire Monkey C simulator test suite
   on `fenix7x` and export an optimized `.iq` bundle. The bundle uses a disposable
   key, **not the production signing identity**. Download it and test logs from
   workflow artifacts; CI bundles are not official releases.
 - [Government GitLab CI](.gitlab-ci.yml) runs tests and produces production-key
   `.prg` files for every manifest product plus the `.iq` bundle on protected
-  `develop` pushes (30-day artifacts) and protected version tags such as
+  `main` pushes (30-day artifacts) and protected version tags such as
   `v5.8.3` or `v5.8.0.8` (non-expiring artifacts). Logs are retained even on
   failure; distribution packages are exposed only after all builds succeed.
   Neither pipeline publishes a store release or automatically creates a Git
@@ -1086,12 +1086,12 @@ not restored by a package manager. Provision a dedicated Windows x64 runner with
    simulator as a headless Windows service. Run only one Garmin job at a time,
    with no pre-existing simulator session.
 4. For GitHub, runner labels `self-hosted`, `Windows`, `X64`, `garmin-ci`.
-   Use an isolated/disposable runner; only trusted `main`/`develop` code is
+   Use an isolated/disposable runner; only trusted `main` code is
    allowed to execute there. Pull requests run localization on GitHub-hosted
    Windows runners, **not** the simulator or self-hosted build. A successful
    PR localization check alone is not a successful build/test run.
 5. For GitLab, a Windows shell runner with tags `windows`, `garmin-ci`,
-   restricted to this project and protected refs. Protect `develop` and the
+   restricted to this project and protected refs. Protect `main` and the
    release-tag pattern before enabling signed jobs. Use a separate runner
    account/machine from public CI and restrict who can modify protected code.
 
@@ -1131,7 +1131,7 @@ configured before remote build jobs can run.
 The signed job intentionally enforces each device's memory limit; exporting an
 `.iq` alone does not prove every device-specific `.prg` fits. The non-Pro
 `fenix6` and `fenix6s` were removed from the manifest on 2026-10-20: their
-128 KiB watch-app limit was already exceeded by the current release (`develop`
+128 KiB watch-app limit was already exceeded by the current release (`main`
 needs 187,380 bytes; whole-route Bloodhound needs 199,900 versus 131,072), and
 neither model supports Garmin's native map API. Optimized device builds pass for
 all seven remaining manifest devices. The full fenix7x simulator suite passes
@@ -1141,7 +1141,7 @@ all seven remaining manifest devices. The full fenix7x simulator suite passes
 
 The government repository (`origin`) is the canonical repository. New work starts
 on a `feature` branch, is validated there, and is merged into government
-`develop` when ready. After the government merge is complete, mirror the same
+`main` when ready. After the government merge is complete, mirror the same
 merged commit to the personal GitHub repo (`github`) so both repositories stay
 aligned.
 
@@ -1153,17 +1153,17 @@ github  https://github.com/aegorsuch/weartak-garmin           (mirror)
 Recommended flow:
 
 ```text
-feature -> origin/develop -> github/develop
+feature -> origin/main -> github/main
 ```
 
 ```bash
 git switch feature
 git push origin feature
-git switch develop
-git pull origin develop
+git switch main
+git pull origin main
 git merge feature
-git push origin develop
-git push github develop
+git push origin main
+git push github main
 ```
 
 This keeps the government repo as the source of truth and the personal
@@ -1188,7 +1188,7 @@ supports Garmin's native map API.
 1. Bump `APP_VERSION` in `source/StandaloneApp.mc` to the new version, including
 	the short source commit hash (for example, `5.8.0.3-0c54201`), and
    commit it (consistent with the government repo being canonical, merge this
-   into `develop` first as described above).
+   into `main` first as described above).
 2. Build every supported product with the Garmin Connect IQ SDK and name each
 	output `WearTAK-Garmin-{DEVICE}-{APP_VERSION}.prg`. Save the `fenix7x`
 	release build on the Desktop; remove superseded Garmin release binaries.
