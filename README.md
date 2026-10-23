@@ -1065,11 +1065,12 @@ The automation follows the Tracker split:
   workflow artifacts; CI bundles are not official releases.
 - [Government GitLab CI](.gitlab-ci.yml) runs tests and produces production-key
   `.prg` files for every manifest product plus the `.iq` bundle on protected
-  `main` pushes (30-day artifacts) and protected version tags such as
+  default-branch pushes (30-day artifacts) and protected version tags such as
   `v5.8.3` or `v5.8.0.8` (non-expiring artifacts). Logs are retained even on
   failure; distribution packages are exposed only after all builds succeed.
-  Neither pipeline publishes a store release or automatically creates a Git
-  tag/release.
+  Neither pipeline publishes a store release. The disabled-by-default GitLab
+  publisher below can publish verified production-key default-branch builds as
+  GitHub development prereleases after explicit activation.
 
 ### Runner setup
 
@@ -1173,8 +1174,9 @@ the private `developer_key.der` file.
 
 ## Releasing
 
-Releases are built and published manually; there is no CI automation. Build
-device-specific `.prg` files for every product declared in the manifest.
+Official release publication remains manual. The opt-in automated development
+channel below is separate. Build device-specific `.prg` files for every product
+declared in the manifest for a manual release.
 The maintainer's `fenix7x` direct-install build is also written to the Desktop,
 replacing the superseded Fenix 7X release. Publish the device-specific PRGs;
 do not publish debug files or the `.iq` bundle.
@@ -1199,3 +1201,106 @@ supports Garmin's native map API.
 5. Mirror the same release to `github`
 	(https://github.com/aegorsuch/weartak-garmin): push the tag there and
 	create a release attaching the same device-specific `.prg` files.
+
+### Release presentation
+
+Use the title **WearTAK Garmin {APP_VERSION}**. Begin the description with a short
+statement identifying the channel (official release or CI test build), Garmin
+Connect IQ artifacts, and their intended use. Device-specific `.prg` files are
+direct-install applications; an `.iq` is a distribution bundle, not a file to
+copy to a watch. Do not describe Garmin artifacts as APKs or give them Android
+`versionCode` values. The manual publication procedure above remains PRG-only;
+this presentation standard does not authorize publishing additional artifacts.
+
+Include the exact full source commit SHA recorded at build time, linked to that
+commit in the canonical repository. A short hash in `APP_VERSION` or an asset
+filename is not sufficient proof of the build source. Record the release tag's
+resolved commit separately if it differs; do not silently substitute the current
+branch head or tag target for unverified binary provenance.
+
+For a CI-produced build, include the pipeline/run ID and link, and the build job
+ID and link when available. Identify the actual build channel and signing status:
+GitHub CI uses a disposable key, not the production signing identity. For a
+manual build, say **Built manually; no CI run** rather than inventing a pipeline
+ID. If historical build provenance cannot be verified, mark it **Unverified**
+and retain the existing release assets and manual notes.
+
+List available artifacts with readable labels, for example **Fenix 7X
+direct-install app (.prg)**, linking to each existing exact download URL. Keep
+checksums separate from the artifact list: link `SHA256SUMS.txt` when it was
+generated from those exact release bytes, or provide a clearly labeled SHA-256
+section only after verifying the bytes. CI's checksum file covers its own
+artifacts, not independently built historical release files.
+
+Presentation-only maintenance must preserve tags, download URLs, artifact
+filenames/bytes, maintainer notes, publisher ownership and existing cleanup
+gates. Do not create a publisher, replace assets, or infer missing source/build
+metadata merely to make an older release match this format.
+
+### Automated GitHub development prereleases (activation required)
+
+The canonical GitLab `main_release` job still runs the existing
+production-key fingerprint check, full simulator suite, every manifest-device
+PRG build and optimized IQ export. Only after those gates succeed does it emit
+`release-build.json`, binding the exact full source SHA, version, project,
+pipeline and build job IDs to hashes of every distributable and `SHA256SUMS.txt`.
+Disposable-key GitHub CI artifacts never emit that production record and are
+not eligible for publication.
+
+`publish_default_branch` consumes artifacts from that successful job in the
+same pipeline. It is serialized, defaults off, and runs only on a protected
+default-branch **push** with `GARMIN_PUBLISH_ENABLED` exactly `true`. Merge
+requests, schedules, tag jobs and manual pipelines do not publish. The source
+commit must already exist in the GitHub mirror; the publisher does not push
+source commits or alter the mirroring process.
+
+After activation, the destination is **GitHub `aegorsuch/weartak-garmin`**, not a
+GitLab Release or Package Registry. Each build gets an immutable tag
+`auto-garmin-{APP_VERSION}-p{PIPELINE_ID}-b{BUILD_JOB_ID}` and a versioned
+development-build title. It creates a draft **prerelease**, uploads exactly the
+existing manifest PRGs, CI-produced IQ bundle and separate checksum file,
+downloads every uploaded asset and verifies SHA-256, then publishes without
+marking it latest. Asset labels distinguish device-specific direct-install PRGs
+from the IQ distribution bundle. Notes include artifact links, per-file hashes,
+the full build SHA and canonical pipeline/build/publisher job links.
+
+The publisher rejects mismatched provenance, incomplete inventories, existing
+tags/releases/drafts and concurrent draft-note changes. It rechecks the canonical
+default-branch head before upload and immediately before publishing; a newer
+head blocks a stale run. These are API checks, not an atomic lock against a
+branch change after the final check. Failed or interrupted attempts may leave
+an unpublished draft; the job fails and leaves it for a maintainer to inspect,
+not overwrite or automatically delete. There is **no automated cleanup** of
+releases, tags, assets or historical/manual notes. Official `v...` releases and
+their download URLs remain untouched.
+
+Activation is a separate maintainer-approved operation; this implementation
+does not create credentials, change access or run a publisher:
+
+- Configure the existing production `GARMIN_DEVELOPER_KEY_B64` and
+  `GARMIN_DEVELOPER_KEY_SHA256` as protected secrets for the signed build.
+- Supply a protected, masked `GARMIN_GITHUB_RELEASE_TOKEN` authorized for
+  **Contents: write on only `aegorsuch/weartak-garmin`**. An authorized GitHub
+  credential is required; no token is embedded or generated here. GitLab's
+  ephemeral `CI_JOB_TOKEN` is used only for the canonical branch-head read.
+- Keep `GARMIN_PUBLISH_ENABLED` unset until publication is approved and the
+  protected Windows runner, token authorization, canonical-to-GitHub source
+  mirroring and production signing configuration have been verified. API
+  authorization failures fail the job; they do not fall back to a disposable
+  key, another repository or a different destination.
+
+At implementation time the canonical project's project-variable list was empty:
+the signing secrets and GitHub token were not configured there. Inherited/group
+variables and runner-local configuration were not verified. No live upload or
+end-to-end publication has been performed; this is prepared automation, not an
+operational release claim.
+
+Run the network-free publisher regression checks locally with:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\Test-GarminRelease.ps1
+```
+
+These tests use synthetic artifacts and mocked API calls; they do not sign
+production builds or contact GitHub/GitLab. GitHub's hosted localization job
+also runs them without credentials or release permissions.

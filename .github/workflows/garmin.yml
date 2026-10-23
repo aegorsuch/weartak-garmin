@@ -21,6 +21,9 @@ jobs:
       - name: Validate localization
         shell: powershell
         run: .\tools\Validate-Localization.ps1
+      - name: Test release publisher without network or credentials
+        shell: powershell
+        run: .\tools\Test-GarminRelease.ps1
 
   # Public pull-request code must never execute on a persistent self-hosted runner.
   build:
