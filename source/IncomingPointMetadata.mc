@@ -2,9 +2,22 @@ import Toybox.Lang;
 
 function isIncomingUser(cotType as String, metadata as Dictionary) as Boolean {
     return !isIncomingAlert(cotType, metadata)
+        && incomingCotSymbol(cotType).length() == 0
         && (metadata.get("isUser") == true ? metadata.get("isPoint") != true : !isIncomingMapPoint(cotType, metadata))
         && cotType.find("a-") == 0
         && (metadata.get("isUser") == true || cotType.find("-G-U-C") != null);
+}
+
+function incomingCotSymbol(cotType as String) as String {
+    if (cotType.equals("b-m-p-s-p-i")) { return "spi"; }
+    if (cotType.find("a-") != 0 || cotType.length() < 5 || !cotType.substring(3, 4).equals("-")) { return ""; }
+    var family = cotType.substring(4, cotType.length());
+    if (family.equals("A-C-F") || family.find("A-C-F-") == 0) { return "fixed"; }
+    if (family.equals("A-C-H") || family.find("A-C-H-") == 0) { return "rotary"; }
+    if (family.equals("A-M") || family.find("A-M-") == 0) { return "uav"; }
+    if (family.equals("S") || family.find("S-") == 0) { return "sea"; }
+    if (family.equals("G-U-C-I-I") || family.find("G-U-C-I-I-") == 0) { return "vehicle"; }
+    return "";
 }
 
 function isIncomingCoordinateValue(value) as Boolean {
