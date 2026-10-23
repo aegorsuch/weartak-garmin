@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 
 function New-GarminReleasePlan {
     param([string]$Directory, [hashtable]$Context, [string[]]$Products)
-    foreach ($key in @("ProjectId", "PipelineId", "JobId")) {
+    foreach ($key in @("ProjectId", "PipelineId", "PipelineIid", "JobId")) {
         if ($Context[$key] -notmatch '^[1-9][0-9]*$') { throw "Invalid release context: $key" }
     }
     if ($Context.Sha -cnotmatch '^[0-9a-f]{40}$' -or $Context.ProjectUrl -notmatch '^https://[^?#\s]+$') {
@@ -13,17 +13,28 @@ function New-GarminReleasePlan {
         -not $Context.DefaultBranch -or $Context.Branch -cne $Context.DefaultBranch) {
         throw "Publishing requires an enabled, protected default-branch push."
     }
+    if ($Context.ProjectId -cne "6783" -or $Context.DefaultBranch -cne "main" -or
+        $Context.ProjectUrl -cne "https://git.tak.gov/core/weartak-core/weartak-garmin") {
+        throw "Invalid canonical project or protected branch."
+    }
     $metadata = Get-Content -Raw (Join-Path $Directory "release-build.json") | ConvertFrom-Json
-    if ($metadata.schema -ne 1 -or $metadata.signing -cne "production-key-fingerprint-verified" -or
-        $metadata.tests -cne "full-suite-passed" -or $metadata.source_sha -cne $Context.Sha -or
+    if ($metadata.schema -ne 2 -or $metadata.signing -cne "production-key-fingerprint-verified" -or
+        $metadata.tests -cne "not-run-headless-linux" -or $metadata.sdk -cne "9.2.0" -or
+        $metadata.export -cne "monkeyc-e" -or $metadata.hardware_variants -lt $Products.Count -or
+        $metadata.source_sha -cne $Context.Sha -or
         [string]$metadata.project_id -cne $Context.ProjectId -or [string]$metadata.pipeline_id -cne $Context.PipelineId -or
+        [string]$metadata.pipeline_iid -cne $Context.PipelineIid -or
         [string]$metadata.build_job_id -notmatch '^[1-9][0-9]*$' -or
         $metadata.version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:-[0-9a-f]+)?$') {
         throw "Missing or mismatched production build provenance."
     }
     if (-not $Products.Count -or @($Products | Select-Object -Unique).Count -ne $Products.Count -or
         @($Products | Where-Object { $_ -notmatch '^[a-z0-9]+$' }).Count) { throw "Invalid manifest product set." }
-    $expected = @($Products | ForEach-Object { "WearTAK-Garmin-$_.prg" }) + @("WearTAK-Garmin.iq", "SHA256SUMS.txt")
+    if (Compare-Object ($Products | Sort-Object) ($metadata.products | Sort-Object)) {
+        throw "Build products do not match the complete manifest distribution set."
+    }
+    $assetName = "WearTAK-Garmin-$($metadata.version)-p$($Context.PipelineIid).iq"
+    $expected = @($assetName, "SHA256SUMS.txt")
     $recorded = @($metadata.artifacts | ForEach-Object { $_.name })
     if ($recorded.Count -ne $expected.Count -or (Compare-Object ($expected | Sort-Object) ($recorded | Sort-Object))) {
         throw "Build artifacts do not match the complete manifest distribution set."
@@ -45,30 +56,26 @@ function New-GarminReleasePlan {
         (Compare-Object ($checksumLines | Sort-Object) ($wantedLines | Sort-Object))) {
         throw "SHA256SUMS.txt does not cover exactly the distributables."
     }
-    $build = [string]$metadata.build_job_id
-    $tag = "auto-garmin-$($metadata.version)-p$($Context.PipelineId)-b$build"
-    $base = $Context.ProjectUrl.TrimEnd("/")
-    $labels = @{
-        fenix6pro = "Fenix 6 Pro"; fenix6spro = "Fenix 6S Pro"; fenix6xpro = "Fenix 6X Pro"
-        fenix7x = "Fenix 7X"; fenix847mm = "Fenix 8 (47 mm)"
-        fenix8solar47mm = "Fenix 8 Solar (47 mm)"; fenix8solar51mm = "Fenix 8 Solar (51 mm)"
+    $header = [IO.File]::ReadAllBytes((Join-Path $Directory $assetName))
+    if ($header.Length -lt 32 -or [BitConverter]::ToString($header[0..5]) -cne "37-7A-BC-AF-27-1C") {
+        throw "Release asset is not a Connect IQ 7z export."
     }
+    # Checksums stay in the notes and CI artifacts; GitHub gets exactly one IQ.
+    $files = @($files | Where-Object { $_.Name -ceq $assetName })
+    $build = [string]$metadata.build_job_id
+    $tag = "auto-garmin-$($metadata.version)-p$($Context.PipelineIid)-b$build"
+    $base = $Context.ProjectUrl.TrimEnd("/")
     foreach ($file in $files) {
-        $label = "SHA-256 checksums"
-        if ($file.Name -eq "WearTAK-Garmin.iq") { $label = "Connect IQ distribution bundle (.iq; not direct-install)" }
-        elseif ($file.Name -match '^WearTAK-Garmin-(.+)\.prg$') {
-            $device = $Matches[1]
-            $deviceLabel = if ($labels.ContainsKey($device)) { $labels[$device] } else { $device }
-            $label = "$deviceLabel direct-install app (.prg)"
-        }
         $file | Add-Member NoteProperty Url "https://github.com/aegorsuch/weartak-garmin/releases/download/$tag/$($file.Name)"
-        $file | Add-Member NoteProperty Label $label
+        $file | Add-Member NoteProperty Label $file.Name
     }
     $lines = @(
         "<!-- weartak-garmin-auto:v1 project=$($Context.ProjectId) pipeline=$($Context.PipelineId) build=$build -->",
         "Production-key-signed Garmin Connect IQ build from the protected default branch. Automated development channel, not a Garmin Connect IQ Store publication.",
         "",
-        "Download the .prg matching your watch for direct installation. The .iq bundle is for distribution tooling, not copying to a watch.",
+        "The .iq bundle is for Garmin distribution tooling, not copying directly to a watch.",
+        "**Simulator tests:** NOT RUN (headless Linux; interactive desktop required).",
+        "**Products:** $($Products -join ', ')",
         "",
         "**Source:** [$($Context.Sha)]($base/-/commit/$($Context.Sha))",
         "**Pipeline:** [#$($Context.PipelineId)]($base/-/pipelines/$($Context.PipelineId))",
@@ -78,12 +85,12 @@ function New-GarminReleasePlan {
         "## Downloads"
     )
     $lines += @($files | Where-Object { $_.Name -ne "SHA256SUMS.txt" } | ForEach-Object { "- [$($_.Label)]($($_.Url))" })
-    $lines += @("", "## SHA-256", "", "[Download SHA256SUMS.txt]($(($files | Where-Object { $_.Name -eq 'SHA256SUMS.txt' }).Url))", "", '```text')
+    $lines += @("", "## SHA-256", "", '```text')
     $lines += @($files | ForEach-Object { "$($_.Hash)  $($_.Name)" })
     $lines += '```'
     return [pscustomobject]@{
         Context = $Context; Tag = $tag; Files = $files
-        Release = @{name = "WearTAK Garmin $($metadata.version) - development build p$($Context.PipelineId)"
+        Release = @{name = "TAK.gov Forge CI/CD Pipeline Release ($($metadata.version)-p$($Context.PipelineIid))"
             tag_name = $tag; target_commitish = $Context.Sha; body = ($lines -join "`n")
             draft = $true; prerelease = $true; make_latest = "false"}
     }
@@ -97,6 +104,10 @@ function Invoke-GarminPublication {
         $current = @($branches | Where-Object { $_.name -ceq $Plan.Context.DefaultBranch })
         if ($current.Count -ne 1 -or $current[0].commit.id -cne $Plan.Context.Sha) {
             throw "Stale pipeline: default-branch head no longer matches the built source."
+        }
+        $mirror = & $Request @{Method = "GET"; Path = "/git/ref/heads/main"}
+        if ($mirror.object.type -cne "commit" -or $mirror.object.sha -cne $Plan.Context.Sha) {
+            throw "GitHub main does not mirror the exact canonical build SHA."
         }
     }
     Assert-CurrentHead
