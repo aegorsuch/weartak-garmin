@@ -855,7 +855,7 @@ class StandaloneMapView extends WatchUi.MapView {
             "staleDeadline" => staleDeadline,
             "generic" => !isIncomingUser(cotType, metadata) && ((cotType.find("a-") == 0
                     && (!isPoint || (cotType.find("-G-T") != 3 && cotType.find("-G-E") != 3)))
-                || cotType.equals("b-m-p-s-m") || cotType.find("u-d-") == 0),
+                || cotType.equals("b-m-p-s-m") || cotType.equals("b-m-p-s-p-i") || cotType.find("u-d-") == 0),
             "circleRadius" => cotType.equals("u-d-c-c") ? incomingCircleRadius(metadata) : null,
             "stale" => false,
             "lastKnownLocation" => location
@@ -1684,7 +1684,7 @@ class StandaloneMapView extends WatchUi.MapView {
         for (var index = 0; index < drawnPointIds.size(); index++) {
             var markerId = drawnPointIds[index];
             var details = incomingDetails.get(markerId);
-            if (!(details instanceof Dictionary) || !isIncomingUserVisible(markerId)) { continue; }
+            if (!(details instanceof Dictionary) || details.get("isAlert") == true || !isIncomingUserVisible(markerId)) { continue; }
             var generic = details.get("generic") == true;
             if (!generic && (details.get("isPoint") == true || details.get("isUser") != true)) { continue; }
             var location = pointLocations.get(markerId);
@@ -1695,10 +1695,62 @@ class StandaloneMapView extends WatchUi.MapView {
             if (markerX < 0 || markerX >= screenWidth || markerY < 0 || markerY >= screenHeight) { continue; }
             var team = (details as Dictionary).get("team").toString();
             var color = generic ? incomingAffiliationColor(details.get("type") as String) : teamColorValue(trimMapText(team));
+            if (generic && drawIncomingCotSymbol(dc, markerX, markerY, details.get("type") as String, color)) { continue; }
             dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
             dc.fillCircle(markerX, markerY, 7);
             drawTeamDot(dc, markerX, markerY, color);
         }
+    }
+
+    function drawIncomingCotSymbol(dc, x, y, cotType as String, color as Number) as Boolean {
+        var symbol = incomingCotSymbol(cotType);
+        if (symbol.length() == 0) { return false; }
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(x, y, 11);
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(2);
+        if (symbol.equals("fixed")) {
+            dc.drawLine(x, y - 8, x, y + 8);
+            dc.drawLine(x - 8, y + 2, x, y - 3);
+            dc.drawLine(x, y - 3, x + 8, y + 2);
+            dc.drawLine(x - 4, y + 8, x, y + 5);
+            dc.drawLine(x, y + 5, x + 4, y + 8);
+        } else if (symbol.equals("rotary")) {
+            dc.drawLine(x - 8, y - 6, x + 8, y - 6);
+            dc.drawLine(x, y - 6, x, y + 1);
+            dc.drawLine(x - 4, y + 1, x + 4, y + 1);
+            dc.drawLine(x - 4, y + 1, x - 4, y + 5);
+            dc.drawLine(x + 4, y + 1, x + 4, y + 5);
+            dc.drawLine(x - 6, y + 8, x + 6, y + 8);
+        } else if (symbol.equals("uav")) {
+            dc.drawLine(x - 6, y - 6, x + 6, y + 6);
+            dc.drawLine(x - 6, y + 6, x + 6, y - 6);
+            dc.drawCircle(x - 6, y - 6, 3);
+            dc.drawCircle(x + 6, y - 6, 3);
+            dc.drawCircle(x - 6, y + 6, 3);
+            dc.drawCircle(x + 6, y + 6, 3);
+        } else if (symbol.equals("sea")) {
+            dc.drawLine(x - 8, y + 1, x + 8, y + 1);
+            dc.drawLine(x - 8, y + 1, x - 4, y + 7);
+            dc.drawLine(x - 4, y + 7, x + 4, y + 7);
+            dc.drawLine(x + 4, y + 7, x + 8, y + 1);
+            dc.drawLine(x, y + 1, x, y - 8);
+            dc.drawLine(x, y - 8, x + 6, y - 2);
+            dc.drawLine(x + 6, y - 2, x, y - 2);
+        } else if (symbol.equals("vehicle")) {
+            dc.drawLine(x - 8, y + 4, x - 8, y - 3);
+            dc.drawLine(x - 8, y - 3, x + 8, y - 3);
+            dc.drawLine(x + 8, y - 3, x + 8, y + 4);
+            dc.drawLine(x - 8, y + 4, x + 8, y + 4);
+            dc.fillCircle(x - 5, y + 7, 2);
+            dc.fillCircle(x + 5, y + 7, 2);
+        } else {
+            dc.drawCircle(x, y, 5);
+            dc.drawLine(x - 9, y, x + 9, y);
+            dc.drawLine(x, y - 9, x, y + 9);
+        }
+        dc.setPenWidth(1);
+        return true;
     }
 
     function drawIncomingCircles(dc) as Void {

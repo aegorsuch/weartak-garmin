@@ -6,6 +6,75 @@ import Toybox.Position;
 import Toybox.WatchUi;
 
 (:test)
+class CotSymbolCapture extends RouteDrawingCapture {
+    var outlines as Array = [];
+    var colors as Array = [];
+    var pen as Number = 1;
+    function initialize() { RouteDrawingCapture.initialize(); }
+    function drawCircle(x, y, radius) as Void { outlines.add([x, y, radius]); }
+    function setColor(foreground, background) as Void { colors.add(foreground); }
+    function setPenWidth(width) as Void { pen = width; }
+}
+
+(:test)
+function cotSymbolsClassifyAcrossAffiliations(logger) as Boolean {
+    var affiliations = ["f", "a", "h", "s", "n", "u", "p", "j", "k", "o", "x"];
+    var families = ["A-C-F", "A-C-H", "A-M-F-Q", "A-M", "S", "G-U-C-I-I"];
+    var expected = ["fixed", "rotary", "uav", "uav", "sea", "vehicle"];
+    for (var i = 0; i < affiliations.size(); i++) {
+        for (var j = 0; j < families.size(); j++) {
+            var type = "a-" + affiliations[i] + "-" + families[j];
+            Test.assertEqual(incomingCotSymbol(type), expected[j]);
+            Test.assertEqual(incomingCotSymbol(type + "-X"), expected[j]);
+            Test.assert(!isIncomingUser(type, {"isUser" => true}));
+        }
+    }
+    Test.assertEqual(incomingCotSymbol("b-m-p-s-p-i"), "spi");
+    var fallback = ["a-f-A-C-Foo", "a-f-A-C-Hoo", "a-f-A-More", "a-f-Sea",
+        "a-f-G-U-C-I-II", "a-f-G-U-C", "a-f-Z", "b-m-p-s-m", "u-d-c-c", ""];
+    for (var i = 0; i < fallback.size(); i++) { Test.assertEqual(incomingCotSymbol(fallback[i]), ""); }
+    Test.assert(isIncomingUser("a-f-G-U-C", {}));
+    return true;
+}
+
+(:test)
+function cotSymbolsRenderWithoutChangingPointBehavior(logger) as Boolean {
+    var map = new TestMapSelectionView();
+    var types = ["a-f-A-C-F", "a-h-A-C-H", "a-u-A-M-F-Q", "a-n-S", "a-s-G-U-C-I-I", "b-m-p-s-p-i"];
+    var lineCounts = [5, 6, 2, 7, 4, 2];
+    for (var i = 0; i < types.size(); i++) {
+        var id = "symbol-" + i;
+        map.updateIncomingCot(id, 0.0, 0.0, types[i], id, null, null,
+            {"isPoint" => true, "stale" => "2099-01-01T00:00:00Z"});
+        Test.assert(map.incomingDetails.get("cot-" + id).get("generic") == true);
+        Test.assert(incomingUserChatUid(map, "cot-" + id) == null);
+        var capture = new CotSymbolCapture();
+        Test.assert(map.drawIncomingCotSymbol(capture, 50, 50, types[i], incomingAffiliationColor(types[i])));
+        Test.assertEqual(capture.lines.size(), lineCounts[i]);
+        Test.assertEqual(capture.colors[0], Graphics.COLOR_BLACK);
+        Test.assertEqual(capture.colors[1], incomingAffiliationColor(types[i]));
+        Test.assertEqual(capture.pen, 1);
+        Test.assertEqual(capture.circles[0][2], 11);
+    }
+    Test.assertEqual(map.markerArray().size(), types.size());
+    map.updateIncomingCot("air-alert", 0.0, 0.0, "a-h-A-C-F", "Alert", null, null, {"isAlert" => true});
+    map.markerArray();
+    var capture = new CotSymbolCapture();
+    map.drawIncomingUserOverlays(capture);
+    Test.assertEqual(capture.lines.size(), 26);
+    Test.assertEqual(capture.outlines.size(), 5);
+    capture = new CotSymbolCapture();
+    Test.assert(!map.drawIncomingCotSymbol(capture, 50, 50, "a-f-Z", Graphics.COLOR_BLUE));
+    Test.assertEqual(capture.colors.size(), 0);
+    map.updateIncomingCot("symbol-4", null, null, "t-x-d-d", null, null, null, {});
+    Test.assert(!map.pointLocations.hasKey("cot-symbol-4"));
+    map.updateIncomingCot("expired-boat", 0.0, 0.0, "a-f-S", "Old", null, null,
+        {"stale" => "2000-01-01T00:00:00Z"});
+    Test.assert(!map.pointLocations.hasKey("cot-expired-boat"));
+    return true;
+}
+
+(:test)
 function genericCotRelayRenderingAndSafeActions(logger) as Boolean {
     var map = new TestMapSelectionView();
     var relay = new TestUserMapRelay(map);

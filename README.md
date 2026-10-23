@@ -19,6 +19,16 @@ for friendly/assumed-friendly, red for hostile/suspect/joker/faker, green for
 neutral, and yellow for unknown or non-affiliated types. Existing recognized
 users retain team colors, and recognized explicit ground markers retain their
 existing icons.
+
+Known type families instead receive compact, affiliation-colored symbols:
+fixed-wing aircraft (`a-*-A-C-F`), helicopters (`a-*-A-C-H`), military
+air/UAS (`a-*-A-M`, including UAV `A-M-F-Q`), surface vessels (`a-*-S`),
+and ground vehicles (`a-*-G-U-C-I-I`). Subtypes retain the family symbol.
+SPI (`b-m-p-s-p-i`) uses a yellow crosshair. Unknown types retain the generic
+dot; contacts retain their team dots and emergencies retain their alert icons.
+Vehicle types are not treated as chat-capable team members merely because
+their type contains `G-U-C`. Symbols are bounded vector strokes, not additional
+retained images or entities.
 The existing limits remain **999 retained entities** and **99 nearest drawn
 items**, with alert priority. Ordinary points expire at the sender's `stale` /
 `tStale` deadline or after five minutes without an update, whichever comes first.
