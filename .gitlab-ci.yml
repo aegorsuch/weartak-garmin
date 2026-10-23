@@ -96,5 +96,10 @@ publish_default_branch:
   timeout: 15 minutes
   script:
     - pwsh -NoProfile -File tools/Publish-GarminRelease.ps1
+  artifacts:
+    when: always
+    expire_in: never
+    paths:
+      - bin/ci/publication-backup/
   rules:
     - if: '$GARMIN_PUBLISH_ENABLED == "true" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_PROTECTED == "true"'
