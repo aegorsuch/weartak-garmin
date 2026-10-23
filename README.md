@@ -1074,7 +1074,7 @@ The automation follows the Tracker split:
   Windows runner and is not a prerequisite for headless export.
   Neither pipeline publishes a store release. The disabled-by-default GitLab
   publisher below can publish verified production-key default-branch builds as
-  GitHub development prereleases after explicit activation.
+  the rolling GitHub main-channel release after explicit activation.
 
 ### Shared Linux release runner
 
@@ -1287,7 +1287,7 @@ filenames/bytes, maintainer notes, publisher ownership and existing cleanup
 gates. Do not create a publisher, replace assets, or infer missing source/build
 metadata merely to make an older release match this format.
 
-### Automated GitHub development prereleases (activation required)
+### Automated rolling GitHub release (activation required)
 
 The canonical GitLab `main_release` job verifies the decoded production key's
 SHA-256 fingerprint and exports with `monkeyc -e -r -O 3z`. It validates the
@@ -1309,13 +1309,17 @@ requests, schedules, tag jobs and manual pipelines do not publish. The source
 commit must already exist in the GitHub mirror and GitHub `main` must equal
 that exact canonical SHA; the publisher does not push source commits or alter
 the mirroring process. Merge canonical-first, mirror that exact merged SHA
-non-force, then retry a publisher blocked by mirror lag.
+non-force before its publisher starts.
 
 After activation, the destination is **GitHub `aegorsuch/weartak-garmin`**, not a
-GitLab Release or Package Registry. Each build gets an immutable tag
-`auto-garmin-{APP_VERSION}-p{CI_PIPELINE_IID}-b{BUILD_JOB_ID}` and title
+GitLab Release or Package Registry. One rolling release uses the fixed tag
+`TAK.gov-Forge-CI-CD-Pipeline-Release` and title
 `TAK.gov Forge CI/CD Pipeline Release (<version>-p<IID>)`.
-It creates a draft **prerelease** with exactly **one** asset, whose filename and
+The anchor is created at the first published source SHA and never moved; GitHub
+source archives therefore describe that anchor, not subsequent builds.
+Initial publication creates a draft, uploads and verifies the IQ, then exposes
+a stable release. Later builds update that same release. The final inventory
+has exactly **one** current asset, whose filename and
 label both equal `WearTAK-Garmin-<version>-p<IID>.iq`.
 It downloads that asset and verifies SHA-256 before publishing without marking
 it latest. Checksums remain in the notes and CI artifacts, not extra GitHub
@@ -1327,15 +1331,27 @@ additional release-page sections. The version is the literal `APP_VERSION`;
 its intentional historical `-9f1ec78` suffix is not the current build's source
 identity. The full source SHA in provenance and release notes is authoritative.
 
-The publisher rejects mismatched provenance, incomplete inventories, existing
-tags/releases/drafts and concurrent draft-note changes. It rechecks the canonical
-default-branch head before upload and immediately before publishing; a newer
-head blocks a stale run. These are API checks, not an atomic lock against a
-branch change after the final check. Failed or interrupted attempts may leave
-an unpublished draft; the job fails and leaves it for a maintainer to inspect,
-not overwrite or automatically delete. There is **no automated cleanup** of
-releases, tags, assets or historical/manual notes. Official `v...` releases and
-their download URLs remain untouched.
+The publisher rejects mismatched provenance, unknown notes/assets, pre-existing
+unmanaged anchors/drafts, replayed or newer pipelines, and concurrent changes.
+Before any mutation it saves release/tag metadata and downloads and hash-verifies
+the previous owned asset into `bin/ci/publication-backup/`, retained as a
+non-expiring publisher artifact even on failure. The managed marker binds the
+previous asset ID, filename, SHA-256 and pipeline to the exact expected full body.
+Unknown or manually edited content is never claimed or overwritten.
+
+For rolling updates, the prior download remains available while the new IQ is
+uploaded and verified. Only after the new title/body is published and its bytes
+are verified again may the exact previous managed, backed-up, hash-verified
+asset ID be deleted. The final inventory must contain only the new IQ. A partial
+attempt fails closed (possibly leaving a draft or both assets); a maintainer
+must inspect the backup and live state before recovery. No automatic retry
+claims a partial inventory.
+
+Canonical and mirror heads, exact release notes/title and asset inventories are
+rechecked before mutations. The GitLab resource group serializes CI publishers;
+API rechecks are not an atomic lock against external edits between a check and
+write. Historical releases, per-build tags, official `v...` releases, unknown
+assets and manual notes are never deleted.
 
 Activation is a separate maintainer-approved operation; this implementation
 does not create credentials, change access or run a publisher:

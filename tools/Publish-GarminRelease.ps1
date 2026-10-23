@@ -53,7 +53,7 @@ $request = {
         }
         throw
     }
-    if ($operation.ContainsKey("OutFile") -or $operation.Method -eq "PUT") { return $true }
+    if ($operation.ContainsKey("OutFile") -or $operation.Method -in "PUT", "DELETE") { return $true }
     return ($response.Content | ConvertFrom-Json)
 }
 Invoke-GarminPublication -Plan $plan -Request $request
