@@ -78,6 +78,7 @@ function isIncomingAlertCleared(cotType as String, metadata as Dictionary) as Bo
 function isIncomingMapPoint(cotType as String, metadata as Dictionary) as Boolean {
     var explicitPoint = metadata.get("isPoint");
     if (explicitPoint instanceof Boolean) { return explicitPoint; }
+    if (cotType.equals("b-m-p-s-m")) { return true; }
     var takv = metadata.get("takv");
     if (takv instanceof Dictionary) {
         var device = takv.get("device");
@@ -86,6 +87,28 @@ function isIncomingMapPoint(cotType as String, metadata as Dictionary) as Boolea
     if (cotType.find("a-") != 0 || cotType.find("-G-U-C") != null) { return false; }
     var how = metadata.get("how");
     return how instanceof String && how.find("h-") == 0;
+}
+
+function incomingAffiliationColor(cotType as String) as Number {
+    var code = cotType.length() >= 4 && cotType.find("a-") == 0 ? cotType.substring(2, 3) : "u";
+    if (code.equals("f") || code.equals("a")) { return Toybox.Graphics.COLOR_BLUE; }
+    if (code.equals("h") || code.equals("s") || code.equals("j") || code.equals("k")) { return Toybox.Graphics.COLOR_RED; }
+    if (code.equals("n")) { return Toybox.Graphics.COLOR_GREEN; }
+    return Toybox.Graphics.COLOR_YELLOW;
+}
+
+function incomingCircleRadius(metadata as Dictionary) as Float? {
+    var radius = incomingCoordinateFloat(metadata.get("radius"));
+    var shape = metadata.get("shape");
+    var ellipse = shape instanceof Dictionary ? shape.get("ellipse") : null;
+    if (ellipse instanceof Dictionary) {
+        var major = incomingCoordinateFloat(ellipse.get("major"));
+        var minor = incomingCoordinateFloat(ellipse.get("minor"));
+        if (major != null && minor != null && major == minor) {
+            radius = major;
+        }
+    }
+    return radius != null && radius > 0 && radius <= 100000 ? radius : null;
 }
 
 function incomingPointSender(metadata as Dictionary) as String {

@@ -271,13 +271,18 @@ class RouteFollowDelegate extends WatchUi.Menu2InputDelegate {
         if (id == :cancel) { WatchUi.popView(WatchUi.SLIDE_RIGHT); return; }
         if (map.routeStore.route(routeId) == null) { map.routeUnavailable(); return; }
         if (id == :noLocation) {
+            map.application.requestPositionForAction("navigation");
             WatchUi.showToast(WatchUi.loadResource(Rez.Strings.RouteNeedsLocation), null);
         } else if (id == :stopRoute) {
             if (routeId.equals(map.followingRouteId)) { map.stopRoute(); }
             WatchUi.switchToView(new RouteFollowMenu(map, routeId), new RouteFollowDelegate(map, routeId), WatchUi.SLIDE_LEFT);
         } else if (id == :nearest || id == :beginning) {
             if (!map.startRoute(routeId, id == :nearest)) { return; }
-            WatchUi.switchToView(new BloodhoundCompassView(map.application), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);
+            returnToMainMenu();
         }
+    }
+
+    function returnToMainMenu() as Void {
+        map.application.returnToMainMenu();
     }
 }

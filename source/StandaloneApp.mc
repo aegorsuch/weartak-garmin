@@ -35,6 +35,13 @@ class StandaloneApp extends Application.AppBase {
     var chats as ChatConversations = new ChatConversations();
     var chatRoomsMenu as ChatRoomsMenu? = null;
     var chatConversationMenu as ChatConversationMenu? = null;
+    var mainMenuReturn as MainMenuReturn? = null;
+
+    function returnToMainMenu() as Void {
+        if (mainMenuReturn == null) { mainMenuReturn = new MainMenuReturn(); }
+        mainMenuReturn.start();
+    }
+
     private var sensorInfo;
     private var exertionPercent as Number = 0;
     private var lastStepCount as Number? = null;
@@ -166,6 +173,7 @@ class StandaloneApp extends Application.AppBase {
         }
         callsign = normalized;
         Application.Storage.setValue("callsign", callsign);
+        requestPositionForAction("identity");
         sendPliNow();
     }
 
@@ -186,6 +194,7 @@ class StandaloneApp extends Application.AppBase {
         }
         myTeamColor = value;
         Application.Storage.setValue("myTeamColor", myTeamColor);
+        requestPositionForAction("identity");
         sendPliNow();
     }
 
@@ -415,7 +424,7 @@ class StandaloneApp extends Application.AppBase {
         constantReportingInterval = nextInterval;
         phoneManagedSettings = nextManaged;
         if (intervalValue instanceof Number) { lastPliSentTime = null; }
-        if (identityChanged) { sendPliNow(); }
+        if (identityChanged) { requestPositionForAction("identity"); sendPliNow(); }
         return null;
     }
 
@@ -536,6 +545,7 @@ class StandaloneApp extends Application.AppBase {
         myRole = role;
         Application.Storage.setValue("myRoleCategory", myRoleCategory);
         Application.Storage.setValue("myRole", myRole);
+        requestPositionForAction("identity");
         sendPliNow();
     }
 
@@ -1145,14 +1155,18 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function refreshPliForUserAction() as Void {
+        requestPositionForAction("pli");
         var now = Time.now().value();
         if (!locationServices || !takClient.isConnected()) { return; }
         if (lastActionPliSentTime != null && now - lastActionPliSentTime < 10) { return; }
-        if (lastGpsFixTime != null && now - lastGpsFixTime <= 60) {
-            sendPliNow();
-        } else if (!locationRefreshPending) {
+        sendPliNow();
+    }
+
+    function requestPositionForAction(action as String) as Void {
+        if (!locationServices) { return; }
+        takClient.requestLocation(action);
+        if (!locationRefreshPending) {
             locationRefreshPending = true;
-            lastActionPliSentTime = now;
             Position.enableLocationEvents(Position.LOCATION_ONE_SHOT, method(:onPosition));
         }
     }

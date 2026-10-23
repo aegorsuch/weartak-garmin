@@ -79,10 +79,12 @@ function buildIncomingPointActions(map as StandaloneMapView, id as String) as Wa
     var details = map.incomingDetails.get(id);
     var isAlert = details instanceof Dictionary && details.get("isAlert") == true;
     var hasLocation = map.pointLocations.hasKey(id);
+    var sender = details instanceof Dictionary ? details.get("senderUID") : null;
     if (hasLocation) {
         addMenuEntry(menu, map.application.text(Rez.Strings.TextRange), map.getPointDistanceLabel(id), :range);
     }
-    if (details instanceof Dictionary && details.get("isPoint")) {
+    if (details instanceof Dictionary && details.get("isPoint") == true
+            && sender instanceof String && sender.length() > 0) {
         addMenuEntry(menu, "RGR", WatchUi.loadResource(Rez.Strings.IncomingPointRgr), :rgr);
         if (map.isBloodhoundTarget(id)) {
             addMenuEntry(menu, "nPos", WatchUi.loadResource(Rez.Strings.IncomingPointNpos), :npos);

@@ -2,6 +2,33 @@ import Toybox.Lang;
 import Toybox.Communications;
 import Toybox.System;
 import Toybox.WatchUi;
+import Toybox.Timer;
+
+class MainMenuReturn {
+    var timer as Timer.Timer;
+    var remaining as Number = 16;
+
+    function initialize() { timer = new Timer.Timer(); }
+    function start() as Void {
+        remaining = 16;
+        timer.start(method(:step), 100, true);
+    }
+    function isMainVisible() as Boolean { return WatchUi.getCurrentView()[1] instanceof MainMenuDelegate; }
+    function hasCurrentView() as Boolean { return WatchUi.getCurrentView()[0] != null; }
+    function popCurrentView() as Void { WatchUi.popView(WatchUi.SLIDE_IMMEDIATE); }
+    function stop() as Void { timer.stop(); }
+    function step() as Void {
+        if (isMainVisible()) { stop(); return; }
+        if (!hasCurrentView() || remaining == 0) {
+            stop();
+            System.println("Unable to return to the main menu: main view missing");
+            return;
+        }
+        remaining--;
+        // Garmin applies view-stack changes after the current UI callback returns.
+        popCurrentView();
+    }
+}
 
 function createMenu(title as String) as WatchUi.Menu2 {
     return new WatchUi.Menu2({:title => title});
@@ -21,7 +48,8 @@ function addToggleEntry(menu as WatchUi.Menu2, label as String, enabled as Boole
 
 function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu("WearTAK");
-    var compassItem = new WatchUi.MenuItem(app.text(Rez.Strings.TextBloodhound), null, :incomingPoints, null);
+    var compassItem = new WatchUi.IconMenuItem(app.text(Rez.Strings.TextBloodhound), null, :incomingPoints,
+        new BloodhoundTargetIcon(app.getMapView()), null);
     menu.addItem(compassItem);
     app.incomingPointMenuItem = compassItem;
     app.refreshIncomingPointCount();
