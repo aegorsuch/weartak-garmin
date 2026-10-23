@@ -79,6 +79,18 @@ class PickerTypeGlyph extends WatchUi.Drawable {
     }
 }
 
+class BloodhoundTargetIcon extends WatchUi.Drawable {
+    var map as StandaloneMapView;
+    function initialize(view as StandaloneMapView) {
+        Drawable.initialize({:locX => 0, :locY => 0, :width => 24, :height => 24});
+        map = view;
+    }
+    function draw(dc as Graphics.Dc) as Void {
+        var icon = map.bloodhoundTargetIcon();
+        if (isVisible && icon != null) { dc.drawBitmap(locX, locY, WatchUi.loadResource(icon)); }
+    }
+}
+
 function addPickerTarget(menu as WatchUi.Menu2, map as StandaloneMapView, id as String) as Void {
     menu.addItem(new WatchUi.IconMenuItem(pickerTargetTitle(map, id), pickerTargetSubtitle(map, id), id,
         new PickerTypeGlyph(pickerTargetKind(map, id), pickerTargetActive(map, id)), null));

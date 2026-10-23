@@ -108,6 +108,8 @@ class TakClient {
     var pointReplyRetryAt as Number = 0;
     var pointReplyRetryDelay as Number = 5000;
     var userProfileCallback as Method? = null;
+    var locationRequestSequence as Number = 0;
+    var phoneLocationSupported as Boolean = false;
 
     function initialize() {
         dataSync = new DataSyncClient(self);
@@ -189,6 +191,7 @@ class TakClient {
     }
 
     function activateManualAlert(type as String) as Boolean {
+        if (alerting && alertType.equals(type)) { return true; }
         var previous = alertType;
         alertType = type;
         if (!sendEmergency(:ALERT)) { alertType = previous; return false; }
@@ -210,6 +213,7 @@ class TakClient {
         if (incomingUserLifecycleCallback != null) { incomingUserLifecycleCallback.invoke("reset", {}); }
         bloodhoundSync.connectionChanged(false);
         chatGroupsSupported = false;
+        phoneLocationSupported = false;
         relayGeneration++;
         pointReplyAttempt++;
         pointReplyInFlight = null;
@@ -238,6 +242,7 @@ class TakClient {
         relayNegotiating = false;
         status = :idle;
         chatGroupsSupported = false;
+        phoneLocationSupported = false;
         bloodhoundSync.connectionChanged(false);
         if (incomingSourceRemovedCallback != null) { incomingSourceRemovedCallback.invoke("phone-relay"); }
         if (incomingUserLifecycleCallback != null) { incomingUserLifecycleCallback.invoke("reset", {}); }
@@ -266,6 +271,7 @@ class TakClient {
         relayNegotiating = false;
         status = :failed;
         chatGroupsSupported = false;
+        phoneLocationSupported = false;
         bloodhoundSync.connectionChanged(false);
         notifyStatusChanged();
         WatchUi.requestUpdate();
@@ -288,6 +294,24 @@ class TakClient {
     }
 
     function sendMarker(id as String, location as Position.Location?, type as Symbol, label as String, remark as String) as Boolean {
+        return queueMarker(id, location, type, label, remark, false);
+    }
+
+    function sendSelfMarker(id as String, location as Position.Location?, type as Symbol, label as String, remark as String) as Boolean {
+        return queueMarker(id, location, type, label, remark, phoneLocationSupported);
+    }
+
+    function requestLocation(action as String) as Void {
+        if (!isConnected()) { return; }
+        locationRequestSequence++;
+        var id = "garmin-location-" + relaySession + "-" + relayNow() + "-" + locationRequestSequence;
+        // Fresh-fix hints are immediate controls, not durable TAK writes that could block the outbox.
+        transmit("location_request", {"action" => action, "requestId" => id, "messageId" => id,
+            "createdAt" => relayEpochNow(), "relaySession" => relaySession});
+    }
+
+    function queueMarker(id as String, location as Position.Location?, type as Symbol, label as String,
+            remark as String, atSelf as Boolean) as Boolean {
         var markerType = type == :hostile ? "a-h-G-T" : type == :friendly ? "a-f-G-T" : type == :neutral ? "a-n-G-T" : "a-u-G-T";
         var payload = {
             "uid" => "garmin-marker-" + id,
@@ -295,6 +319,7 @@ class TakClient {
             "title" => label, "remark" => remark, "tStart" => cotTimestamp(Time.now()),
             "tStale" => cotTimestamp(Time.now().add(new Time.Duration(86400)))
         };
+        if (atSelf) { payload.put("locationSource", "phone"); }
         if (location != null) {
             var degrees = location.toDegrees();
             payload.put("lat", degrees[0]);
@@ -523,7 +548,9 @@ class TakClient {
         for (var i = 0; i < pointReplies.replies.size(); i++) {
             var candidate = pointReplies.replies[i];
             var payload = candidate.get("payload") as Dictionary;
-            if (candidate.get("msgType").equals("marker") && payload.get("lat") == null) { continue; }
+            var source = payload.get("locationSource");
+            if (candidate.get("msgType").equals("marker") && payload.get("lat") == null
+                    && (!(source instanceof String) || !source.equals("phone"))) { continue; }
             if (!canRouteChat(candidate.get("msgType") as String, payload)) { continue; }
             reply = candidate;
             break;
@@ -891,6 +918,7 @@ class TakClient {
                 !(payload.get("reliableDelivery") instanceof Boolean)) { return; }
         relayResultRequired = payload.get("reliableDelivery") == true;
         chatGroupsSupported = payload.get("chatGroups") == true;
+        phoneLocationSupported = payload.get("phoneLocation") == true;
         bloodhoundSync.relaySession = relaySession;
         bloodhoundSync.connectionChanged(payload.get("bloodhoundVersion") instanceof Number
             && payload.get("bloodhoundVersion") == 1 && payload.get("bloodhoundControl") == true);
@@ -910,6 +938,10 @@ class TakClient {
         var longitude = entity.get("lon");
         var cotType = entity.get("type");
         entity.put("__source", "phone-relay");
+        if (uid != null && cotType instanceof String && cotType.equals("t-x-d-d")) {
+            incomingCotCallback.invoke(uid.toString(), null, null, cotType, null, null, null, entity);
+            return;
+        }
         if (uid != null && cotType instanceof String && isIncomingAlertCleared(cotType, entity)) {
             incomingCotCallback.invoke(uid.toString(), null, null, cotType, null, null, null, entity);
             return;
@@ -946,7 +978,7 @@ class TakClient {
     }
 
     function cotTimestamp(moment as Time.Moment) as String {
-        var info = Time.Gregorian.info(moment, Time.FORMAT_SHORT);
+        var info = Time.Gregorian.utcInfo(moment, Time.FORMAT_SHORT);
         return info.year.format("%04d") + "-" + info.month.format("%02d") + "-" + info.day.format("%02d")
             + "T" + info.hour.format("%02d") + ":" + info.min.format("%02d") + ":" + info.sec.format("%02d") + "Z";
     }

@@ -66,6 +66,7 @@ class TestPhoneSettingsApplication extends StandaloneApp {
 
     function initialize() {}
     function sendPliNow() as Boolean { return false; }
+    function requestPositionForAction(action as String) as Void {}
 
     function persistPhoneSetting(key as String, value) as String? {
         if (failOnKey != null && key.equals(failOnKey)) {

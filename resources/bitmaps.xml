@@ -7,6 +7,8 @@
     <bitmap id="NeutralIcon" filename="images/obstacle.png" />
     <bitmap id="ObstacleIcon" filename="images/obstacle.png" />
     <bitmap id="AlertIcon" filename="images/alert.png" />
+    <bitmap id="GenericDotIcon" filename="images/generic-dot.svg" />
+    <bitmap id="PickerRouteIcon" filename="images/picker-route.svg" />
     <bitmap id="PickerHoundIcon" filename="images/picker-hound.png" />
     <bitmap id="PickerCrosshairIcon" filename="images/picker-crosshair.png" />
     <bitmap id="PickerStopIcon" filename="images/picker-stop.png" />

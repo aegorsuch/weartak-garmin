@@ -76,6 +76,8 @@ class BloodhoundCompassView extends WatchUi.View {
         app = application;
     }
 
+    function onShow() as Void { app.requestPositionForAction("navigation"); }
+
     function onUpdate(dc) {
         var screenWidth = System.getDeviceSettings().screenWidth;
         var screenHeight = System.getDeviceSettings().screenHeight;
@@ -88,6 +90,7 @@ class BloodhoundCompassView extends WatchUi.View {
         drawCompass(dc, centerX, centerY - 4, 54);
         var mapView = app.getMapView();
         if (mapView.isBloodhoundActive()) {
+            dc.drawBitmap(centerX + 82, centerY - 16, WatchUi.loadResource(mapView.bloodhoundTargetIcon()));
             var bearing = mapView.getBloodhoundBearingDegrees();
             drawArrow(dc, centerX, centerY - 4, bearing, 42);
             dc.drawText(centerX, centerY + 58, Graphics.FONT_XTINY, mapView.getBloodhoundTitle(), Graphics.TEXT_JUSTIFY_CENTER);

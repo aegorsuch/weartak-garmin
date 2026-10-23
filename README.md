@@ -10,6 +10,84 @@ and fenix 8 (47 mm and 51 mm variants).
 - Personal GitHub: https://github.com/aegorsuch/weartak-garmin
 - Government repo: https://git.tak.gov/core/weartak-core/weartak-garmin
 
+## Generic CoT and field-report hardening (WEARTAK-280)
+
+Garmin's companion entity ingress already accepts arbitrary CoT point types.
+Other `a-*` entities (including ADS-B aircraft and `a-f-Z` phones), spot markers
+`b-m-p-s-m`, and shape centers now use a generic dot and label. Dots use blue
+for friendly/assumed-friendly, red for hostile/suspect/joker/faker, green for
+neutral, and yellow for unknown or non-affiliated types. Existing recognized
+users retain team colors, and recognized explicit ground markers retain their
+existing icons.
+The existing limits remain **999 retained entities** and **99 nearest drawn
+items**, with alert priority. Ordinary points expire at the sender's `stale` /
+`tStale` deadline or after five minutes without an update, whichever comes first.
+Emergencies retain their separate explicit-cancellation behavior.
+
+Coordinate-free `t-x-d-d` events remove the target (`link.uid` with `p-p`
+relation, or the event UID), stop its Bloodhound target, and suppress older
+replays for five minutes. Ordered deletes older than the displayed revision are
+ignored. `u-d-c-c` circles support a numeric `radius` in meters or
+`shape.ellipse` with equal numeric `major` and `minor` radii: greater than zero
+and at most 100 km. Outlines are clipped, 32 segments each, with at most 16
+drawn per frame. Other shapes, missing geometry, and near-polar circles use the
+labeled center fallback; arbitrary polygon/ellipse geometry is not implemented.
+The companion must relay these fields; the watch does not parse raw CoT XML.
+
+Generic points never acquire a user-chat action. RGR/nPos sender replies are
+offered only when a sender UID exists, and queued replies still reject a
+missing destination. Repeated activation of the same active manual alert is
+idempotent; changing its category or canceling and reactivating still creates a
+new event. Transport retries retain their original `messageId`, including across
+restart. The companion must deduplicate that ID before TAK writes; Garmin has
+one phone transport, not multi-server fan-out.
+
+The WearOS PPG concurrent-buffer bug has no equivalent here: Garmin's bounded
+pressure buffer is updated and read in the same synchronous sensor callback.
+Emergency/PLI location selection and CoT `ce` belong to the paired phone:
+Garmin sends neither emergency nor PLI coordinates and cannot fix that phone
+fallback by changing watch GPS state. No physical-device validation is implied.
+
+### Fresh location on user actions
+
+Opening the map, recentering on self, starting point/route navigation, changing
+callsign/team/role, dropping/moving a self marker, and action-triggered PLI/chat
+refreshes actively request a fix without waiting for GPS. With watch Location
+Services enabled, the watch requests a one-shot local GPS fix and resumes
+continuous updates afterward. The action uses its current best position
+immediately; a returned fix updates the local map/navigation and PLI.
+This does not override a disabled Location Services setting.
+
+The phone also receives an immediate `location_request` control envelope:
+`payload` contains `action` (`map`, `navigation`, `identity`, `self_marker`,
+or `pli`), unique `requestId` / `messageId`, `createdAt`, and `relaySession`.
+These hints are best-effort, like PLI, and never occupy the durable outbox or
+block emergency writes on an older companion. Compatible companions actively
+acquire a phone fix and republish PLI; they do not create another marker from
+the hint. After the companion advertises `phoneLocation: true` in `relay_status`,
+self marker events separately carry `locationSource: "phone"`, so
+the companion publishes its best fix immediately and updates the **same UID**
+when a fresh fix arrives. Explicit map-tap coordinates remain intentional.
+Self markers without a watch fix can be handed off immediately; up to 20 local
+pending records survive an acknowledgement/restart for up to 24 hours.
+
+The companion returns resolved/fresh self-marker positions using ordinary
+`entity` envelopes with the original `garmin-marker-...` UID, `lat`, `lon`,
+`type`, `callSign`, `isPoint: true`, `time`, and `stale`. Garmin reconciles them
+into the saved local marker without an incoming duplicate or outbound echo.
+The `relay_result` acknowledgement contract is unchanged. Phone GPS never
+becomes a synthetic contact or replaces the watch's own navigation fix.
+
+### Route-start and compass parity (WEARTAK-252/253)
+
+Starting a whole route closes the route/picker screens and returns to the main
+menu, retaining active navigation. Garmin's main screen is a native menu rather
+than a compass dashboard: its Bloodhound row shows a routes icon for an active
+route point and a hound for any other active target. The same icon appears
+beside the dedicated Bloodhound compass. Both hide the icon with no active
+target. The own-package-name managed-configuration issue does not apply to
+this Monkey C application.
+
 ## Routes (phone companion route protocol v1)
 
 Updated iPhone and ATAK companions can send route geometry to the watch. Open

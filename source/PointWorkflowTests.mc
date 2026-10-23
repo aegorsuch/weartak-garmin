@@ -128,6 +128,7 @@ class TestMapSelectionView extends StandaloneMapView {
         hiddenMapTeams = [];
         hiddenMapRoles = [];
         drawnPointIds = [];
+        pendingSelfPoints = [];
         currentPosition = null;
         screenWidth = 200;
         screenHeight = 200;
