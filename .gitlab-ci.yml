@@ -7,13 +7,23 @@ variables:
   # Members-only Generic Package; verified against the uploaded archive.
   GARMIN_DEVICE_PACKAGE_SHA256: "4677eb4603cb0d19a475b87da63c45257e3de4cf380ee67d2c0c4c302693dcfb"
 
-linux_tooling_tests:
-  stage: test
-  image: python:3.10-slim
+.garmin_linux:
+  # Same untagged shared pool as WearOS; its launcher image uses retired Debian 11.
+  image: eclipse-temurin:17-jdk-jammy
   before_script:
-    - pip install --disable-pip-version-check -r tools/requirements-ci.txt
+    - sed -i 's|http://archive.ubuntu.com|https://archive.ubuntu.com|g; s|http://security.ubuntu.com|https://security.ubuntu.com|g' /etc/apt/sources.list
+    - apt-get -o Acquire::https::No-Cache=true -o APT::Update::Error-Mode=any update -qq
+    - apt-get install -y --no-install-recommends python3 python3-venv ca-certificates git
+    - java -version
+    - python3 --version
+    - python3 -m venv .garmin-venv
+    - .garmin-venv/bin/pip install --disable-pip-version-check -r tools/requirements-ci.txt
+
+linux_tooling_tests:
+  extends: .garmin_linux
+  stage: test
   script:
-    - python -m unittest discover -s tools -p "test_*.py"
+    - .garmin-venv/bin/python -m unittest discover -s tools -p "test_*.py"
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
@@ -28,16 +38,9 @@ publisher_tests:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 
 .garmin_build:
+  extends: .garmin_linux
   stage: build
-  # Untagged job: the same shared Kubernetes Linux pool used by WearOS.
-  image: ${TAK_REGISTRY_HOST}/devsecops/gradle-build-launcher:17-2.6.2
   timeout: 30 minutes
-  before_script:
-    - apt-get update -qq
-    - apt-get install -y --no-install-recommends python3 ca-certificates git
-    - apt-get install -y --no-install-recommends python3-venv
-    - python3 -m venv .garmin-venv
-    - .garmin-venv/bin/pip install --disable-pip-version-check -r tools/requirements-ci.txt
   script:
     - .garmin-venv/bin/python tools/garmin_ci.py provision --destination "$CI_PROJECT_DIR/.garmin"
     - .garmin-venv/bin/python tools/garmin_ci.py build --sdk "$CI_PROJECT_DIR/.garmin/sdk" --home "$CI_PROJECT_DIR/.garmin/home"

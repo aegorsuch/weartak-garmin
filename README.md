@@ -1080,11 +1080,17 @@ The automation follows the Tracker split:
 
 `main_release` and `official_release` are untagged container jobs using the
 same shared Linux pool as WearOS, with
-`${TAK_REGISTRY_HOST}/devsecops/gradle-build-launcher:17-2.6.2`.
+`eclipse-temurin:17-jdk-jammy`.
 The image must allow installing Python 3, venv, CA certificates and git through
 apt. No Docker daemon, persistent SDK installation, desktop or new credential
 is required. The publisher and its network-free tests use a PowerShell 7 Linux
-container.
+container. The Python regressions run in the exact Java 17 build image with the
+same bootstrap as signed exports. Bootstrap refreshes Ubuntu indexes over HTTPS
+without cached responses and fails on index-update errors, avoiding stale HTTP
+indexes baked into the base image. WearOS's existing
+`gradle-build-launcher:17-2.6.2` image uses Debian 11, whose LTS ended in August
+2026; actual runner attempts could no longer fetch its security packages.
+Garmin uses a maintained Java 17 base rather than an archived OS repository.
 
 `tools/garmin_ci.py provision` downloads the official Linux **9.2.0** SDK from
 Garmin's [SDK catalog](https://developer.garmin.com/downloads/connect-iq/sdks/sdks.json),
