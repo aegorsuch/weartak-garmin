@@ -1084,7 +1084,10 @@ same shared Linux pool as WearOS, with
 The image must allow installing Python 3, venv, CA certificates and git through
 apt. No Docker daemon, persistent SDK installation, desktop or new credential
 is required. The publisher and its network-free tests use a PowerShell 7 Linux
-container.
+container. The Python regressions run in the exact Java 17 build image with the
+same bootstrap as signed exports. Bootstrap refreshes Debian indexes over HTTPS
+without cached responses and fails on index-update errors, avoiding stale HTTP
+security indexes baked into the base image.
 
 `tools/garmin_ci.py provision` downloads the official Linux **9.2.0** SDK from
 Garmin's [SDK catalog](https://developer.garmin.com/downloads/connect-iq/sdks/sdks.json),
