@@ -12,7 +12,9 @@
 /gen/
 /mir/
 /internal-mir/
+/.garmin/
+/.garmin-venv/
+**/__pycache__/
 
 # Private Garmin signing key
 /developer_key.der
-

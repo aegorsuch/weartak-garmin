@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$Directory = (Join-Path (Split-Path -Parent $PSScriptRoot) "bin\ci"))
+param([string]$Directory = (Join-Path (Split-Path -Parent $PSScriptRoot) "bin/ci"))
 
 $ErrorActionPreference = "Stop"
 Import-Module (Join-Path $PSScriptRoot "GarminRelease.psm1") -Force
@@ -8,7 +8,7 @@ if (-not $env:GARMIN_GITHUB_RELEASE_TOKEN) { throw "Missing protected GARMIN_GIT
 $context = @{
     Enabled = $env:GARMIN_PUBLISH_ENABLED; Protected = $env:CI_COMMIT_REF_PROTECTED
     Source = $env:CI_PIPELINE_SOURCE; Branch = $env:CI_COMMIT_BRANCH; DefaultBranch = $env:CI_DEFAULT_BRANCH
-    ProjectId = $env:CI_PROJECT_ID; PipelineId = $env:CI_PIPELINE_ID; JobId = $env:CI_JOB_ID
+    ProjectId = $env:CI_PROJECT_ID; PipelineId = $env:CI_PIPELINE_ID; PipelineIid = $env:CI_PIPELINE_IID; JobId = $env:CI_JOB_ID
     ProjectUrl = $env:CI_PROJECT_URL; ApiUrl = $env:CI_API_V4_URL; Sha = $env:CI_COMMIT_SHA
 }
 if ($context.ProjectId -ne "6783" -or $context.ProjectUrl -cne "https://git.tak.gov/core/weartak-core/weartak-garmin" -or
@@ -44,7 +44,7 @@ $request = {
             $_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 404) { return $null }
         if ($operation.ContainsKey("OutFile") -and $_.Exception.Response -and
             [int]$_.Exception.Response.StatusCode -in 301, 302, 307) {
-            $location = [uri]$_.Exception.Response.Headers["Location"]
+            $location = [uri]$_.Exception.Response.Headers.Location
             if ($location.Scheme -cne "https" -or $location.Host -notin @("release-assets.githubusercontent.com", "objects.githubusercontent.com") -or
                 $location.UserInfo -or -not $location.IsDefaultPort) { throw "Untrusted asset download redirect." }
             # Signed asset redirects are followed without either service's credential.

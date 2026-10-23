@@ -1063,19 +1063,63 @@ The automation follows the Tracker split:
   on `fenix7x` and export an optimized `.iq` bundle. The bundle uses a disposable
   key, **not the production signing identity**. Download it and test logs from
   workflow artifacts; CI bundles are not official releases.
-- [Government GitLab CI](.gitlab-ci.yml) runs tests and produces production-key
-  `.prg` files for every manifest product plus the `.iq` bundle on protected
+- [Government GitLab CI](.gitlab-ci.yml) runs network-free tooling regression
+  tests and exports a production-key-signed `.iq` bundle on shared Linux
+  Java 17 runners on protected
   default-branch pushes (30-day artifacts) and protected version tags such as
-  `v5.8.3` or `v5.8.0.8` (non-expiring artifacts). Logs are retained even on
-  failure; distribution packages are exposed only after all builds succeed.
+  `v5.8.3` or `v5.8.0.8` (non-expiring artifacts). Distribution packages are
+  exposed only after export and inventory validation succeed. Linux does
+  **not** run the simulator suite; provenance and release notes say so explicitly.
+  The optional manual `windows_simulator` job runs that suite on an interactive
+  Windows runner and is not a prerequisite for headless export.
   Neither pipeline publishes a store release. The disabled-by-default GitLab
   publisher below can publish verified production-key default-branch builds as
   GitHub development prereleases after explicit activation.
 
-### Runner setup
+### Shared Linux release runner
 
-Garmin's device definitions and simulator are installed through its SDK Manager,
-not restored by a package manager. Provision a dedicated Windows x64 runner with:
+`main_release` and `official_release` are untagged container jobs using the
+same shared Linux pool as WearOS, with
+`${TAK_REGISTRY_HOST}/devsecops/gradle-build-launcher:17-2.6.2`.
+The image must allow installing Python 3, venv, CA certificates and git through
+apt. No Docker daemon, persistent SDK installation, desktop or new credential
+is required. The publisher and its network-free tests use a PowerShell 7 Linux
+container.
+
+`tools/garmin_ci.py provision` downloads the official Linux **9.2.0** SDK from
+Garmin's [SDK catalog](https://developer.garmin.com/downloads/connect-iq/sdks/sdks.json),
+using the exact archive `connectiq-sdk-lin-9.2.0-2026-06-09-92a1605b2.zip`
+and SHA-256 `4907d8455b651c5a00a865e364cc4f1921c055b9279c7c8634c7a7a6773b5593`.
+The device/font ZIP comes from canonical project 6783's **members-only** Generic
+Package `garmin-device-cache/9.2.0-1/devices-fonts.zip`, authenticated with the
+existing ephemeral `CI_JOB_TOKEN`. Its SHA-256 is pinned in `.gitlab-ci.yml`;
+an unset, malformed or mismatched pin fails closed. Authenticated package
+downloads never follow redirects.
+
+The package contains only `Devices/<manifest-product>/...` for the seven current
+devices and `Fonts/<referenced-file>` with optional MD5 sidecars. It has 873 files
+(350 font files including sidecars), 150,298,074 compressed bytes, and SHA-256
+`4677eb4603cb0d19a475b87da63c45257e3de4cf380ee67d2c0c4c302693dcfb`.
+TrueType and bitmap font references come from those devices' `simulator.json`;
+Garmin's built-in legacy `bitstreamVeraSans` fonts are not cache files.
+The SDK, cache and signing keys must never be committed or included in artifacts.
+
+To prepare a replacement archive locally after a manifest/device update:
+
+```powershell
+python -m pip install -r tools\requirements-ci.txt
+python tools\garmin_ci.py package --cache "$env:APPDATA\Garmin\ConnectIQ" --output C:\Temp\devices-fonts.zip
+```
+
+This command does **not** upload anything. Verify registry privacy before an
+authorized upload; use a new package version, then update the URL and reviewed
+SHA-256 pin together. Do not package the entire installed Fonts cache.
+Provisioning installs an isolated SDK and Linux cache under `.garmin/`; it
+does not modify an existing user's Garmin installation.
+
+### Optional Windows simulator runner
+
+For local simulator checks or the optional manual job, provision:
 
 1. Connect IQ SDK **9.2.0**, all current product definitions listed in `manifest.xml`, and the
    `fenix7x` simulator device installed for the runner account. Set
@@ -1091,10 +1135,10 @@ not restored by a package manager. Provision a dedicated Windows x64 runner with
    allowed to execute there. Pull requests run localization on GitHub-hosted
    Windows runners, **not** the simulator or self-hosted build. A successful
    PR localization check alone is not a successful build/test run.
-5. For GitLab, a Windows shell runner with tags `windows`, `garmin-ci`,
-   restricted to this project and protected refs. Protect `main` and the
-   release-tag pattern before enabling signed jobs. Use a separate runner
-   account/machine from public CI and restrict who can modify protected code.
+5. For GitLab's optional simulator job only, a Windows shell runner with tags
+   `windows`, `garmin-ci`, restricted to protected refs. The shared Linux release
+   path does not depend on this runner. Protect `main` and the release-tag pattern
+   before enabling signed jobs, and restrict who can modify protected code.
 
 Configure these **protected** GitLab CI/CD variables, without committing keys:
 
@@ -1107,7 +1151,7 @@ Configure these **protected** GitLab CI/CD variables, without committing keys:
 No production key is needed by GitHub. Keys are written to a private temporary
 directory and deleted in `finally`; they are never included in artifacts.
 Disposable runners are still required to handle externally cancelled jobs.
-Both pipelines emit `SHA256SUMS.txt` for the distribution packages.
+Both pipelines emit `SHA256SUMS.txt` for their distribution packages.
 
 ### Running the same checks locally
 
@@ -1239,11 +1283,16 @@ metadata merely to make an older release match this format.
 
 ### Automated GitHub development prereleases (activation required)
 
-The canonical GitLab `main_release` job still runs the existing
-production-key fingerprint check, full simulator suite, every manifest-device
-PRG build and optimized IQ export. Only after those gates succeed does it emit
+The canonical GitLab `main_release` job verifies the decoded production key's
+SHA-256 fingerprint and exports with `monkeyc -e -r -O 3z`. It validates the
+actual 7z IQ container, generated manifest, signing material and all hardware
+variants from the selected devices' compiler definitions (currently 21 variants
+across seven devices), not just the filename extension. It does **not** run
+simulator tests. Only after these gates succeed does it emit schema-2
 `release-build.json`, binding the exact full source SHA, version, project,
-pipeline and build job IDs to hashes of every distributable and `SHA256SUMS.txt`.
+pipeline ID, pipeline IID and build job ID to the IQ and `SHA256SUMS.txt`.
+The record explicitly says `tests: not-run-headless-linux`; schema-1 Windows
+records claiming full-suite success are not accepted by the Linux publisher.
 Disposable-key GitHub CI artifacts never emit that production record and are
 not eligible for publication.
 
@@ -1251,17 +1300,20 @@ not eligible for publication.
 same pipeline. It is serialized, defaults off, and runs only on a protected
 default-branch **push** with `GARMIN_PUBLISH_ENABLED` exactly `true`. Merge
 requests, schedules, tag jobs and manual pipelines do not publish. The source
-commit must already exist in the GitHub mirror; the publisher does not push
-source commits or alter the mirroring process.
+commit must already exist in the GitHub mirror and GitHub `main` must equal
+that exact canonical SHA; the publisher does not push source commits or alter
+the mirroring process. Merge canonical-first, mirror that exact merged SHA
+non-force, then retry a publisher blocked by mirror lag.
 
 After activation, the destination is **GitHub `aegorsuch/weartak-garmin`**, not a
 GitLab Release or Package Registry. Each build gets an immutable tag
-`auto-garmin-{APP_VERSION}-p{PIPELINE_ID}-b{BUILD_JOB_ID}` and a versioned
-development-build title. It creates a draft **prerelease**, uploads exactly the
-existing manifest PRGs, CI-produced IQ bundle and separate checksum file,
-downloads every uploaded asset and verifies SHA-256, then publishes without
-marking it latest. Asset labels distinguish device-specific direct-install PRGs
-from the IQ distribution bundle. Notes include artifact links, per-file hashes,
+`auto-garmin-{APP_VERSION}-p{CI_PIPELINE_IID}-b{BUILD_JOB_ID}` and title
+`TAK.gov Forge CI/CD Pipeline Release (<version>-p<IID>)`.
+It creates a draft **prerelease** with exactly **one** asset, whose filename and
+label both equal `WearTAK-Garmin-<version>-p<IID>.iq`.
+It downloads that asset and verifies SHA-256 before publishing without marking
+it latest. Checksums remain in the notes and CI artifacts, not extra GitHub
+assets. Notes include the explicit simulator-not-run statement, product IDs,
 the full build SHA and canonical pipeline/build/publisher job links.
 
 The publisher rejects mismatched provenance, incomplete inventories, existing
@@ -1284,21 +1336,22 @@ does not create credentials, change access or run a publisher:
   credential is required; no token is embedded or generated here. GitLab's
   ephemeral `CI_JOB_TOKEN` is used only for the canonical branch-head read.
 - Keep `GARMIN_PUBLISH_ENABLED` unset until publication is approved and the
-  protected Windows runner, token authorization, canonical-to-GitHub source
+  shared Linux signed export, token authorization, canonical-to-GitHub source
   mirroring and production signing configuration have been verified. API
   authorization failures fail the job; they do not fall back to a disposable
   key, another repository or a different destination.
 
-At implementation time the canonical project's project-variable list was empty:
-the signing secrets and GitHub token were not configured there. Inherited/group
-variables and runner-local configuration were not verified. No live upload or
-end-to-end publication has been performed; this is prepared automation, not an
-operational release claim.
+The existing signing identity variables and `GARMIN_GITHUB_RELEASE_TOKEN` are
+protected and masked. They are reused, not replaced. The registry-only setting
+was explicitly approved as members-only; project visibility remains internal.
+Publication remains disabled: this change does not set `GARMIN_PUBLISH_ENABLED`,
+upload to GitHub releases, or claim Linux simulator coverage.
 
 Run the network-free publisher regression checks locally with:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\Test-GarminRelease.ps1
+python -m unittest discover -s tools -p "test_*.py"
 ```
 
 These tests use synthetic artifacts and mocked API calls; they do not sign

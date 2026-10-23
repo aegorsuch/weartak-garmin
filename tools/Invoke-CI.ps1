@@ -118,7 +118,7 @@ try {
                 "-o", (Join-Path $packages ("WearTAK-Garmin-" + $product.id + ".prg")), "-y", $key)
         }
     }
-    Invoke-Compiler @("-f", $jungle, "-r", "-O", "3z",
+    Invoke-Compiler @("-f", $jungle, "-e", "-r", "-O", "3z",
         "-o", (Join-Path $packages "WearTAK-Garmin.iq"), "-y", $key)
     Get-ChildItem $packages -File | Where-Object { $_.Extension -in ".prg", ".iq" } |
         Copy-Item -Destination $OutputDirectory

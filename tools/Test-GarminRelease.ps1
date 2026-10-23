@@ -16,19 +16,21 @@ try {
     New-Item -ItemType Directory $directory | Out-Null
     $context = @{
         Enabled = "true"; Protected = "true"; Source = "push"; Branch = "main"; DefaultBranch = "main"
-        ProjectId = "6783"; PipelineId = "123"; JobId = "789"; Sha = ("a" * 40)
+        ProjectId = "6783"; PipelineId = "123"; PipelineIid = "42"; JobId = "789"; Sha = ("a" * 40)
         ProjectUrl = "https://git.tak.gov/core/weartak-core/weartak-garmin"; ApiUrl = "https://git.tak.gov/api/v4"
     }
     $products = @("fenix7x", "fenix847mm")
-    foreach ($name in @("WearTAK-Garmin-fenix7x.prg", "WearTAK-Garmin-fenix847mm.prg", "WearTAK-Garmin.iq")) {
-        Set-Content (Join-Path $directory $name) "Synthetic test data: $name" -Encoding ASCII
-    }
+    $assetName = "WearTAK-Garmin-5.8.3-9f1ec78-p42.iq"
+    [IO.File]::WriteAllBytes((Join-Path $directory $assetName),
+        ([byte[]]@(0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c) + [byte[]](1..100)))
     Get-ChildItem $directory -File | Get-FileHash -Algorithm SHA256 |
         ForEach-Object { "$($_.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_.Path))" } |
         Set-Content (Join-Path $directory "SHA256SUMS.txt") -Encoding ASCII
     $metadata = @{
-        schema = 1; signing = "production-key-fingerprint-verified"; tests = "full-suite-passed"
+        schema = 2; signing = "production-key-fingerprint-verified"; tests = "not-run-headless-linux"
+        sdk = "9.2.0"; export = "monkeyc-e"; hardware_variants = 3; products = $products
         source_sha = $context.Sha; project_id = "6783"; pipeline_id = "123"; build_job_id = "456"
+        pipeline_iid = "42"
         version = "5.8.3-9f1ec78"
         artifacts = @(Get-ChildItem $directory -File | ForEach-Object {
             @{name = $_.Name; sha256 = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}
@@ -38,8 +40,9 @@ try {
     function Save-Metadata { $metadata | ConvertTo-Json -Depth 6 | Set-Content $metadataPath -Encoding UTF8 }
     Save-Metadata
     $plan = New-GarminReleasePlan $directory $context $products
-    Assert ($plan.Files.Count -eq 4) "All manifest PRGs, actual IQ and separate checksums included"
-    Assert ($plan.Tag -eq "auto-garmin-5.8.3-9f1ec78-p123-b456") "Owned immutable tag"
+    Assert ($plan.Files.Count -eq 1) "Exactly one IQ uploaded; checksums remain in notes"
+    Assert ($plan.Tag -eq "auto-garmin-5.8.3-9f1ec78-p42-b456") "Owned immutable tag uses pipeline IID"
+    Assert ($plan.Release.name -ceq "TAK.gov Forge CI/CD Pipeline Release (5.8.3-9f1ec78-p42)") "Exact WearOS-style title"
     Assert ($plan.Release.target_commitish -ceq $context.Sha) "Exact build commit, not version suffix"
     Assert ($plan.Release.body.Contains($context.Sha)) "Full source SHA in notes"
     foreach ($path in @("/-/pipelines/123", "/-/jobs/456", "/-/jobs/789")) {
@@ -47,21 +50,22 @@ try {
     }
     Assert ($plan.Release.body.Contains("development channel")) "Truthful channel"
     Assert ($plan.Release.body -notmatch "APK|versionCode") "No Android claims"
-    Assert ($plan.Files[0].Label -eq "Fenix 7X direct-install app (.prg)") "Readable device label"
+    Assert ($plan.Files[0].Name -ceq $assetName -and $plan.Files[0].Label -ceq $assetName) "Exact filename equals label"
+    Assert ($plan.Release.body.Contains("NOT RUN")) "No false simulator success claim"
     Assert ($plan.Release.body.Contains("## SHA-256")) "Separate per-asset checksums"
     Assert ($plan.Release.draft -and $plan.Release.prerelease -and $plan.Release.make_latest -eq "false") "Safe draft/prerelease channel"
-    foreach ($key in @("Enabled", "Protected", "Source", "Branch", "Sha", "PipelineId")) {
+    foreach ($key in @("Enabled", "Protected", "Source", "Branch", "Sha", "PipelineId", "PipelineIid", "ProjectId")) {
         $bad = $context.Clone(); $bad[$key] = "invalid"
         Reject { New-GarminReleasePlan $directory $bad $products } "requires|Invalid"
     }
-    foreach ($key in @("signing", "tests", "source_sha", "project_id", "pipeline_id", "build_job_id", "version")) {
+    foreach ($key in @("signing", "tests", "source_sha", "project_id", "pipeline_id", "pipeline_iid", "build_job_id", "version", "sdk", "export")) {
         $saved = $metadata[$key]; $metadata[$key] = "invalid"; Save-Metadata
         Reject { New-GarminReleasePlan $directory $context $products } "provenance"
         $metadata[$key] = $saved
     }
     Save-Metadata
     Reject { New-GarminReleasePlan $directory $context @("fenix7x") } "complete manifest"
-    $file = Join-Path $directory "WearTAK-Garmin-fenix7x.prg"
+    $file = Join-Path $directory $assetName
     $bytes = [IO.File]::ReadAllBytes($file)
     Add-Content $file "tampered"
     Reject { New-GarminReleasePlan $directory $context $products } "checksum mismatch"
@@ -87,6 +91,7 @@ try {
     $script:staleAfterUpload = $false
     $script:edited = $false
     $script:missingSource = $false
+    $script:wrongMirror = $false
     $script:draftCollision = $false
     $script:badInventory = $false
     $request = {
@@ -97,6 +102,9 @@ try {
         }
         if ($operation.Path -eq "/commits/$($context.Sha)") {
             return @{sha = $(if ($script:missingSource) { "c" * 40 } else { $context.Sha })}
+        }
+        if ($operation.Path -eq "/git/ref/heads/main") {
+            return @{object = @{type = "commit"; sha = $(if ($script:wrongMirror) { "d" * 40 } else { $context.Sha })}}
         }
         if ($operation.Path -like "/releases?per_page=*") {
             if ($script:draftCollision) { return @{tag_name = $plan.Tag} }
@@ -140,7 +148,7 @@ try {
         throw "Unexpected request: $($operation.Method) $($operation.Path)"
     }
     Invoke-GarminPublication $plan $request | Out-Null
-    Assert (@($script:calls | Where-Object { $_.ContainsKey("InFile") }).Count -eq 4) "Upload every validated artifact"
+    Assert (@($script:calls | Where-Object { $_.ContainsKey("InFile") }).Count -eq 1) "Upload exactly one validated IQ"
     Assert ($script:calls[-2].Method -eq "PATCH") "Release exposed only after byte verification"
     Assert (@($script:calls | Where-Object { $_.Method -eq "DELETE" }).Count -eq 0) "Never clean up previous publications"
     Assert (@($script:calls | Where-Object { $_.Method -eq "PATCH" -and $_.Path -ne "/releases/42" }).Count -eq 0) "Only own new draft modified"
@@ -155,6 +163,10 @@ try {
     $script:stale = $false; $script:missingSource = $true; $script:calls = @()
     Reject { Invoke-GarminPublication $plan $request } "not available on GitHub"
     Assert (@($script:calls | Where-Object { $_.Method -in "PATCH", "POST" }).Count -eq 0) "Unmirrored source does not write"
+    $script:missingSource = $false; $script:wrongMirror = $true; $script:calls = @()
+    Reject { Invoke-GarminPublication $plan $request } "does not mirror"
+    Assert (@($script:calls | Where-Object { $_.Method -in "PATCH", "POST" }).Count -eq 0) "Existing commit on wrong mirror head cannot publish"
+    $script:wrongMirror = $false
     $script:missingSource = $false; $script:draftCollision = $true; $script:calls = @()
     Reject { Invoke-GarminPublication $plan $request } "Draft or release already exists"
     Assert (@($script:calls | Where-Object { $_.Method -in "PATCH", "POST" }).Count -eq 0) "Existing unpublished draft is not overwritten"

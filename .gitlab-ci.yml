@@ -1,48 +1,90 @@
 stages:
+  - test
   - build
   - publish
 
+variables:
+  # Members-only Generic Package; verified against the uploaded archive.
+  GARMIN_DEVICE_PACKAGE_SHA256: "4677eb4603cb0d19a475b87da63c45257e3de4cf380ee67d2c0c4c302693dcfb"
+
+linux_tooling_tests:
+  stage: test
+  image: python:3.10-slim
+  before_script:
+    - pip install --disable-pip-version-check -r tools/requirements-ci.txt
+  script:
+    - python -m unittest discover -s tools -p "test_*.py"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+publisher_tests:
+  stage: test
+  image: mcr.microsoft.com/powershell:7.4-debian-12
+  script:
+    - pwsh -NoProfile -File tools/Test-GarminRelease.ps1
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
 .garmin_build:
   stage: build
-  tags:
-    - windows
-    - garmin-ci
+  # Untagged job: the same shared Kubernetes Linux pool used by WearOS.
+  image: ${TAK_REGISTRY_HOST}/devsecops/gradle-build-launcher:17-2.6.2
   timeout: 30 minutes
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends python3 ca-certificates git
+    - apt-get install -y --no-install-recommends python3-venv
+    - python3 -m venv .garmin-venv
+    - .garmin-venv/bin/pip install --disable-pip-version-check -r tools/requirements-ci.txt
   script:
-    - powershell -NoProfile -ExecutionPolicy Bypass -File tools\Invoke-CI.ps1 -Mode Release
+    - .garmin-venv/bin/python tools/garmin_ci.py provision --destination "$CI_PROJECT_DIR/.garmin"
+    - .garmin-venv/bin/python tools/garmin_ci.py build --sdk "$CI_PROJECT_DIR/.garmin/sdk" --home "$CI_PROJECT_DIR/.garmin/home"
 
 main_release:
   extends: .garmin_build
   artifacts:
-    when: always
+    when: on_success
     expire_in: 30 days
     paths:
-      - bin/ci/WearTAK-Garmin*.prg
-      - bin/ci/WearTAK-Garmin.iq
+      - bin/ci/WearTAK-Garmin-*.iq
       - bin/ci/SHA256SUMS.txt
       - bin/ci/release-build.json
-      - bin/ci/*.log
+      - bin/ci/build.log
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_PROTECTED == "true"'
 
 official_release:
   extends: .garmin_build
   artifacts:
-    when: always
+    when: on_success
     expire_in: never
     paths:
-      - bin/ci/WearTAK-Garmin*.prg
-      - bin/ci/WearTAK-Garmin.iq
+      - bin/ci/WearTAK-Garmin-*.iq
       - bin/ci/SHA256SUMS.txt
-      - bin/ci/*.log
+      - bin/ci/release-build.json
+      - bin/ci/build.log
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$/ && $CI_COMMIT_REF_PROTECTED == "true"'
 
+# Optional full simulator suite; not a dependency or a claim made by Linux jobs.
+windows_simulator:
+  stage: test
+  tags: [windows, garmin-ci]
+  script:
+    - powershell -NoProfile -ExecutionPolicy Bypass -File tools\Invoke-CI.ps1
+  artifacts:
+    when: always
+    paths: [bin/ci/*.log]
+  rules:
+    - if: '$CI_COMMIT_REF_PROTECTED == "true"'
+      when: manual
+      allow_failure: true
+
 publish_default_branch:
   stage: publish
-  tags:
-    - windows
-    - garmin-ci
+  image: mcr.microsoft.com/powershell:7.4-debian-12
   needs:
     - job: main_release
       artifacts: true
@@ -50,6 +92,6 @@ publish_default_branch:
   interruptible: false
   timeout: 15 minutes
   script:
-    - powershell -NoProfile -ExecutionPolicy Bypass -File tools\Publish-GarminRelease.ps1
+    - pwsh -NoProfile -File tools/Publish-GarminRelease.ps1
   rules:
     - if: '$GARMIN_PUBLISH_ENABLED == "true" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_REF_PROTECTED == "true"'
