@@ -23,6 +23,15 @@ function Invoke-Compiler([string[]]$CompilerArguments) {
 }
 
 try {
+    if ($Mode -eq "Release" -and $env:GITLAB_CI -eq "true") {
+        $buildSha = (& git -C $root rev-parse HEAD | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0 -or $buildSha -cne $env:CI_COMMIT_SHA) {
+            throw "GitLab build checkout does not match CI_COMMIT_SHA."
+        }
+        & git -C $root diff --quiet HEAD --
+        if ($LASTEXITCODE -ne 0) { throw "Production CI build requires an unchanged tracked checkout." }
+        if ($TestNames.Count -ne 0) { throw "Production CI build requires the full simulator suite." }
+    }
     if (-not $SdkPath -or -not (Test-Path (Join-Path $SdkPath "bin\monkeyc.bat"))) {
         throw "Set CONNECTIQ_SDK to the installed Windows Connect IQ SDK directory."
     }
@@ -118,6 +127,24 @@ try {
         Get-FileHash -Algorithm SHA256 |
         ForEach-Object { "$($_.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_.Path))" } |
         Set-Content (Join-Path $OutputDirectory "SHA256SUMS.txt") -Encoding ASCII
+    if ($Mode -eq "Release" -and $env:GITLAB_CI -eq "true") {
+        $versionMatch = [regex]::Match(
+            (Get-Content -Raw (Join-Path $root "source\StandaloneApp.mc")), 'const APP_VERSION = "([^"]+)";')
+        if (-not $versionMatch.Success) { throw "Unable to record APP_VERSION for release provenance." }
+        @{
+            schema = 1
+            signing = "production-key-fingerprint-verified"
+            tests = "full-suite-passed"
+            source_sha = $env:CI_COMMIT_SHA
+            project_id = $env:CI_PROJECT_ID
+            pipeline_id = $env:CI_PIPELINE_ID
+            build_job_id = $env:CI_JOB_ID
+            version = $versionMatch.Groups[1].Value
+            artifacts = @(Get-ChildItem $OutputDirectory -File |
+                Where-Object { $_.Name -eq "SHA256SUMS.txt" -or $_.Extension -in ".prg", ".iq" -and $_.Name -like "WearTAK-Garmin*" } |
+                ForEach-Object { @{name = $_.Name; sha256 = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} })
+        } | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $OutputDirectory "release-build.json") -Encoding UTF8
+    }
 } finally {
     if ($testProcess -and -not $testProcess.HasExited) { Stop-Process -Id $testProcess.Id -Force }
     if ($simulator -and -not $simulator.HasExited) { Stop-Process -Id $simulator.Id -Force }
