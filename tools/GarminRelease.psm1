@@ -71,23 +71,16 @@ function New-GarminReleasePlan {
     }
     $lines = @(
         "<!-- weartak-garmin-auto:v1 project=$($Context.ProjectId) pipeline=$($Context.PipelineId) build=$build -->",
-        "Production-key-signed Garmin Connect IQ build from the protected default branch. Automated development channel, not a Garmin Connect IQ Store publication.",
+        "Automatically published stable Garmin main-channel build.",
         "",
-        "The .iq bundle is for Garmin distribution tooling, not copying directly to a watch.",
-        "**Simulator tests:** NOT RUN (headless Linux; interactive desktop required).",
-        "**Products:** $($Products -join ', ')",
+        "- IQ version: **$($metadata.version)**",
+        "- Build: GitLab pipeline **$($Context.PipelineId)** (project pipeline **$($Context.PipelineIid)**)",
+        "- Pipeline: $base/-/pipelines/$($Context.PipelineId)",
+        ('- Source commit: `{0}` on TAK.gov `main`' -f $Context.Sha),
+        ('- SHA256: `{0}`' -f $files[0].Hash),
         "",
-        "**Source:** [$($Context.Sha)]($base/-/commit/$($Context.Sha))",
-        "**Pipeline:** [#$($Context.PipelineId)]($base/-/pipelines/$($Context.PipelineId))",
-        "**Build job:** [#$build]($base/-/jobs/$build)",
-        "**Publisher job:** [#$($Context.JobId)]($base/-/jobs/$($Context.JobId))",
-        "",
-        "## Downloads"
+        'Use the IQ bundle above with Garmin distribution tooling; do not copy it directly to a watch. GitHub''s "Source code" archives point to this build''s exact mirrored canonical commit; the source commit above is authoritative.'
     )
-    $lines += @($files | Where-Object { $_.Name -ne "SHA256SUMS.txt" } | ForEach-Object { "- [$($_.Label)]($($_.Url))" })
-    $lines += @("", "## SHA-256", "", '```text')
-    $lines += @($files | ForEach-Object { "$($_.Hash)  $($_.Name)" })
-    $lines += '```'
     return [pscustomobject]@{
         Context = $Context; Tag = $tag; Files = $files
         Release = @{name = "TAK.gov Forge CI/CD Pipeline Release ($($metadata.version)-p$($Context.PipelineIid))"

@@ -1319,8 +1319,13 @@ It creates a draft **prerelease** with exactly **one** asset, whose filename and
 label both equal `WearTAK-Garmin-<version>-p<IID>.iq`.
 It downloads that asset and verifies SHA-256 before publishing without marking
 it latest. Checksums remain in the notes and CI artifacts, not extra GitHub
-assets. Notes include the explicit simulator-not-run statement, product IDs,
-the full build SHA and canonical pipeline/build/publisher job links.
+assets. Notes match the shared release-page structure: an intro, exactly five
+bullets (IQ version, pipeline IDs, canonical pipeline URL, source SHA and SHA-256),
+and a fixed Garmin-specific distribution/source sentence. Simulator-not-run
+evidence and device coverage remain in `release-build.json` and CI logs, not
+additional release-page sections. The version is the literal `APP_VERSION`;
+its intentional historical `-9f1ec78` suffix is not the current build's source
+identity. The full source SHA in provenance and release notes is authoritative.
 
 The publisher rejects mismatched provenance, incomplete inventories, existing
 tags/releases/drafts and concurrent draft-note changes. It rechecks the canonical

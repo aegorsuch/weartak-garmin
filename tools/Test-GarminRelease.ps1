@@ -45,14 +45,25 @@ try {
     Assert ($plan.Release.name -ceq "TAK.gov Forge CI/CD Pipeline Release (5.8.3-9f1ec78-p42)") "Exact WearOS-style title"
     Assert ($plan.Release.target_commitish -ceq $context.Sha) "Exact build commit, not version suffix"
     Assert ($plan.Release.body.Contains($context.Sha)) "Full source SHA in notes"
-    foreach ($path in @("/-/pipelines/123", "/-/jobs/456", "/-/jobs/789")) {
-        Assert ($plan.Release.body.Contains($path)) "Pipeline, build and publisher links"
-    }
-    Assert ($plan.Release.body.Contains("development channel")) "Truthful channel"
+    $assetHash = (Get-FileHash (Join-Path $directory $assetName) -Algorithm SHA256).Hash.ToLowerInvariant()
+    $expectedBody = @(
+        "<!-- weartak-garmin-auto:v1 project=6783 pipeline=123 build=456 -->",
+        "Automatically published stable Garmin main-channel build.",
+        "",
+        "- IQ version: **5.8.3-9f1ec78**",
+        "- Build: GitLab pipeline **123** (project pipeline **42**)",
+        "- Pipeline: https://git.tak.gov/core/weartak-core/weartak-garmin/-/pipelines/123",
+        ('- Source commit: `{0}` on TAK.gov `main`' -f ("a" * 40)),
+        ('- SHA256: `{0}`' -f $assetHash),
+        "",
+        'Use the IQ bundle above with Garmin distribution tooling; do not copy it directly to a watch. GitHub''s "Source code" archives point to this build''s exact mirrored canonical commit; the source commit above is authoritative.'
+    ) -join "`n"
+    Assert ($plan.Release.body -ceq $expectedBody) "Exact full reference-style body with truthful Garmin installation/source sentence"
+    Assert (@($plan.Release.body -split "`n" | Where-Object { $_ -like "- *" }).Count -eq 5) "Exactly five release bullets"
     Assert ($plan.Release.body -notmatch "APK|versionCode") "No Android claims"
     Assert ($plan.Files[0].Name -ceq $assetName -and $plan.Files[0].Label -ceq $assetName) "Exact filename equals label"
-    Assert ($plan.Release.body.Contains("NOT RUN")) "No false simulator success claim"
-    Assert ($plan.Release.body.Contains("## SHA-256")) "Separate per-asset checksums"
+    Assert ($metadata.tests -ceq "not-run-headless-linux") "Simulator-not-run evidence remains in provenance"
+    Assert ($plan.Release.body -notmatch "tests.*passed|##|Downloads") "No extra sections or false simulator success claim"
     Assert ($plan.Release.draft -and $plan.Release.prerelease -and $plan.Release.make_latest -eq "false") "Safe draft/prerelease channel"
     foreach ($key in @("Enabled", "Protected", "Source", "Branch", "Sha", "PipelineId", "PipelineIid", "ProjectId")) {
         $bad = $context.Clone(); $bad[$key] = "invalid"
