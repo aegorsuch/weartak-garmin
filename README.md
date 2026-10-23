@@ -1350,8 +1350,13 @@ does not create credentials, change access or run a publisher:
 The existing signing identity variables and `GARMIN_GITHUB_RELEASE_TOKEN` are
 protected and masked. They are reused, not replaced. The registry-only setting
 was explicitly approved as members-only; project visibility remains internal.
-Publication remains disabled: this change does not set `GARMIN_PUBLISH_ENABLED`,
-upload to GitHub releases, or claim Linux simulator coverage.
+Publication is controlled by the protected `GARMIN_PUBLISH_ENABLED` variable:
+set it to exactly `true` only after approval to publish on subsequent protected
+`main` pushes. Unset it or set it to `false` to disable publication for new
+pipelines; this does not cancel an already-running publisher or remove existing
+releases. The gate does not add a publisher retroactively to an existing pipeline.
+Mirror the exact merged canonical SHA to GitHub before its publisher starts.
+Enabling publication does not imply Linux simulator coverage.
 
 Run the network-free publisher regression checks locally with:
 
