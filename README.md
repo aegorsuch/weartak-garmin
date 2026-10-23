@@ -1077,7 +1077,7 @@ The automation follows the Tracker split:
 Garmin's device definitions and simulator are installed through its SDK Manager,
 not restored by a package manager. Provision a dedicated Windows x64 runner with:
 
-1. Connect IQ SDK **9.2.0**, the manifest's nine product definitions, and the
+1. Connect IQ SDK **9.2.0**, all current product definitions listed in `manifest.xml`, and the
    `fenix7x` simulator device installed for the runner account. Set
    `CONNECTIQ_SDK` to the SDK directory containing `bin\monkeyc.bat`.
 2. Java 17 on `PATH`, Windows PowerShell 5.1+, and OpenSSL on `PATH` (or the
