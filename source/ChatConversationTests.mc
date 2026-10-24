@@ -24,6 +24,10 @@ function chatPickerPinnedRows(logger) as Boolean {
     Test.assertEqual((menu.getItem(4).getId() as Dictionary).get("uid"), "selected");
     var conversation = new ChatConversationMenu(app, app.chats.find("team", true) as Dictionary);
     Test.assertEqual(conversation.getItem(0).getId(), :send);
+    Test.assertEqual(conversation.getItem(1).getId(), :neg);
+    Test.assertEqual(conversation.getItem(2).getId(), :npos);
+    Test.assertEqual(conversation.getItem(3).getId(), :objs);
+    Test.assertEqual(conversation.getItem(4).getId(), :rgr);
     Test.assertEqual(conversation.getItem(5).getId(), :addCustomQuickReply);
     Test.assertEqual(conversation.getItem(6).getSubLabel(), "Group");
     app.chats = previous;
@@ -58,16 +62,30 @@ function customChatQuickRepliesPersistDeleteAndStayUnsents(logger) as Boolean {
 
     var menu = new ChatConversationMenu(app, room);
     var customIndex = menu.findItemById(label);
-    Test.assert(customIndex >= 5);
+    Test.assert(customIndex >= 1);
     Test.assertEqual(menu.getItem(customIndex).getLabel(), chatQuickReplyMenuLabel(label));
-    Test.assertEqual(menu.getItem(customIndex + 1).getId(), :deleteCustomQuickReplies);
-    Test.assertEqual(menu.getItem(customIndex + 2).getId(), :addCustomQuickReply);
-    var deletionMenu = buildCustomChatQuickReplyDeletionMenu(app);
-    Test.assertEqual(deletionMenu.getItem(0).getId(), label);
-    Test.assertEqual(deletionMenu.getItem(0).getLabel(), chatQuickReplyMenuLabel(label));
+    var deletion = menu.getItem(customIndex + 1);
+    Test.assert(deletion instanceof WatchUi.IconMenuItem);
+    Test.assertEqual((deletion.getId() as Dictionary).get("deleteQuickReply"), label);
+    Test.assertEqual(deletion.getLabel(), WatchUi.loadResource(Rez.Strings.TextDelete) + " " + chatQuickReplyMenuLabel(label));
+    Test.assert(deletion.getSubLabel() == null);
+    Test.assert(menu.findItemById(:deleteCustomQuickReplies) < 0);
+    var previousLabel = "";
+    for (var index = 1; menu.getItem(index).getId() != :addCustomQuickReply; index++) {
+        var item = menu.getItem(index);
+        var id = item.getId();
+        if (id instanceof Dictionary) { continue; }
+        var fullLabel = (id instanceof String ? id as String : item.getLabel() as String).toLower();
+        Test.assert(previousLabel.compareTo(fullLabel) <= 0);
+        previousLabel = fullLabel;
+    }
 
-    Test.assert(app.removeCustomChatQuickReply(label));
+    new ChatConversationDelegate(app, room).onSelect(deletion);
     Test.assert(app.getCustomChatQuickReplies().indexOf(label) < 0);
+    app.loadCustomChatQuickReplies();
+    Test.assert(app.getCustomChatQuickReplies().indexOf(label) < 0);
+    Test.assertEqual((room.get("messages") as Array).size(), messageCount);
+    Test.assertEqual(app.getTakClient().pointReplies.replies.size(), queuedCount);
     app.chats = previousChats;
     if (alreadyExisted) { Test.assert(app.addCustomChatQuickReply(label) == null); }
     return true;

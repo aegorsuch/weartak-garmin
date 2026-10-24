@@ -13,7 +13,7 @@ function manualAlertCotType(alertType as String, state as Symbol) as String {
 }
 
 function isBuiltInManualAlert(alertType as String) as Boolean {
-    var builtIns = ["911 Alert", "Gate Runner", "Geofence Breached", "Gunshot", "Gunshot Injury",
+    var builtIns = ["911 Alert", "Gate Runner", "Geofence Breached", "Gunshot",
         "In Contact", "Injury", "Ring The Bell", "UAS", "Vehicle"];
     for (var index = 0; index < builtIns.size(); index++) {
         if (builtIns[index].toLower().equals(alertType.toLower())) { return true; }

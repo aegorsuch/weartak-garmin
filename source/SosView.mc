@@ -8,7 +8,7 @@ function buildSosMenu(app as StandaloneApp) as WatchUi.Menu2 {
         addMenuEntry(menu, app.text(Rez.Strings.TextClearManualAlert) + " (" + app.alertTypeLabel(client.getAlertType()) + " " + app.text(Rez.Strings.TextActive) + ")", null, :clear);
     }
     var delegate = new SosMenuDelegate(app, false);
-    var ids = [:alert911, :gateRunner, :geofenceBreached, :gunshot, :gunshotInjury,
+    var ids = [:alert911, :gateRunner, :geofenceBreached, :gunshot,
         :inContact, :injury, :ringTheBell, :uas, :vehicle];
     var alerts = [];
     for (var index = 0; index < ids.size(); index++) {
@@ -18,34 +18,16 @@ function buildSosMenu(app as StandaloneApp) as WatchUi.Menu2 {
     for (var index = 0; index < customAlerts.size(); index++) {
         alerts.add({"id" => :customAlert, "label" => customAlerts[index]});
     }
-    for (var index = 1; index < alerts.size(); index++) {
-        var candidate = alerts[index] as Dictionary;
-        var label = (candidate.get("label") as String).toLower();
-        var insertion = index;
-        while (insertion > 0
-                && ((alerts[insertion - 1] as Dictionary).get("label") as String).toLower().compareTo(label) > 0) {
-            alerts[insertion] = alerts[insertion - 1];
-            insertion--;
-        }
-        alerts[insertion] = candidate;
-    }
+    sortMenuEntriesByLabel(alerts);
     for (var index = 0; index < alerts.size(); index++) {
         var alert = alerts[index] as Dictionary;
-        addMenuEntry(menu, alert.get("label") as String, null, alert.get("id"));
-    }
-    if (customAlerts.size() > 0) {
-        addMenuEntry(menu, "Delete Saved Alerts", null, :deleteCustomAlerts);
+        var label = alert.get("label") as String;
+        addMenuEntry(menu, label, null, alert.get("id"));
+        if (alert.get("id") == :customAlert) {
+            addSavedEntryDelete(menu, label, {"deleteAlert" => label});
+        }
     }
     addMenuEntry(menu, "+", null, :addCustomAlert);
-    return menu;
-}
-
-function buildCustomAlertDeletionMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = createMenu("Delete Saved Alerts");
-    var customAlerts = app.getCustomManualAlerts();
-    for (var index = 0; index < customAlerts.size(); index++) {
-        addMenuEntry(menu, customAlerts[index], null, :deleteCustomAlert);
-    }
     return menu;
 }
 
@@ -68,9 +50,11 @@ class SosMenuDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.pushView(new WatchUi.TextPicker(""),
                 new CustomManualAlertTextPickerDelegate(app, returnToMain), WatchUi.SLIDE_UP);
             return;
-        } else if (id == :deleteCustomAlerts) {
-            var deleteMenu = buildCustomAlertDeletionMenu(app);
-            WatchUi.pushView(deleteMenu, new CustomManualAlertDeleteDelegate(app, returnToMain), WatchUi.SLIDE_LEFT);
+        } else if (id instanceof Dictionary) {
+            var label = (id as Dictionary).get("deleteAlert");
+            if (label instanceof String && app.removeCustomManualAlert(label as String)) {
+                WatchUi.switchToView(buildSosMenu(app), new SosMenuDelegate(app, returnToMain), WatchUi.SLIDE_IMMEDIATE);
+            }
             return;
         } else {
             var client = app.getTakClient();
@@ -97,8 +81,6 @@ class SosMenuDelegate extends WatchUi.Menu2InputDelegate {
             return "Geofence Breached";
         } else if (id == :gunshot) {
             return "Gunshot";
-        } else if (id == :gunshotInjury) {
-            return "Gunshot Injury";
         } else if (id == :inContact) {
             return "In Contact";
         } else if (id == :injury) {
@@ -144,23 +126,5 @@ class CustomManualAlertTextPickerDelegate extends WatchUi.TextPickerDelegate {
 
     function onCancel() as Boolean {
         return true;
-    }
-}
-
-class CustomManualAlertDeleteDelegate extends WatchUi.Menu2InputDelegate {
-    var app as StandaloneApp;
-    var returnToMain as Boolean;
-
-    function initialize(application as StandaloneApp, returnToMainMenu as Boolean) {
-        Menu2InputDelegate.initialize();
-        app = application;
-        returnToMain = returnToMainMenu;
-    }
-
-    function onSelect(item as WatchUi.MenuItem) as Void {
-        if (item.getId() != :deleteCustomAlert) { return; }
-        if (!app.removeCustomManualAlert(item.getLabel() as String)) { return; }
-        WatchUi.showToast("Deleted", null);
-        WatchUi.switchToView(buildSosMenu(app), new SosMenuDelegate(app, returnToMain), WatchUi.SLIDE_RIGHT);
     }
 }

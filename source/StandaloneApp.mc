@@ -631,7 +631,6 @@ class StandaloneApp extends Application.AppBase {
         else if (alertType.equals("Gate Runner")) { return text(Rez.Strings.TextGateRunner); }
         else if (alertType.equals("Geofence Breached")) { return text(Rez.Strings.TextGeofenceBreached); }
         else if (alertType.equals("Gunshot")) { return text(Rez.Strings.TextGunshot); }
-        else if (alertType.equals("Gunshot Injury")) { return text(Rez.Strings.TextGunshotInjury); }
         else if (alertType.equals("In Contact")) { return text(Rez.Strings.TextInContact); }
         else if (alertType.equals("Injury")) { return text(Rez.Strings.TextInjury); }
         else if (alertType.equals("Ring The Bell")) { return text(Rez.Strings.TextRingTheBell); }

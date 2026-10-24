@@ -47,16 +47,6 @@ function chatQuickReplyMenuLabel(value as String) as String {
     return value.length() <= 20 ? value : value.substring(0, 17) + "...";
 }
 
-function buildCustomChatQuickReplyDeletionMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = createMenu("Delete Saved Messages");
-    var replies = app.getCustomChatQuickReplies();
-    for (var index = 0; index < replies.size(); index++) {
-        menu.addItem(new WatchUi.MenuItem(chatQuickReplyMenuLabel(replies[index]),
-            null, replies[index], null));
-    }
-    return menu;
-}
-
 class ChatMenuDelegate extends WatchUi.Menu2InputDelegate {
     var app as StandaloneApp;
     function initialize(application as StandaloneApp) { Menu2InputDelegate.initialize(); app = application; }
@@ -125,17 +115,25 @@ class ChatConversationMenu extends WatchUi.Menu2 {
     }
     function populate() as Void {
         addItem(new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.ChatSend), null, :send, null));
-        addItem(new WatchUi.MenuItem("Rgr", null, :rgr, null));
-        addItem(new WatchUi.MenuItem("Neg", null, :neg, null));
-        addItem(new WatchUi.MenuItem("ObjS", null, :objs, null));
-        addItem(new WatchUi.MenuItem("nPos", null, :npos, null));
+        var entries = [
+            {"label" => "Rgr", "id" => :rgr},
+            {"label" => "Neg", "id" => :neg},
+            {"label" => "ObjS", "id" => :objs},
+            {"label" => "nPos", "id" => :npos}
+        ];
         var quickReplies = app.getCustomChatQuickReplies();
         for (var quickReply = 0; quickReply < quickReplies.size(); quickReply++) {
-            addItem(new WatchUi.MenuItem(chatQuickReplyMenuLabel(quickReplies[quickReply]),
-                null, quickReplies[quickReply], null));
+            entries.add({"label" => quickReplies[quickReply], "id" => quickReplies[quickReply]});
         }
-        if (quickReplies.size() > 0) {
-            addItem(new WatchUi.MenuItem("Delete Saved Messages", null, :deleteCustomQuickReplies, null));
+        sortMenuEntriesByLabel(entries);
+        for (var index = 0; index < entries.size(); index++) {
+            var entry = entries[index] as Dictionary;
+            var id = entry.get("id");
+            var label = chatQuickReplyMenuLabel(entry.get("label") as String);
+            addItem(new WatchUi.MenuItem(label, null, id, null));
+            if (id instanceof String) {
+                addSavedEntryDelete(self, label, {"deleteQuickReply" => id});
+            }
         }
         addItem(new WatchUi.MenuItem("+", null, :addCustomQuickReply, null));
         var messages = room.get("messages") as Array;
@@ -163,9 +161,12 @@ class ChatConversationDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.showToast("Type Custom Message", null);
             WatchUi.pushView(new WatchUi.TextPicker(""),
                 new ChatQuickReplyTextPickerDelegate(app, room), WatchUi.SLIDE_UP);
-        } else if (id == :deleteCustomQuickReplies) {
-            WatchUi.pushView(buildCustomChatQuickReplyDeletionMenu(app),
-                new ChatQuickReplyDeleteDelegate(app, room), WatchUi.SLIDE_LEFT);
+        } else if (id instanceof Dictionary) {
+            var label = (id as Dictionary).get("deleteQuickReply");
+            if (label instanceof String && app.removeCustomChatQuickReply(label as String)) {
+                WatchUi.switchToView(new ChatConversationMenu(app, room),
+                    new ChatConversationDelegate(app, room), WatchUi.SLIDE_IMMEDIATE);
+            }
         } else if (id instanceof String) {
             app.sendConversationChat(room, id as String);
         }
@@ -196,22 +197,6 @@ class ChatQuickReplyTextPickerDelegate extends WatchUi.TextPickerDelegate {
     }
 
     function onCancel() as Boolean { return true; }
-}
-
-class ChatQuickReplyDeleteDelegate extends WatchUi.Menu2InputDelegate {
-    var app as StandaloneApp;
-    var room as Dictionary;
-
-    function initialize(application as StandaloneApp, conversation as Dictionary) {
-        Menu2InputDelegate.initialize(); app = application; room = conversation;
-    }
-
-    function onSelect(item as WatchUi.MenuItem) as Void {
-        var id = item.getId();
-        if (!(id instanceof String) || !app.removeCustomChatQuickReply(id as String)) { return; }
-        WatchUi.switchToView(new ChatConversationMenu(app, room),
-            new ChatConversationDelegate(app, room), WatchUi.SLIDE_RIGHT);
-    }
 }
 
 class ChatTextPickerDelegate extends WatchUi.TextPickerDelegate {

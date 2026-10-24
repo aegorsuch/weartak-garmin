@@ -35,12 +35,24 @@ function manualAlertCategories(logger) as Boolean {
     var app = Application.getApp() as StandaloneApp;
     app.getTakClient().alerting = false;
     var menu = buildSosMenu(app);
-    var ids = [:alert911, :gateRunner, :geofenceBreached, :gunshot, :gunshotInjury,
+    var ids = [:alert911, :gateRunner, :geofenceBreached, :gunshot,
         :inContact, :injury, :ringTheBell, :uas, :vehicle];
     for (var index = 0; index < ids.size(); index++) {
         var itemIndex = menu.findItemById(ids[index]);
         Test.assert(itemIndex >= 0);
         Test.assert(menu.getItem(itemIndex).getSubLabel() == null);
+    }
+    Test.assert(menu.findItemById(:gunshotInjury) < 0);
+    Test.assert(!isBuiltInManualAlert("Gunshot Injury"));
+    Test.assert(isBuiltInManualAlert("Gunshot"));
+    Test.assert(isBuiltInManualAlert("Injury"));
+    var previousLabel = "";
+    for (var index = 0; menu.getItem(index) != null; index++) {
+        var item = menu.getItem(index);
+        if (item.getId() instanceof Dictionary || item.getId() == :addCustomAlert) { continue; }
+        var label = (item.getLabel() as String).toLower();
+        Test.assert(previousLabel.compareTo(label) <= 0);
+        previousLabel = label;
     }
     var menuIndex = 0;
     while (menu.getItem(menuIndex) != null) { menuIndex++; }
@@ -54,7 +66,8 @@ function manualAlertCategories(logger) as Boolean {
     Test.assertEqual(manualAlertCotType("Ring The Bell", :ALERT), "b-a-o-pan");
     Test.assertEqual(manualAlertCotType("Geofence Breached", :ALERT), "b-a-g");
     Test.assertEqual(manualAlertCotType("In Contact", :ALERT), "b-a-o-opn");
-    Test.assertEqual(manualAlertCotType("Gunshot Injury", :ALERT), "b-a-o");
+    Test.assertEqual(manualAlertCotType("Gunshot", :ALERT), "b-a-o");
+    Test.assertEqual(manualAlertCotType("Injury", :ALERT), "b-a-o");
     Test.assertEqual(manualAlertCotType("Custom Test", :ALERT), "b-a-o");
     Test.assertEqual(manualAlertCotType("911 Alert", :CANCEL), "b-a-o-can");
     Test.assertEqual(app.alertTypeLabel("911 Alert"), app.text(Rez.Strings.TextAlert911));
