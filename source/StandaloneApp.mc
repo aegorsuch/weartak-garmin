@@ -145,6 +145,7 @@ class StandaloneApp extends Application.AppBase {
         takClient.watchSettingsCallback = method(:buildWatchSettings);
         takClient.unitPreferencesCallback = method(:setCompanionDistanceUnitPreference);
         takClient.userProfileCallback = method(:buildUserProfile);
+        takClient.relayReadyCallback = method(:onRelayReady);
         var storedLocationServices = Application.Storage.getValue("locationServices");
         if (storedLocationServices != null) {
             locationServices = storedLocationServices as Boolean;
@@ -1473,16 +1474,31 @@ class StandaloneApp extends Application.AppBase {
         sendPliNow();
     }
 
+    function onRelayReady() as Void {
+        if (!isLocationServicesEnabled() || !getTakClient().isConnected()) { return; }
+        requestPositionForAction("pli");
+        sendPliNow();
+    }
+
     function sendPliNow() as Boolean {
         if (!takClient.isConnected()) { return false; }
         var now = Time.now().value();
         var interval = getActiveReportingInterval();
         var age = Gregorian.info(Time.now(), Time.FORMAT_SHORT).year - birthYear;
         if (age < 0) { age = 0; }
-        takClient.sendPli(interval, callsign, myRole, myTeamColor, getHeartRate(), age, batdokCotEnabled);
+        takClient.sendPli(interval, callsign, myRole, myTeamColor,
+            pliHeartRateFromSample(getHeartRate(), lastHeartRateSampleTime, now,
+                isSelfStatusPhysioEnabled()), age, batdokCotEnabled);
         lastPliSentTime = now;
         lastActionPliSentTime = now;
         return true;
+    }
+
+    function pliHeartRateFromSample(value as Number?, sampledAt as Number?, now as Number,
+            enabled as Boolean) as Number? {
+        if (!enabled || value == null || value < 20 || value > 250 || sampledAt == null
+                || now < sampledAt || now - sampledAt > 60) { return null; }
+        return value;
     }
 
     function refreshPliForUserAction() as Void {

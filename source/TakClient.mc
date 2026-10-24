@@ -127,6 +127,9 @@ class TakClient {
     var locationRequestSequence as Number = 0;
     var phoneLocationSupported as Boolean = false;
     var unitPreferencesCallback as Method? = null;
+    var relayReadyCallback as Method? = null;
+    var relayStatusAccepted as Boolean = false;
+    var relayReadyNotified as Boolean = false;
 
     function initialize() {
         selfStatus = new SelfStatusSync(self);
@@ -229,6 +232,8 @@ class TakClient {
             return;
         }
         status = :connecting;
+        relayStatusAccepted = false;
+        relayReadyNotified = false;
         selfStatus.reset();
         if (unitPreferencesCallback != null) { unitPreferencesCallback.invoke(null); }
         if (incomingUserLifecycleCallback != null) { incomingUserLifecycleCallback.invoke("reset", {}); }
@@ -260,6 +265,8 @@ class TakClient {
         }
         selfStatus.clearRemote();
         selfStatus.reset();
+        relayStatusAccepted = false;
+        relayReadyNotified = false;
         if (dataSync.requestId != null) { dataSync.fail(Rez.Strings.DataSyncRelayOff); }
         automatedAlertSentAt = {};
         relayGeneration++;
@@ -282,6 +289,7 @@ class TakClient {
             return;
         }
         status = :connected;
+        notifyRelayReady();
         selfStatus.flush(true);
         transmit("entity_sync_request", {"limit" => MAP_RETAINED_LIMIT, "protocolVersion" => 1, "routeVersion" => 1});
         flushPointReplies();
@@ -293,6 +301,8 @@ class TakClient {
             return;
         }
         selfStatus.reset();
+        relayStatusAccepted = false;
+        relayReadyNotified = false;
         automatedAlertSentAt = {};
         relayGeneration++;
         pointReplyAttempt++;
@@ -985,7 +995,15 @@ class TakClient {
         routeNavigationSync.connectionChanged(payload.get("routeNavigationVersion") instanceof Number
             && payload.get("routeNavigationVersion") == 1);
         relayNegotiating = false;
+        relayStatusAccepted = true;
+        notifyRelayReady();
         flushPointReplies();
+    }
+
+    function notifyRelayReady() as Void {
+        if (!isConnected() || !relayStatusAccepted || relayReadyNotified) { return; }
+        relayReadyNotified = true;
+        if (relayReadyCallback != null) { relayReadyCallback.invoke(); }
     }
 
     function getWatchDeviceUid() as String {
