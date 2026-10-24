@@ -1,6 +1,22 @@
 import Toybox.Lang;
+import Toybox.Graphics;
 import Toybox.Test;
 import Toybox.WatchUi;
+
+(:test)
+function pluginGlyphsDrawWithinNativeRows(logger) as Boolean {
+    var bitmap = Graphics.createBufferedBitmap({:width => 32, :height => 32});
+    var dc = (bitmap.get() as Graphics.BufferedBitmap).getDc();
+    var kinds = [:commands, :ditto, :everywhereComms, :goTenna, :somewearLabs, :sensorManager, :mopp, :dataSync];
+    for (var i = 0; i < kinds.size(); i++) {
+        var glyph = new PluginGlyph(kinds[i]);
+        Test.assertEqual(glyph.kind, kinds[i]);
+        Test.assertEqual(glyph.width, 24);
+        Test.assertEqual(glyph.height, 24);
+        glyph.draw(dc);
+    }
+    return true;
+}
 
 (:test)
 function pluginsPlaceholdersStayOff(logger) as Boolean {
@@ -26,6 +42,7 @@ function pluginsPlaceholdersStayOff(logger) as Boolean {
         Test.assertEqual(item.getLabel(), labels[i]);
         Test.assertEqual(item.getId(), ids[i]);
         Test.assertEqual(item.getSubLabel(), subtitles[i]);
+        Test.assertEqual(new PluginGlyph(ids[i]).width, 24);
         Test.assert(!item.isEnabled());
         for (var tap = 0; tap < 3; tap++) {
             delegate.onSelect(item);

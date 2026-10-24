@@ -194,12 +194,24 @@ class TopMetricMenu extends WatchUi.Menu2 {
         populateTopMetricMenu(self, app);
         if (focus != null && getItem(focus) != null) { setFocus(focus); }
     }
+    function refreshMetricReadings() as Void {
+        for (var i = 0; i < 6; i++) {
+            var item = getItem(i);
+            var status = topMetricChoiceStatus(app, item.getId() as String);
+            if (!(item.getSubLabel() as String).equals(status)) { item.setSubLabel(status); }
+        }
+    }
+    function onUpdate(dc as Graphics.Dc) as Void {
+        refreshMetricReadings();
+        Menu2.onUpdate(dc);
+    }
 }
 
-function topMetricChoiceStatus(app as StandaloneApp, id as String) as String? {
-    var selected = app.getDashboardMetric().equals(id) ? app.text(Rez.Strings.TextSelected) : null;
-    return id.equals("Skin Temp")
-        ? (selected == null ? "" : selected + " - ") + app.text(Rez.Strings.TextUnavailable) : selected;
+function topMetricChoiceStatus(app as StandaloneApp, id as String) as String {
+    var lines = app.dashboardMetricLinesFor(id);
+    var status = lines[0];
+    for (var i = 1; i < lines.size(); i++) { status += " " + lines[i]; }
+    return app.getDashboardMetric().equals(id) ? app.text(Rez.Strings.TextSelected) + " - " + status : status;
 }
 
 function populateTopMetricMenu(menu as WatchUi.Menu2, app as StandaloneApp) as Void {
@@ -740,20 +752,20 @@ function buildPluginsMenuWithItems(additionalItems as Array<WatchUi.MenuItem>) a
     var menu = createMenu(WatchUi.loadResource(Rez.Strings.PluginsTitle));
     var items = [
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginCommands),
-            WatchUi.loadResource(Rez.Strings.PluginUnavailable), :commands, false, null),
+            WatchUi.loadResource(Rez.Strings.PluginUnavailable), :commands, false, {:icon => new PluginGlyph(:commands)}),
         new WatchUi.IconMenuItem(WatchUi.loadResource(Rez.Strings.DataSyncTitle), ">", :dataSync,
             new PluginGlyph(:dataSync), null),
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginDitto),
-            WatchUi.loadResource(Rez.Strings.PluginUnavailable), :ditto, false, null),
+            WatchUi.loadResource(Rez.Strings.PluginUnavailable), :ditto, false, {:icon => new PluginGlyph(:ditto)}),
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginEverywhereComms),
-            WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :everywhereComms, false, null),
+            WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :everywhereComms, false, {:icon => new PluginGlyph(:everywhereComms)}),
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginGoTenna),
-            WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :goTenna, false, null),
+            WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :goTenna, false, {:icon => new PluginGlyph(:goTenna)}),
         new WatchUi.IconMenuItem("MOPP", ">", :mopp, new PluginGlyph(:mopp), null),
-        new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.PluginSensorManager),
-            WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :sensorManager, null),
+        new WatchUi.IconMenuItem(WatchUi.loadResource(Rez.Strings.PluginSensorManager),
+            WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :sensorManager, new PluginGlyph(:sensorManager), null),
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginSomewearLabs),
-            WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :somewearLabs, false, null)
+            WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :somewearLabs, false, {:icon => new PluginGlyph(:somewearLabs)})
     ];
     items.addAll(additionalItems);
     for (var i = 1; i < items.size(); i++) {
