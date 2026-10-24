@@ -34,6 +34,10 @@ class StandaloneApp extends Application.AppBase {
     private var verboseLoggingEnabled as Boolean = false;
     private var networkPreferencesLocked as Boolean = false;
     private var phoneManagedSettings as Boolean = false;
+    private var distanceUnitPreference as String = "Metric";
+    private var companionDistanceUnitPreference as String? = null;
+    private var customManualAlerts as Array<String> = [];
+    private var customChatQuickReplies as Array<String> = [];
     var chats as ChatConversations = new ChatConversations();
     var chatRoomsMenu as ChatRoomsMenu? = null;
     var chatConversationMenu as ChatConversationMenu? = null;
@@ -138,6 +142,7 @@ class StandaloneApp extends Application.AppBase {
         takClient.incomingChatCallback = method(:onIncomingChat);
         takClient.phoneSettingsCallback = method(:applyPhoneSettings);
         takClient.watchSettingsCallback = method(:buildWatchSettings);
+        takClient.unitPreferencesCallback = method(:setCompanionDistanceUnitPreference);
         takClient.userProfileCallback = method(:buildUserProfile);
         var storedLocationServices = Application.Storage.getValue("locationServices");
         if (storedLocationServices != null) {
@@ -635,8 +640,191 @@ class StandaloneApp extends Application.AppBase {
         return alertType;
     }
 
+    function getDistanceUnitPreference() as String {
+        return distanceUnitPreference;
+    }
+
+    function getEffectiveDistanceUnits() as String {
+        return companionDistanceUnitPreference == null
+            ? distanceUnitPreference : companionDistanceUnitPreference as String;
+    }
+
+    function distanceUnitsSummary() as String {
+        return getEffectiveDistanceUnits() + (companionDistanceUnitPreference == null ? "" : " (Phone)");
+    }
+
+    function setDistanceUnitPreference(units as String) as Boolean {
+        if (!units.equals("Metric") && !units.equals("Imperial")) { return false; }
+        try {
+            Application.Storage.setValue("distanceUnitPreference", units);
+        } catch (error instanceof Lang.StorageFullException) {
+            System.println("TAK display preference storage full: " + error.getErrorMessage());
+            WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
+            return false;
+        } catch (error instanceof Application.ObjectStoreAccessException) {
+            System.println("TAK display preference storage unavailable: " + error.getErrorMessage());
+            WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
+            return false;
+        }
+        distanceUnitPreference = units;
+        WatchUi.requestUpdate();
+        return true;
+    }
+
+    function setCompanionDistanceUnitPreference(units as String?) as Void {
+        if (units == null) {
+            companionDistanceUnitPreference = null;
+        } else if (units.equals("Metric") || units.equals("Imperial")) {
+            companionDistanceUnitPreference = units;
+        }
+        WatchUi.requestUpdate();
+    }
+
+    function formatDistance(meters, precision as Number) as String {
+        return formatDistanceInUnits(meters, getEffectiveDistanceUnits(), precision);
+    }
+
+    function getCustomManualAlerts() as Array<String> {
+        return customManualAlerts.slice(0, customManualAlerts.size());
+    }
+
+    function loadCustomManualAlerts() as Void {
+        var stored = Application.Storage.getValue("customManualAlerts");
+        var loaded = [];
+        if (stored instanceof Array) {
+            for (var index = 0; index < (stored as Array).size(); index++) {
+                var candidate = (stored as Array)[index];
+                if (!(candidate instanceof String)) { continue; }
+                var normalized = normalizeCustomManualAlert(candidate as String);
+                if (normalized == null || isBuiltInManualAlert(normalized as String)) { continue; }
+                var duplicate = false;
+                for (var existing = 0; existing < loaded.size(); existing++) {
+                    if (loaded[existing].toLower().equals((normalized as String).toLower())) {
+                        duplicate = true;
+                        break;
+                    }
+                }
+                if (!duplicate) { loaded.add(normalized as String); }
+            }
+        }
+        customManualAlerts = loaded;
+    }
+
+    function addCustomManualAlert(value as String) as String? {
+        var normalized = normalizeCustomManualAlert(value);
+        if (normalized == null) { return "Use 1-32 characters without line breaks"; }
+        if (isBuiltInManualAlert(normalized as String)) { return "Alert already saved"; }
+        for (var index = 0; index < customManualAlerts.size(); index++) {
+            if (customManualAlerts[index].toLower().equals((normalized as String).toLower())) {
+                return "Alert already saved";
+            }
+        }
+        var updated = getCustomManualAlerts();
+        updated.add(normalized as String);
+        if (!saveCustomManualAlerts(updated)) { return text(Rez.Strings.OfflineStorageFailed); }
+        customManualAlerts = updated;
+        return null;
+    }
+
+    function getCustomChatQuickReplies() as Array<String> {
+        return customChatQuickReplies.slice(0, customChatQuickReplies.size());
+    }
+
+    function loadCustomChatQuickReplies() as Void {
+        var stored = Application.Storage.getValue("customChatQuickReplies");
+        var loaded = [];
+        if (stored instanceof Array) {
+            for (var index = 0; index < (stored as Array).size(); index++) {
+                var candidate = (stored as Array)[index];
+                if (!(candidate instanceof String)) { continue; }
+                var normalized = normalizeSingleLineValue(candidate as String, CHAT_QUICK_REPLY_MAX_LENGTH);
+                if (normalized == null || isBuiltInChatQuickReply(normalized as String)) { continue; }
+                var duplicate = false;
+                for (var existing = 0; existing < loaded.size(); existing++) {
+                    if (loaded[existing].toLower().equals((normalized as String).toLower())) {
+                        duplicate = true;
+                        break;
+                    }
+                }
+                if (!duplicate) { loaded.add(normalized as String); }
+            }
+        }
+        customChatQuickReplies = loaded;
+    }
+
+    function addCustomChatQuickReply(value as String) as String? {
+        var normalized = normalizeSingleLineValue(value, CHAT_QUICK_REPLY_MAX_LENGTH);
+        if (normalized == null) { return "Use 1-128 characters without line breaks"; }
+        if (isBuiltInChatQuickReply(normalized as String)) { return "Quick reply already saved"; }
+        for (var index = 0; index < customChatQuickReplies.size(); index++) {
+            if (customChatQuickReplies[index].toLower().equals((normalized as String).toLower())) {
+                return "Quick reply already saved";
+            }
+        }
+        var updated = getCustomChatQuickReplies();
+        updated.add(normalized as String);
+        if (!saveCustomChatQuickReplies(updated)) { return text(Rez.Strings.OfflineStorageFailed); }
+        customChatQuickReplies = updated;
+        return null;
+    }
+
+    function removeCustomChatQuickReply(value as String) as Boolean {
+        var updated = [];
+        var removed = false;
+        for (var index = 0; index < customChatQuickReplies.size(); index++) {
+            if (customChatQuickReplies[index].equals(value)) { removed = true; }
+            else { updated.add(customChatQuickReplies[index]); }
+        }
+        if (!removed || !saveCustomChatQuickReplies(updated)) { return false; }
+        customChatQuickReplies = updated;
+        return true;
+    }
+
+    function saveCustomChatQuickReplies(replies as Array) as Boolean {
+        try {
+            Application.Storage.setValue("customChatQuickReplies", replies);
+            return true;
+        } catch (error instanceof Lang.StorageFullException) {
+            System.println("TAK custom chat quick reply storage full: " + error.getErrorMessage());
+        } catch (error instanceof Application.ObjectStoreAccessException) {
+            System.println("TAK custom chat quick reply storage unavailable: " + error.getErrorMessage());
+        }
+        WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
+        return false;
+    }
+
+    function removeCustomManualAlert(value as String) as Boolean {
+        var updated = [];
+        var removed = false;
+        for (var index = 0; index < customManualAlerts.size(); index++) {
+            if (customManualAlerts[index].equals(value)) { removed = true; }
+            else { updated.add(customManualAlerts[index]); }
+        }
+        if (!removed || !saveCustomManualAlerts(updated)) { return false; }
+        customManualAlerts = updated;
+        return true;
+    }
+
+    function saveCustomManualAlerts(alerts as Array<String>) as Boolean {
+        try {
+            Application.Storage.setValue("customManualAlerts", alerts);
+            return true;
+        } catch (error instanceof Lang.StorageFullException) {
+            System.println("TAK custom alert storage full: " + error.getErrorMessage());
+        } catch (error instanceof Application.ObjectStoreAccessException) {
+            System.println("TAK custom alert storage unavailable: " + error.getErrorMessage());
+        }
+        WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
+        return false;
+    }
+
     function loadAlertSettings() as Void {
         callsign = storedString("callsign", callsign);
+        var storedDistanceUnits = Application.Storage.getValue("distanceUnitPreference");
+        distanceUnitPreference = storedDistanceUnits instanceof String
+                && (storedDistanceUnits as String).equals("Imperial") ? "Imperial" : "Metric";
+        loadCustomManualAlerts();
+        loadCustomChatQuickReplies();
         dashboardMetric = storedString("dashboardMetric", dashboardMetric);
         if (!dashboardMetric.equals("Exertion") && !dashboardMetric.equals("Heart Rate")) { dashboardMetric = "Exertion"; }
         myTeamColor = storedString("myTeamColor", myTeamColor);

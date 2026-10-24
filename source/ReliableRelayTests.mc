@@ -428,6 +428,9 @@ function reliableRelayCompanionMenuToggle(logger) as Boolean {
     delegate.onSelect(companion);
     Test.assertEqual(relay.status, :connecting);
     Test.assertEqual(relay.envelopes.size(), 1);
+    var hello = relay.envelopes[0].get("payload") as Dictionary;
+    Test.assertEqual(hello.get("unitPrefsVersion"), 1);
+    Test.assertEqual(hello.get("relaySession"), relay.relaySession);
     Test.assertEqual(companion.getSubLabel(), toolToggleLabel(true));
     Test.assertEqual(atak.getSubLabel(), toolToggleLabel(true));
     delegate.onSelect(atak);

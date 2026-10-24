@@ -21,7 +21,7 @@ function sharedMenuConstruction(logger) as Boolean {
     Test.assertEqual(app.text(Rez.Strings.TextBloodhound),
         Toybox.WatchUi.loadResource(Rez.Strings.TextBloodhound));
     var settings = buildSettingsMenu(app);
-    var ids = [:devicePreferences, :networkPreferences, :alertingPreferences, :toolPreferences,
+    var ids = [:devicePreferences, :displayPreferences, :networkPreferences, :alertingPreferences, :toolPreferences,
         :adminPreferences, :developerPreferences, :appVersion];
     for (var index = 0; index < ids.size(); index++) {
         Test.assertEqual(settings.getItem(index).getId(), ids[index]);
@@ -36,15 +36,27 @@ function manualAlertCategories(logger) as Boolean {
     app.getTakClient().alerting = false;
     var menu = buildSosMenu(app);
     var ids = [:alert911, :gateRunner, :geofenceBreached, :gunshot, :gunshotInjury,
-        :inContact, :injury, :ringTheBell, :uas, :vehicle, :cancel];
+        :inContact, :injury, :ringTheBell, :uas, :vehicle];
     for (var index = 0; index < ids.size(); index++) {
-        Test.assertEqual(menu.getItem(index).getId(), ids[index]);
+        var itemIndex = menu.findItemById(ids[index]);
+        Test.assert(itemIndex >= 0);
+        Test.assert(menu.getItem(itemIndex).getSubLabel() == null);
     }
+    var menuIndex = 0;
+    while (menu.getItem(menuIndex) != null) { menuIndex++; }
+    Test.assertEqual(menu.getItem(menuIndex - 1).getId(), :addCustomAlert);
     var delegate = new SosMenuDelegate(app, false);
     Test.assertEqual(delegate.alertTypeFor(:alert911), "911 Alert");
     Test.assertEqual(delegate.alertTypeFor(:geofenceBreached), "Geofence Breached");
     Test.assertEqual(delegate.alertTypeFor(:inContact), "In Contact");
     Test.assertEqual(delegate.alertTypeFor(:ringTheBell), "Ring The Bell");
+    Test.assertEqual(manualAlertCotType("911 Alert", :ALERT), "b-a-o-tbl");
+    Test.assertEqual(manualAlertCotType("Ring The Bell", :ALERT), "b-a-o-pan");
+    Test.assertEqual(manualAlertCotType("Geofence Breached", :ALERT), "b-a-g");
+    Test.assertEqual(manualAlertCotType("In Contact", :ALERT), "b-a-o-opn");
+    Test.assertEqual(manualAlertCotType("Gunshot Injury", :ALERT), "b-a-o");
+    Test.assertEqual(manualAlertCotType("Custom Test", :ALERT), "b-a-o");
+    Test.assertEqual(manualAlertCotType("911 Alert", :CANCEL), "b-a-o-can");
     Test.assertEqual(app.alertTypeLabel("911 Alert"), app.text(Rez.Strings.TextAlert911));
     Test.assertEqual(app.alertTypeLabel("Geofence Breached"), app.text(Rez.Strings.TextGeofenceBreached));
     Test.assertEqual(app.alertTypeLabel("In Contact"), app.text(Rez.Strings.TextInContact));
@@ -1047,7 +1059,8 @@ function phoneManagedSettingsLock(logger) as Boolean {
     var delegate = new DevicePreferencesDelegate(app, menu);
     delegate.onSelect(menu.getItem(0));
     delegate.onSelect(menu.getItem(5));
-    Test.assertEqual(buildSettingsMenu(app).getItem(1).getSubLabel(), "Locked");
+    var settingsMenu = buildSettingsMenu(app);
+    Test.assertEqual(settingsMenu.getItem(settingsMenu.findItemById(:networkPreferences)).getSubLabel(), "Locked");
 
     // Losing the relay returns the settings to the watch.
     Test.assert(app.applyPhoneSettings(null) == null);

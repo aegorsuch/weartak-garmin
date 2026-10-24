@@ -125,6 +125,7 @@ class TakClient {
     var userProfileCallback as Method? = null;
     var locationRequestSequence as Number = 0;
     var phoneLocationSupported as Boolean = false;
+    var unitPreferencesCallback as Method? = null;
 
     function initialize() {
         dataSync = new DataSyncClient(self);
@@ -227,6 +228,7 @@ class TakClient {
             return;
         }
         status = :connecting;
+        if (unitPreferencesCallback != null) { unitPreferencesCallback.invoke(null); }
         if (incomingUserLifecycleCallback != null) { incomingUserLifecycleCallback.invoke("reset", {}); }
         bloodhoundSync.connectionChanged(false);
         routeNavigationSync.connectionChanged(false);
@@ -243,7 +245,8 @@ class TakClient {
         pointReplyRetryAt = 0;
         transmit("relay_hello", {"watchLabel" => "Garmin watch", "protocolVersion" => 1,
             "relaySession" => relaySession, "bloodhoundVersion" => 1, "routeVersion" => 1, "routeNavigationVersion" => 1,
-            "entitySyncVersion" => 2, "watchUid" => System.getDeviceSettings().uniqueIdentifier});
+            "entitySyncVersion" => 2, "unitPrefsVersion" => 1,
+            "watchUid" => System.getDeviceSettings().uniqueIdentifier});
         notifyStatusChanged();
     }
 
@@ -373,6 +376,9 @@ class TakClient {
         return queueRelay("emergency", {
             "uid" => "garmin-sos", "state" => state == :ALERT ? "ALERT" : "CANCEL",
             "alertType" => alertType,
+            "category" => "Manual Alert",
+            "type" => manualAlertCotType(alertType, state),
+            "priority" => 1,
             "tStart" => cotTimestamp(Time.now()),
             "tStale" => cotTimestamp(Time.now().add(new Time.Duration(86400)))
         }, "manual-alert");
@@ -956,8 +962,9 @@ class TakClient {
     }
 
     function applyRelayStatus(payload as Dictionary) as Void {
-        if (status == :idle || status == :failed || payload.get("relaySession") != relaySession ||
+        if (!isCurrentEntitySession(payload) ||
                 !(payload.get("reliableDelivery") instanceof Boolean)) { return; }
+        applyRelayUnitPreference(payload);
         relayResultRequired = payload.get("reliableDelivery") == true;
         chatGroupsSupported = payload.get("chatGroups") == true;
         phoneLocationSupported = payload.get("phoneLocation") == true;
@@ -969,6 +976,33 @@ class TakClient {
             && payload.get("routeNavigationVersion") == 1);
         relayNegotiating = false;
         flushPointReplies();
+    }
+
+    function applyRelayUnitPreference(payload as Dictionary) as Void {
+        var version = payload.get("unitPrefsVersion");
+        if (version == null) { return; }
+        if (!(version instanceof Number) || version != 1) {
+            System.println("TAK relay unit preference ignored: unsupported capability version");
+            return;
+        }
+        var preferences = payload.get("unitPrefs");
+        if (!(preferences instanceof Dictionary)) {
+            System.println("TAK relay unit preference ignored: invalid preferences");
+            return;
+        }
+        var rangePreference = (preferences as Dictionary).get("rab_rng_units_pref");
+        if (!(rangePreference instanceof String)) {
+            System.println("TAK relay unit preference ignored: invalid range preference");
+            return;
+        }
+        var units = distanceUnitsForAtakRangePreference(rangePreference as String);
+        if (units == null) {
+            System.println("TAK relay unit preference ignored: unsupported range preference");
+            return;
+        }
+        if (unitPreferencesCallback != null) {
+            unitPreferencesCallback.invoke(units as String);
+        }
     }
 
     function canRouteChat(msgType as String, payload as Dictionary) as Boolean {

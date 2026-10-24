@@ -24,8 +24,52 @@ function chatPickerPinnedRows(logger) as Boolean {
     Test.assertEqual((menu.getItem(4).getId() as Dictionary).get("uid"), "selected");
     var conversation = new ChatConversationMenu(app, app.chats.find("team", true) as Dictionary);
     Test.assertEqual(conversation.getItem(0).getId(), :send);
-    Test.assertEqual(conversation.getItem(5).getSubLabel(), "Group");
+    Test.assertEqual(conversation.getItem(5).getId(), :addCustomQuickReply);
+    Test.assertEqual(conversation.getItem(6).getSubLabel(), "Group");
     app.chats = previous;
+    return true;
+}
+
+(:test)
+function customChatQuickRepliesPersistDeleteAndStayUnsents(logger) as Boolean {
+    var app = Application.getApp() as StandaloneApp;
+    var label = "GARMIN FIELD CHECK QUICK REPLY";
+    var alreadyExisted = false;
+    var existing = app.getCustomChatQuickReplies();
+    for (var index = 0; index < existing.size(); index++) {
+        if (existing[index].equals(label)) { alreadyExisted = true; break; }
+    }
+    if (alreadyExisted) { Test.assert(app.removeCustomChatQuickReply(label)); }
+
+    var previousChats = app.chats;
+    app.chats = new ChatConversations();
+    var room = app.chats.open("quick-reply-test", "Quick Reply Test", false) as Dictionary;
+    var messageCount = (room.get("messages") as Array).size();
+    var queuedCount = app.getTakClient().pointReplies.replies.size();
+
+    Test.assert(app.addCustomChatQuickReply("  " + label + "  ") == null);
+    Test.assertEqual((room.get("messages") as Array).size(), messageCount);
+    Test.assertEqual(app.getTakClient().pointReplies.replies.size(), queuedCount);
+    app.loadCustomChatQuickReplies();
+    Test.assert(app.getCustomChatQuickReplies().indexOf(label) >= 0);
+    Test.assert(app.addCustomChatQuickReply(label.toLower()) != null);
+    Test.assert(app.addCustomChatQuickReply("Rgr") != null);
+    Test.assert(app.addCustomChatQuickReply("line one\nline two") != null);
+
+    var menu = new ChatConversationMenu(app, room);
+    var customIndex = menu.findItemById(label);
+    Test.assert(customIndex >= 5);
+    Test.assertEqual(menu.getItem(customIndex).getLabel(), chatQuickReplyMenuLabel(label));
+    Test.assertEqual(menu.getItem(customIndex + 1).getId(), :deleteCustomQuickReplies);
+    Test.assertEqual(menu.getItem(customIndex + 2).getId(), :addCustomQuickReply);
+    var deletionMenu = buildCustomChatQuickReplyDeletionMenu(app);
+    Test.assertEqual(deletionMenu.getItem(0).getId(), label);
+    Test.assertEqual(deletionMenu.getItem(0).getLabel(), chatQuickReplyMenuLabel(label));
+
+    Test.assert(app.removeCustomChatQuickReply(label));
+    Test.assert(app.getCustomChatQuickReplies().indexOf(label) < 0);
+    app.chats = previousChats;
+    if (alreadyExisted) { Test.assert(app.addCustomChatQuickReply(label) == null); }
     return true;
 }
 

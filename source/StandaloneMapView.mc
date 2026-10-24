@@ -158,8 +158,8 @@ class StandaloneMapView extends WatchUi.MapView {
     function routeRemainingLabel() as String {
         if (currentPosition == null) { return WatchUi.loadResource(Rez.Strings.RouteNeedsLocation); }
         var route = followingRouteId == null ? null : routeStore.route(followingRouteId);
-        return route == null ? "" : Lang.format(WatchUi.loadResource(Rez.Strings.RouteRemaining),
-            [RouteNavigation.remaining(route.get("points") as Array, followingRouteIndex, currentPosition).toNumber()]);
+        return route == null ? "" : application.formatDistance(RouteNavigation.remaining(
+            route.get("points") as Array, followingRouteIndex, currentPosition), 1) + " remaining";
     }
 
     function receiveRoute(kind as String, payload as Dictionary) as Void {
@@ -1355,7 +1355,7 @@ class StandaloneMapView extends WatchUi.MapView {
                 label = label + " · " + application.text(Rez.Strings.IncomingAlertNoLocation);
             }
             if (currentPosition == null || location == null) { return label; }
-            return label + " · " + distanceMeters(currentPosition, location).format("%.0f") + " m";
+            return label + " · " + application.formatDistance(distanceMeters(currentPosition, location), 0);
         }
         var affiliation = Rez.Strings.TextUnknownPoint;
         if (details instanceof Dictionary) {
@@ -1371,7 +1371,7 @@ class StandaloneMapView extends WatchUi.MapView {
         var label = application.text(affiliation);
         var location = pointLocations.get(id);
         if (currentPosition == null || location == null) { return label; }
-        return label + " · " + distanceMeters(currentPosition, location).format("%.0f") + " m";
+        return label + " · " + application.formatDistance(distanceMeters(currentPosition, location), 0);
     }
 
     function markIncomingPointsSeen() as Void {
@@ -1909,7 +1909,8 @@ class StandaloneMapView extends WatchUi.MapView {
             var target = pointLocations.get(bloodhoundPointId);
             var rangeMeters = distanceMeters(currentPosition, target).toNumber();
             var bearing = bearingDegrees(currentPosition, target).toNumber();
-            dc.drawText(screenWidth / 2, panelTop + 22, Graphics.FONT_XTINY, application.text(Rez.Strings.TextRange) + " " + rangeMeters.toString() + " m", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(screenWidth / 2, panelTop + 22, Graphics.FONT_XTINY,
+                application.text(Rez.Strings.TextRange) + " " + application.formatDistance(rangeMeters, 0), Graphics.TEXT_JUSTIFY_CENTER);
             dc.drawText(screenWidth / 2, panelTop + 40, Graphics.FONT_XTINY, application.text(Rez.Strings.TextBearing) + " " + bearing.toString() + " deg", Graphics.TEXT_JUSTIFY_CENTER);
         }
     }
@@ -2612,9 +2613,9 @@ class StandaloneMapView extends WatchUi.MapView {
     function getPointDistanceLabel(id) as String {
         var location = pointLocations.get(id);
         if (currentPosition == null || location == null) {
-            return "-- km";
+            return "--";
         }
-        return (distanceMeters(currentPosition, location) / 1000.0).format("%.2f") + " km";
+        return application.formatDistance(distanceMeters(currentPosition, location), 2);
     }
 
     function getPointLatitudeLabel(id) as String {

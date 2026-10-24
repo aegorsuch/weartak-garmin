@@ -827,6 +827,11 @@ this build:
 	relay messages.
 3. Open **Device Preferences** to maintain user metrics. App text follows the
 	watch's system language.
+	Open **Display Preferences** > **Units** to choose **Metric** or **Imperial**.
+	This setting applies to contact ranges, Bloodhound distance and radius labels,
+	routes, and navigation. When a compatible active ATAK Companion relay supplies
+	the phone's range-units preference, that preference takes precedence; the watch
+	uses its saved setting otherwise.
 4. Open **Alerting Preferences** to opt in to alerts. Warnings remain local to
 	the watch; qualifying automated alerts use the same companion emergency CoT
 	path as Samsung/Wear OS and require an active ATAK relay and a valid phone fix.
@@ -842,7 +847,13 @@ this build:
 6. Select **Manual Alert** from the main menu and choose an alphabetized alert
 	type, including **911 Alert**, **Geofence Breached**, **In Contact**, and
 	**Ring The Bell**. It is sent through an active Garmin relay; without one, its
-	active state remains local. Select **Manual Alert (Active)** to clear it.
+	active state remains local. Use **+** at the bottom to enter and save a custom
+	alert; saved custom alerts can be deleted from the alert menu. Select
+	**Manual Alert (Active)** to clear the current alert.
+	In a chat conversation, use **+** below the built-in quick replies to save a
+	custom quick-reply message without sending it. Saved messages appear as
+	single-line rows, can be selected to send or deleted, and are available in
+	every conversation.
 7. To configure Sit(x), open **Network Preferences** > **Sit(x) TAK**, turn on
 	TAK, enter the organization under **Address**, authorize with the displayed
 	code, and select a permitted **Group**. **Sit(x) State** will say that the
@@ -851,7 +862,10 @@ this build:
 	phone or watch-supported internet connection is required.
 
 Manual alerts use the `emergency` message envelope with an `ALERT` or `CANCEL`
-state and the selected alert type. The companion's Garmin Connect IQ integration
+state and the selected alert type. Their CoT kinds are `b-a-o-tbl` for 911 Alert,
+`b-a-o-pan` for Ring The Bell, `b-a-g` for Geofence Breached, `b-a-o-opn` for
+In Contact, and `b-a-o` for all other built-in and custom alerts. All use
+priority `1`; cancellation uses `b-a-o-can` with the same UID. The companion's Garmin Connect IQ integration
 uses ATAK's phone location for both alert and cancellation, so the watch does
 not need its own GPS fix. The watch still requires the relay to be active and
 the phone must have a valid location fix. A successful watch-side transmit is
