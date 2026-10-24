@@ -9,13 +9,17 @@ function pluginsPlaceholdersStayOff(logger) as Boolean {
     var delegate = new ToolPreferencesDelegate(app);
     Test.assertEqual(menu.getItem(1).getId(), :dataSync);
     Test.assert(!(menu.getItem(1) instanceof WatchUi.ToggleMenuItem));
-    Test.assertEqual(menu.getItem(5).getId(), :sensorManager);
-    Test.assert(!(menu.getItem(5) instanceof WatchUi.ToggleMenuItem));
-    Test.assertEqual(menu.getItem(5).getLabel(), "Sensor Manager");
-    Test.assertEqual(menu.getItem(5).getSubLabel(), "Unfunded Request");
+    Test.assert(menu.getItem(1) instanceof WatchUi.IconMenuItem);
+    Test.assertEqual(menu.getItem(1).getSubLabel(), ">");
+    Test.assertEqual(menu.getItem(5).getId(), :mopp);
+    Test.assert(menu.getItem(5) instanceof WatchUi.IconMenuItem);
+    Test.assertEqual(menu.getItem(6).getId(), :sensorManager);
+    Test.assert(!(menu.getItem(6) instanceof WatchUi.ToggleMenuItem));
+    Test.assertEqual(menu.getItem(6).getLabel(), "Sensor Manager");
+    Test.assertEqual(menu.getItem(6).getSubLabel(), "Unfunded Request");
     var labels = ["Commands", "Ditto", "Everywhere Comms", "GoTenna", "Somewear Labs"];
     var ids = [:commands, :ditto, :everywhereComms, :goTenna, :somewearLabs];
-    var positions = [0, 2, 3, 4, 6];
+    var positions = [0, 2, 3, 4, 7];
     var subtitles = ["Unavailable", "Unavailable", "Unfunded Request", "Unfunded Request", "Unfunded Request"];
     for (var i = 0; i < labels.size(); i++) {
         var item = menu.getItem(positions[i]) as WatchUi.ToggleMenuItem;
@@ -51,7 +55,7 @@ function pluginsSortAllEntriesCaseInsensitively(logger) as Boolean {
     ];
     var menu = buildPluginsMenuWithItems(extra);
     var expected = [:alpha, :bravo, :commands, :dataSync, :ditto, :echo, :everywhereComms,
-        :goTenna, :sensorManager, :somewearLabs, :sameLabel, :zulu];
+        :goTenna, :mopp, :sensorManager, :somewearLabs, :sameLabel, :zulu];
     for (var i = 0; i < expected.size(); i++) {
         Test.assertEqual(menu.getItem(i).getId(), expected[i]);
     }

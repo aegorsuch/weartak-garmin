@@ -109,6 +109,7 @@ class StandaloneApp extends Application.AppBase {
     private var sex as String = "Not Set";
     private var callsign as String = "";
     private var dashboardMetric as String = "Exertion";
+    private var moppLevel as Number? = null;
     private var myTeamColor as String = "Blue";
     private var myRoleCategory as String = "MIL";
     private var myRole as String = "Team Member";
@@ -157,6 +158,35 @@ class StandaloneApp extends Application.AppBase {
 
     function getAppVersion() as String {
         return APP_VERSION;
+    }
+
+    function getMoppLevel() as Number? { return moppLevel; }
+
+    function loadMoppLevel() as Void {
+        var stored = Application.Storage.getValue("moppLevel");
+        moppLevel = stored instanceof Number && stored >= 0 && stored <= 4 ? stored : null;
+    }
+
+    function setMoppLevel(level as Number?) as Boolean {
+        if (level != null && (level < 0 || level > 4)) {
+            System.println("Invalid manual MOPP level");
+            return false;
+        }
+        try {
+            if (level == null) { Application.Storage.deleteValue("moppLevel"); }
+            else { Application.Storage.setValue("moppLevel", level); }
+        } catch (error instanceof Lang.StorageFullException) {
+            System.println("MOPP storage full: " + error.getErrorMessage());
+            WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
+            return false;
+        } catch (error instanceof Application.ObjectStoreAccessException) {
+            System.println("MOPP storage unavailable: " + error.getErrorMessage());
+            WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
+            return false;
+        }
+        moppLevel = level;
+        WatchUi.requestUpdate();
+        return true;
     }
 
     function getCallsign() as String {
@@ -904,6 +934,7 @@ class StandaloneApp extends Application.AppBase {
         loadCustomManualAlerts();
         loadCustomChatQuickReplies();
         loadDashboardMetric();
+        loadMoppLevel();
         myTeamColor = storedString("myTeamColor", myTeamColor);
         if (!isSupportedTeamColor(myTeamColor)) {
             myTeamColor = "Blue";

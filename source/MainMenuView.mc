@@ -741,13 +741,15 @@ function buildPluginsMenuWithItems(additionalItems as Array<WatchUi.MenuItem>) a
     var items = [
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginCommands),
             WatchUi.loadResource(Rez.Strings.PluginUnavailable), :commands, false, null),
-        new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.DataSyncTitle), null, :dataSync, null),
+        new WatchUi.IconMenuItem(WatchUi.loadResource(Rez.Strings.DataSyncTitle), ">", :dataSync,
+            new PluginGlyph(:dataSync), null),
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginDitto),
             WatchUi.loadResource(Rez.Strings.PluginUnavailable), :ditto, false, null),
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginEverywhereComms),
             WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :everywhereComms, false, null),
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginGoTenna),
             WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :goTenna, false, null),
+        new WatchUi.IconMenuItem("MOPP", ">", :mopp, new PluginGlyph(:mopp), null),
         new WatchUi.MenuItem(WatchUi.loadResource(Rez.Strings.PluginSensorManager),
             WatchUi.loadResource(Rez.Strings.PluginUnfundedRequest), :sensorManager, null),
         new WatchUi.ToggleMenuItem(WatchUi.loadResource(Rez.Strings.PluginSomewearLabs),
@@ -1878,6 +1880,9 @@ class ToolPreferencesDelegate extends WatchUi.Menu2InputDelegate {
             item.setSubLabel(toolToggleLabel(app.isSensorManagerEnabled()));
         } else if (id == :dataSync) {
             openDataSync(app);
+        } else if (id == :mopp) {
+            var moppMenu = new MoppMenu(app);
+            WatchUi.pushView(moppMenu, new MoppDelegate(app, moppMenu), WatchUi.SLIDE_LEFT);
         } else if (id == :clearPoints) {
             var confirmation = createMenu(WatchUi.loadResource(Rez.Strings.ConfirmClearPointsTitle));
             addMenuEntry(confirmation, WatchUi.loadResource(Rez.Strings.LabelClearPoints), null, :clear);
