@@ -130,6 +130,7 @@ class TestMapSelectionView extends StandaloneMapView {
         drawnPointIds = [];
         pendingSelfPoints = [];
         currentPosition = null;
+        routePositionUsable = true;
         screenWidth = 200;
         screenHeight = 200;
         mapTopLeft = new Position.Location({:latitude => 1.0, :longitude => -1.0, :format => :degrees});

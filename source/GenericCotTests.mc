@@ -407,7 +407,7 @@ function routeStartUnwindsToMainMenu(logger) as Boolean {
     map.receiveRoute("route", RouteFixtures.payload("server", "route", 2));
     var id = map.routeStore.routeId(map.routeStore.routes[0]);
     var main = buildMainMenu(map.application);
-    Test.assert(main.getItem(0) instanceof WatchUi.IconMenuItem);
+    Test.assertEqual(main.getItem(0).getId(), :incomingPoints);
     var follow = new RouteFollowMenu(map, id);
     var delegate = new RouteStartReturnCapture(map, id);
     delegate.onSelect(follow.getItem(1));

@@ -91,6 +91,21 @@ class BloodhoundTargetIcon extends WatchUi.Drawable {
     }
 }
 
+class PickerDeleteGlyph extends WatchUi.Drawable {
+    function initialize() {
+        Drawable.initialize({:locX => 0, :locY => 0, :width => 24, :height => 24});
+    }
+    function draw(dc as Graphics.Dc) as Void {
+        if (!isVisible) { return; }
+        dc.setColor(Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
+        dc.drawLine(locX + 5, locY + 6, locX + 19, locY + 6);
+        dc.drawRectangle(locX + 9, locY + 3, 6, 3);
+        dc.drawRectangle(locX + 7, locY + 8, 10, 13);
+        dc.drawLine(locX + 10, locY + 11, locX + 10, locY + 18);
+        dc.drawLine(locX + 14, locY + 11, locX + 14, locY + 18);
+    }
+}
+
 function addPickerTarget(menu as WatchUi.Menu2, map as StandaloneMapView, id as String) as Void {
     menu.addItem(new WatchUi.IconMenuItem(pickerTargetTitle(map, id), pickerTargetSubtitle(map, id), id,
         new PickerTypeGlyph(pickerTargetKind(map, id), pickerTargetActive(map, id)), null));
@@ -108,6 +123,8 @@ function buildPickerTargetActions(map as StandaloneMapView, id as String) as Wat
     addPickerAction(menu, WatchUi.loadResource(pickerTargetActive(map, id) ? Rez.Strings.TextStopBloodhound : Rez.Strings.TextBloodhound),
         reason, :track, pickerTargetActive(map, id) ? Rez.Drawables.PickerStopIcon : Rez.Drawables.PickerHoundIcon);
     addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.PickerDetails), pickerTargetSubtitle(map, id), :details);
+    menu.addItem(new WatchUi.IconMenuItem(WatchUi.loadResource(map.routeStore.route(id) != null
+        ? Rez.Strings.RoutesRemove : Rez.Strings.IncomingPointRemove), null, :remove, new PickerDeleteGlyph(), null));
     addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel);
     return menu;
 }
@@ -115,6 +132,10 @@ function buildPickerTargetActions(map as StandaloneMapView, id as String) as Wat
 // Keep action effects testable without pushing simulator views.
 function applyPickerTargetAction(map as StandaloneMapView, id as String, action as Symbol) as Boolean {
     if (!pickerTargetExists(map, id)) { map.routeUnavailable(); return false; }
+    if (action == :remove && map.routeStore.route(id) == null) {
+        if (map.incomingDetails.hasKey(id)) { map.removeIncomingPoint(id, true); return true; }
+        return map.deletePoint(id);
+    }
     if (action == :showOnMap) { return map.focusBloodhoundItem(id); }
     if (action == :track) {
         if (map.routeStore.route(id) != null) {
@@ -144,10 +165,15 @@ class PickerTargetActionsDelegate extends WatchUi.Menu2InputDelegate {
         if (action == :details) {
             if (map.routeStore.route(targetId) != null) { map.showRoute(targetId); }
             else { map.showPointTypeMenu(targetId); }
+        } else if (action == :remove && map.routeStore.route(targetId) != null) {
+            WatchUi.pushView(buildRouteRemovalMenu(map.routeStore.route(targetId)),
+                new RouteRemovalDelegate(map, targetId), WatchUi.SLIDE_LEFT);
         } else if (action == :track && map.routeStore.route(targetId) != null && !targetId.equals(map.followingRouteId)) {
             map.showRouteFollow(targetId);
         } else if (action instanceof Symbol && applyPickerTargetAction(map, targetId, action)) {
-            if (action == :showOnMap) {
+            if (action == :remove) {
+                WatchUi.popView(WatchUi.SLIDE_RIGHT);
+            } else if (action == :showOnMap) {
                 WatchUi.pushView(map, new StandaloneMapDelegate(map, false, map.application), WatchUi.SLIDE_LEFT);
             } else if (pickerTargetActive(map, targetId)) {
                 WatchUi.switchToView(new BloodhoundCompassView(map.application), new SensorViewDelegate(), WatchUi.SLIDE_LEFT);

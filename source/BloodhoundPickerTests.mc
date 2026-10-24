@@ -101,10 +101,64 @@ function pickerActiveRouteSubtitleAndStopIcon(logger) as Boolean {
     Test.assertEqual(menu.getItem(1).getLabel(), WatchUi.loadResource(Rez.Strings.TextStopBloodhound));
     Test.assertEqual(menu.getItem(1).getIcon().getWidth(), 24);
     Test.assertEqual(menu.getItem(2).getId(), :details);
+    Test.assertEqual(menu.getItem(3).getId(), :remove);
+    Test.assertEqual((menu.getItem(3).getIcon() as PickerDeleteGlyph).width, 24);
     Test.assert(applyPickerTargetAction(map, id, :track));
     Test.assert(!map.isBloodhoundActive());
     Test.assert(map.followingRouteId == null);
     Test.assert(!pickerTargetActive(map, id));
+    return true;
+}
+
+(:test)
+function pickerDeleteAndRemoveAllIncludeRoutes(logger) as Boolean {
+    var map = new PickerMapCapture();
+    map.receiveRoute("route", RouteFixtures.payload("one", "r", 3));
+    map.receiveRoute("route", RouteFixtures.payload("two", "r", 3));
+    var route = map.routeStore.routes[0];
+    Test.assert(map.startRoute(map.routeStore.routeId(route), false));
+    map.updateIncomingCot("delete", 0.0, 0.0, "a-n-G", "Delete", null, null, {"isPoint" => true});
+    Test.assert(applyPickerTargetAction(map, "cot-delete", :remove));
+    Test.assert(!map.incomingDetails.hasKey("cot-delete"));
+    Test.assert(map.isBloodhoundActive());
+    map.updateIncomingCot("all", 0.0, 0.0, "a-n-G", "All", null, null, {"isPoint" => true});
+    map.updateIncomingCot("contact", 0.0, 0.0, "a-f-G-U-C", "Contact", null, null, {});
+    map.removeAllIncomingPoints();
+    Test.assertEqual(map.routeStore.routes.size(), 0);
+    Test.assert(!map.isBloodhoundActive());
+    Test.assert(!map.incomingDetails.hasKey("cot-all"));
+    Test.assert(map.incomingDetails.hasKey("cot-contact"));
+    Test.assert(!applyPickerTargetAction(map, "cot-delete", :remove));
+    map.removeIncomingPoint("cot-contact", false);
+    map.receiveRoute("route", RouteFixtures.payload("only", "route", 2));
+    map.removeAllIncomingPoints();
+    Test.assertEqual(map.routeStore.routes.size(), 0);
+    return true;
+}
+
+(:test)
+function mainMenuHidesActiveBloodhoundAndRestoresEntry(logger) as Boolean {
+    var app = Application.getApp() as StandaloneApp;
+    var map = app.getMapView();
+    map.setBloodhoundPoint(null);
+    var menu = new MainMenu(app);
+    menu.onShow();
+    Test.assertEqual(menu.getItem(0).getId(), :incomingPoints);
+    map.pointLocations.put("menu-active", RouteNavigation.location({"lat" => 1.0, "lon" => 1.0}));
+    map.setBloodhoundPoint("menu-active");
+    for (var i = 0; menu.getItem(i) != null; i++) {
+        Test.assert(menu.getItem(i).getId() != :incomingPoints);
+    }
+    Test.assertEqual(menu.getItem(0).getId(), :chat);
+    map.setBloodhoundPoint(null);
+    Test.assertEqual(menu.getItem(0).getId(), :incomingPoints);
+    map.updateIncomingCot("menu-delete", 1.0, 1.0, "a-n-G", "Delete", null, null, {"isPoint" => true});
+    map.setBloodhoundPoint("cot-menu-delete");
+    Test.assertEqual(menu.getItem(0).getId(), :chat);
+    map.removeIncomingPoint("cot-menu-delete", true);
+    Test.assertEqual(menu.getItem(0).getId(), :incomingPoints);
+    menu.onHide();
+    map.pointLocations.remove("menu-active");
     return true;
 }
 

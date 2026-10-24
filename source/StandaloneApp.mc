@@ -12,8 +12,10 @@ import Toybox.WatchUi;
 class StandaloneApp extends Application.AppBase {
     var incomingPointMenuItem as WatchUi.MenuItem? = null;
     var incomingPointsMenu as IncomingPointsMenu? = null;
+    var visibleMainMenu as MainMenu? = null;
 
     function refreshIncomingPointCount() as Void {
+        if (visibleMainMenu != null) { visibleMainMenu.refresh(); }
         if (incomingPointMenuItem != null) {
             var count = getMapView().pendingIncomingPoints.size();
             incomingPointMenuItem.setSubLabel(count > 0 ? count.toString() + " " + WatchUi.loadResource(Rez.Strings.IncomingPointNew) : null);

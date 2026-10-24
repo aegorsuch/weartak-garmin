@@ -29,7 +29,8 @@ class RouteStore {
         }
         if (!kind.equals("route") || !validText(payload.get("name"), 64, false)
                 || !validOptional(payload, "missionName", 128)
-                || !validOptional(payload, "senderUid", 128)) { return fail("Invalid route metadata"); }
+                || !validOptional(payload, "senderUid", 128)
+                || !validOptional(payload, "method", 32)) { return fail("Invalid route metadata"); }
         var points = payload.get("points");
         if (!(points instanceof Array) || points.size() < 2 || points.size() > ROUTE_POINT_LIMIT) {
             return fail("Route must contain 2 to 64 points");
@@ -45,14 +46,16 @@ class RouteStore {
         for (var i = 0; i < points.size(); i++) {
             var point = points[i];
             if (!(point instanceof Dictionary) || !coordinate(point.get("lat"), 90)
-                    || !coordinate(point.get("lon"), 180) || !validOptional(point, "name", 64)) {
+                    || !coordinate(point.get("lon"), 180) || !validOptional(point, "name", 64)
+                    || !validOptional(point, "type", 64)) {
                 return fail("Invalid route point");
             }
-            normalized.add({"lat" => point.get("lat"), "lon" => point.get("lon"), "name" => point.get("name")});
+            normalized.add({"lat" => point.get("lat"), "lon" => point.get("lon"),
+                "name" => point.get("name"), "type" => point.get("type")});
         }
         var route = {"serverId" => server, "uid" => uid, "name" => payload.get("name"),
             "missionName" => payload.get("missionName"), "senderUid" => payload.get("senderUid"),
-            "points" => normalized};
+            "method" => payload.get("method"), "points" => normalized};
         if (previous != null) { routes[routes.indexOf(previous)] = route; }
         else { routes.add(route); }
         return true;

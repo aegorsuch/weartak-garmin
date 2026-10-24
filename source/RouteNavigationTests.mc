@@ -17,15 +17,96 @@ function routeNavigationNearestAndMissingPosition(logger) as Boolean {
 
 (:test)
 function routeNavigationArrivalRadiusDenseAndEnd(logger) as Boolean {
-    Test.assertEqual(ROUTE_ARRIVAL_RADIUS_METERS, 20);
-    var points = [{"lat" => 0.0, "lon" => 0.0}, {"lat" => 0.0, "lon" => 0.0001},
-        {"lat" => 0.0, "lon" => 0.000179}, {"lat" => 0.0, "lon" => 0.000181}];
+    Test.assertEqual(RouteNavigation.arrivalRadius("Walking"), 10);
+    Test.assertEqual(RouteNavigation.arrivalRadius("Swimming"), 10);
+    Test.assertEqual(RouteNavigation.arrivalRadius("Driving"), 20);
+    Test.assertEqual(RouteNavigation.arrivalRadius("Watercraft"), 100);
+    Test.assertEqual(RouteNavigation.arrivalRadius("Flying"), 1000);
+    Test.assertEqual(RouteNavigation.arrivalRadius(null), 10);
+    var points = [{"lat" => 0.0, "lon" => 0.0, "type" => "b-m-p-w"},
+        {"lat" => 0.0, "lon" => 0.000045, "type" => "b-m-p-w"},
+        {"lat" => 0.0, "lon" => 0.000081, "type" => "b-m-p-w"}, {"lat" => 0.0, "lon" => 0.00072}];
     var position = RouteNavigation.location(points[0]);
-    Test.assertEqual(RouteNavigation.advance(points, 0, null), 0);
-    Test.assertEqual(RouteNavigation.advance(points, 0, position), 3);
-    Test.assertEqual(RouteNavigation.advance(points, 3, position), 3);
-    Test.assertEqual(RouteNavigation.advance(points, 3, RouteNavigation.location(points[3])), 4);
-    Test.assertEqual(RouteNavigation.advance(points, 4, position), 4);
+    var reached = [];
+    Test.assertEqual(RouteNavigation.advance(points, 0, null, "Walking", reached), 0);
+    Test.assertEqual(RouteNavigation.advance(points, 0, position, "Walking", reached), 1);
+    position = RouteNavigation.location({"lat" => 0.0, "lon" => 0.00009});
+    Test.assertEqual(RouteNavigation.advance(points, 1, position, "Walking", reached), 3);
+    Test.assertEqual(RouteNavigation.advance(points, 3, RouteNavigation.location(points[3]), "Walking", reached), 4);
+    Test.assertEqual(RouteNavigation.advance(points, 4, position, "Walking", reached), 4);
+    return true;
+}
+
+(:test)
+function routeCheckpointsRequireArrivalThenProjectedCrossing(logger) as Boolean {
+    var points = [{"lat" => 0.0, "lon" => 0.0}, {"lat" => 0.0, "lon" => 0.0009, "type" => "b-m-p-w"},
+        {"lat" => 0.0, "lon" => 0.00135, "type" => "b-m-p-c"}, {"lat" => 0.0, "lon" => 0.0027}];
+    Test.assertEqual(RouteNavigation.nextObjective(points, 0), 1);
+    var before = RouteNavigation.location({"lat" => 0.0, "lon" => 0.000855});
+    var after = RouteNavigation.location({"lat" => 0.0, "lon" => 0.000909});
+    var missed = RouteNavigation.location({"lat" => 0.0, "lon" => 0.00117});
+    var reached = [];
+    Test.assertEqual(RouteNavigation.advance(points, 1, missed, "Walking", reached), 1);
+    Test.assertEqual(reached.size(), 0);
+    Test.assertEqual(RouteNavigation.advance(points, 1, before, "Walking", reached), 1);
+    Test.assertEqual(reached.size(), 1);
+    Test.assertEqual(RouteNavigation.advance(points, 1, after, "Walking", reached), 3);
+    Test.assertEqual(RouteNavigation.advance(points, 1, RouteNavigation.location(points[3]), "Walking", []), 4);
+    (points[1] as Dictionary).remove("type");
+    Test.assertEqual(RouteNavigation.nextObjective(points, 0), 3);
+    Test.assertEqual(RouteNavigation.nearestObjective(points, before), 3);
+    return true;
+}
+
+(:test)
+function routeNearestUsesSegmentProjectionAndEarliestLoop(logger) as Boolean {
+    var points = [{"lat" => 0.0, "lon" => 0.0, "type" => "b-m-p-w"},
+        {"lat" => 0.0, "lon" => 0.001, "type" => "b-m-p-w"},
+        {"lat" => 0.0, "lon" => 0.0, "type" => "b-m-p-w"}];
+    Test.assertEqual(RouteNavigation.nearestObjective(points, RouteNavigation.location({"lat" => 0.0, "lon" => 0.0004})), 1);
+    Test.assert(RouteNavigation.nearestObjective(points, null) == null);
+    points = [{"lat" => 0.0, "lon" => 179.99}, {"lat" => 0.0, "lon" => -179.99, "type" => "b-m-p-w"},
+        {"lat" => 0.0, "lon" => -179.98}];
+    Test.assertEqual(RouteNavigation.nearestObjective(points, RouteNavigation.location({"lat" => 0.0, "lon" => 180.0})), 1);
+    Test.assertEqual(RouteNavigation.nearestObjective(points, RouteNavigation.location(points[2])), 2);
+    points = [{"lat" => 0.0, "lon" => 0.0}, {"lat" => 0.0, "lon" => 0.0},
+        {"lat" => 0.0, "lon" => 0.0, "type" => "b-m-p-w"}];
+    Test.assertEqual(RouteNavigation.advance(points, 2, RouteNavigation.location(points[0]), null, []), 3);
+    return true;
+}
+
+(:test)
+function routeFinalMethodRadiusThresholds(logger) as Boolean {
+    var points = [{"lat" => 0.0, "lon" => -1.0}, {"lat" => 0.0, "lon" => 0.0}];
+    var methods = ["Walking", "Swimming", "Driving", "Watercraft", "Flying"];
+    for (var i = 0; i < methods.size(); i++) {
+        var radius = RouteNavigation.arrivalRadius(methods[i]);
+        var inside = RouteNavigation.location({"lat" => 0.0, "lon" => (radius - 0.1) / 111194.9266});
+        var outside = RouteNavigation.location({"lat" => 0.0, "lon" => (radius + 0.1) / 111194.9266});
+        Test.assertEqual(RouteNavigation.advance(points, 1, outside, methods[i], []), 1);
+        Test.assertEqual(RouteNavigation.advance(points, 1, inside, methods[i], []), 2);
+    }
+    return true;
+}
+
+(:test)
+function routePoorOrMissingGpsNeverConsumesCheckpoint(logger) as Boolean {
+    var map = new TestMapSelectionView();
+    map.hasInitialPosition = true;
+    map.receiveRoute("route", RouteFixtures.payload("s", "r", 3));
+    var route = map.routeStore.routes[0];
+    Test.assert(map.startRoute(map.routeStore.routeId(route), false));
+    var fix = new RouteGpsFix(RouteNavigation.location((route.get("points") as Array)[0]));
+    fix.accuracy = Position.QUALITY_POOR;
+    map.updatePosition(fix);
+    Test.assertEqual(map.followingRouteIndex, 0);
+    Test.assertEqual(map.reachedRoutePoints.size(), 0);
+    fix.accuracy = Position.QUALITY_USABLE;
+    map.updatePosition(fix);
+    Test.assertEqual(map.followingRouteIndex, 1);
+    map.updatePosition(new RouteGpsFix(null));
+    Test.assert(!map.routePositionUsable);
+    map.stopRoute();
     return true;
 }
 
@@ -96,8 +177,8 @@ function wholeRouteAdvancesDenseVerticesAndCompletes(logger) as Boolean {
     var first = map.bloodhoundPointId;
     map.currentPosition = RouteNavigation.location(points[0]);
     map.updateRouteFollow();
-    Test.assertEqual(map.followingRouteIndex, 3);
-    Test.assertEqual(map.routeProgress(), "Point 4 of 4");
+    Test.assertEqual(map.followingRouteIndex, 1);
+    Test.assertEqual(map.routeProgress(), "Point 2 of 4");
     Test.assert(map.routeRemainingLabel().find("111") == 0);
     Test.assert(!map.pointLocations.hasKey(first));
     Test.assertEqual(map.pointLocations.size(), 1);

@@ -9,10 +9,10 @@ class RouteFixtures {
     static function payload(server as String, uid as String, count as Number) as Dictionary {
         var points = [];
         for (var i = 0; i < count; i++) {
-            points.add({"lat" => 0.0, "lon" => i * 0.1, "name" => i == 0 ? "Start" : null});
+            points.add({"lat" => 0.0, "lon" => i * 0.1, "name" => i == 0 ? "Start" : null, "type" => "b-m-p-w"});
         }
         return {"routeVersion" => 1, "serverId" => server, "uid" => uid,
-            "name" => "Test route", "missionName" => "Mission", "senderUid" => "sender",
+            "name" => "Test route", "missionName" => "Mission", "senderUid" => "sender", "method" => "Driving",
             "points" => points};
     }
 }
@@ -70,7 +70,8 @@ function routeMalformedIngress(logger) as Boolean {
         {"routeVersion" => 2}, {"serverId" => ""}, {"uid" => " bad"}, {"name" => "\n"},
         {"points" => []}, {"points" => [{"lat" => true, "lon" => 0}, {"lat" => 0, "lon" => 0}]},
         {"points" => [{"lat" => 0, "lon" => 181}, {"lat" => 0, "lon" => 0}]},
-        {"senderUid" => 1}, {"missionName" => false}
+        {"senderUid" => 1}, {"missionName" => false}, {"method" => 4},
+        {"points" => [{"lat" => 0, "lon" => 0, "type" => 1}, {"lat" => 0, "lon" => 1}]}
     ];
     for (var i = 0; i < cases.size(); i++) {
         var payload = RouteFixtures.payload("server", "route", 2);
@@ -88,6 +89,24 @@ function routeMalformedIngress(logger) as Boolean {
     return true;
 }
 
+(:test)
+function routeRetainsMethodAndRawControlPointMetadata(logger) as Boolean {
+    var payload = RouteFixtures.payload("s", "r", 3);
+    payload.put("method", "Watercraft");
+    var points = payload.get("points") as Array;
+    (points[0] as Dictionary).remove("type");
+    points[1].put("type", "b-m-p-c");
+    var store = new RouteStore();
+    Test.assert(store.receive("route", payload));
+    var route = store.routes[0];
+    var saved = route.get("points") as Array;
+    Test.assertEqual(route.get("method"), "Watercraft");
+    Test.assert(saved[0].get("type") == null);
+    Test.assertEqual(saved[1].get("type"), "b-m-p-c");
+    Test.assertEqual(saved[2].get("type"), "b-m-p-w");
+    Test.assertEqual(saved.size(), 3);
+    return true;
+}
 (:test)
 function routePointSelectionAndBloodhound(logger) as Boolean {
     var map = new TestMapSelectionView();

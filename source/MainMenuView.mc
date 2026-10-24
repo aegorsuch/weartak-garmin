@@ -47,20 +47,49 @@ function addToggleEntry(menu as WatchUi.Menu2, label as String, enabled as Boole
 }
 
 function buildMainMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = createMenu("WearTAK");
-    var compassItem = new WatchUi.IconMenuItem(app.text(Rez.Strings.TextBloodhound), null, :incomingPoints,
-        new BloodhoundTargetIcon(app.getMapView()), null);
-    menu.addItem(compassItem);
-    app.incomingPointMenuItem = compassItem;
-    app.refreshIncomingPointCount();
-    // Keep Bloodhound first; add remaining entries in alphabetical order.
-    addMenuEntry(menu, "Chat", null, :chat);
-    addMenuEntry(menu, "Clear 2525D", null, :managePoints);
-    addMenuEntry(menu, "Drop 2525D", null, :dropPoint);
-    addMenuEntry(menu, manualAlertMenuLabel(app), null, :sos);
-    addMenuEntry(menu, app.text(Rez.Strings.TextMap), null, :map);
-    addMenuEntry(menu, "Settings", null, :settings);
-    return menu;
+    return new MainMenu(app);
+}
+
+class MainMenu extends WatchUi.Menu2 {
+    var app as StandaloneApp;
+    var targetActive as Boolean = false;
+    function initialize(application as StandaloneApp) {
+        Menu2.initialize({:title => "WearTAK"});
+        app = application;
+        populate();
+    }
+    function onShow() as Void { app.visibleMainMenu = self; refresh(); }
+    function onHide() as Void {
+        if (app.visibleMainMenu == self) { app.visibleMainMenu = null; }
+    }
+    function refresh() as Void {
+        if (targetActive == app.getMapView().isBloodhoundActive()) { return; }
+        var focused = mFocus == null ? null : getItem(mFocus);
+        var id = focused == null ? null : focused.getId();
+        while (getItem(0) != null) { deleteItem(0); }
+        populate();
+        for (var i = 0; getItem(i) != null; i++) {
+            if (getItem(i).getId() == id) { setFocus(i); break; }
+        }
+    }
+    function populate() as Void {
+        var menu = self;
+        targetActive = app.getMapView().isBloodhoundActive();
+        app.incomingPointMenuItem = null;
+        if (!targetActive) {
+            var item = new WatchUi.MenuItem(app.text(Rez.Strings.TextBloodhound), null, :incomingPoints, null);
+            menu.addItem(item);
+            app.incomingPointMenuItem = item;
+            var count = app.getMapView().pendingIncomingPoints.size();
+            item.setSubLabel(count > 0 ? count.toString() + " " + WatchUi.loadResource(Rez.Strings.IncomingPointNew) : null);
+        }
+        addMenuEntry(menu, "Chat", null, :chat);
+        addMenuEntry(menu, "Clear 2525D", null, :managePoints);
+        addMenuEntry(menu, "Drop 2525D", null, :dropPoint);
+        addMenuEntry(menu, manualAlertMenuLabel(app), null, :sos);
+        addMenuEntry(menu, app.text(Rez.Strings.TextMap), null, :map);
+        addMenuEntry(menu, "Settings", null, :settings);
+    }
 }
 
 function buildPointDropTypeMenu(app as StandaloneApp) as WatchUi.Menu2 {

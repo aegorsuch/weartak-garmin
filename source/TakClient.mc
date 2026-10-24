@@ -70,6 +70,20 @@ class BloodhoundRelayListener extends Communications.ConnectionListener {
     }
 }
 
+class RouteNavigationRelayListener extends Communications.ConnectionListener {
+    var client;
+    var generation as Number;
+    var payload as Dictionary;
+    function initialize(relayClient, command as Dictionary) {
+        ConnectionListener.initialize();
+        client = relayClient; generation = client.relayGeneration; payload = command;
+    }
+    function onComplete() as Void {}
+    function onError() as Void {
+        if (generation == client.relayGeneration) { client.routeNavigationSync.transportError(payload); }
+    }
+}
+
 class TakClient {
     var status as Symbol = :idle;
     var lastResponseCode as Number?  = null;
@@ -90,6 +104,7 @@ class TakClient {
     var watchSettingsCallback as Method? = null;
     var dataSync as DataSyncClient;
     var bloodhoundSync as BloodhoundSync;
+    var routeNavigationSync as RouteNavigationSync;
     var verboseLoggingEnabled as Boolean = false;
     var lastRelayMessageType as String? = null;
     var lastRelayMessageTime as Time.Moment? = null;
@@ -116,6 +131,8 @@ class TakClient {
         bloodhoundSync = new BloodhoundSync();
         bloodhoundSync.sendCallback = method(:sendBloodhoundMessage);
         bloodhoundSync.reportErrorCallback = method(:reportBloodhoundError);
+        routeNavigationSync = new RouteNavigationSync(bloodhoundSync);
+        routeNavigationSync.sendCallback = method(:sendRouteNavigationMessage);
         pointReplies = new OfflineRelayQueue();
         var sequence = loadOfflineValue("pointReplySequence");
         if (sequence instanceof Number) { pointReplySequence = sequence; }
@@ -212,6 +229,7 @@ class TakClient {
         status = :connecting;
         if (incomingUserLifecycleCallback != null) { incomingUserLifecycleCallback.invoke("reset", {}); }
         bloodhoundSync.connectionChanged(false);
+        routeNavigationSync.connectionChanged(false);
         chatGroupsSupported = false;
         phoneLocationSupported = false;
         relayGeneration++;
@@ -219,11 +237,12 @@ class TakClient {
         pointReplyInFlight = null;
         relaySession = relayEpochNow().toString() + "-" + relayNow().toString() + "-" + relayGeneration.toString();
         bloodhoundSync.relaySession = relaySession;
+        routeNavigationSync.relaySession = relaySession;
         relayNegotiating = true;
         relayNegotiationAt = relayNow();
         pointReplyRetryAt = 0;
         transmit("relay_hello", {"watchLabel" => "Garmin watch", "protocolVersion" => 1,
-            "relaySession" => relaySession, "bloodhoundVersion" => 1, "routeVersion" => 1,
+            "relaySession" => relaySession, "bloodhoundVersion" => 1, "routeVersion" => 1, "routeNavigationVersion" => 1,
             "entitySyncVersion" => 2, "watchUid" => System.getDeviceSettings().uniqueIdentifier});
         notifyStatusChanged();
     }
@@ -244,6 +263,7 @@ class TakClient {
         chatGroupsSupported = false;
         phoneLocationSupported = false;
         bloodhoundSync.connectionChanged(false);
+        routeNavigationSync.connectionChanged(false);
         if (incomingSourceRemovedCallback != null) { incomingSourceRemovedCallback.invoke("phone-relay"); }
         if (incomingUserLifecycleCallback != null) { incomingUserLifecycleCallback.invoke("reset", {}); }
         notifyStatusChanged();
@@ -273,6 +293,7 @@ class TakClient {
         chatGroupsSupported = false;
         phoneLocationSupported = false;
         bloodhoundSync.connectionChanged(false);
+        routeNavigationSync.connectionChanged(false);
         notifyStatusChanged();
         WatchUi.requestUpdate();
     }
@@ -283,6 +304,18 @@ class TakClient {
             transmitEnvelope({"msgType" => msgType, "payload" => payload},
                 new BloodhoundRelayListener(self, payload));
         } catch (error) {
+            return false;
+        }
+        return true;
+    }
+
+    function sendRouteNavigationMessage(msgType as String, payload as Dictionary) as Boolean {
+        if (!isConnected() || !routeNavigationSync.connected) { return false; }
+        try {
+            transmitEnvelope({"msgType" => msgType, "payload" => payload},
+                new RouteNavigationRelayListener(self, payload));
+        } catch (error) {
+            System.println("TAK route navigation transport failed: " + error.getErrorMessage());
             return false;
         }
         return true;
@@ -530,6 +563,7 @@ class TakClient {
             dataSync.fail(Rez.Strings.DataSyncTimeout);
         }
         bloodhoundSync.checkTimeouts();
+        routeNavigationSync.checkTimeouts();
         if (pointReplies.restoreFailed) { return; }
         expirePointReplies();
         var now = relayNow();
@@ -679,6 +713,14 @@ class TakClient {
         }
         if (msgType.equals("bloodhound_control")) {
             bloodhoundSync.receiveControl(payload as Dictionary);
+            return;
+        }
+        if (msgType.equals("phone_route_navigation")) {
+            routeNavigationSync.receiveState(payload);
+            return;
+        }
+        if (msgType.equals("route_navigation_ack")) {
+            routeNavigationSync.receiveAck(payload);
             return;
         }
         if (msgType.equals("bloodhound_control_result")) {
@@ -922,6 +964,9 @@ class TakClient {
         bloodhoundSync.relaySession = relaySession;
         bloodhoundSync.connectionChanged(payload.get("bloodhoundVersion") instanceof Number
             && payload.get("bloodhoundVersion") == 1 && payload.get("bloodhoundControl") == true);
+        routeNavigationSync.relaySession = relaySession;
+        routeNavigationSync.connectionChanged(payload.get("routeNavigationVersion") instanceof Number
+            && payload.get("routeNavigationVersion") == 1);
         relayNegotiating = false;
         flushPointReplies();
     }
