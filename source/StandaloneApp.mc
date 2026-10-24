@@ -164,7 +164,16 @@ class StandaloneApp extends Application.AppBase {
 
     function loadMoppLevel() as Void {
         var stored = Application.Storage.getValue("moppLevel");
+        var savedAt = null;
+        if (stored instanceof Dictionary) {
+            savedAt = stored.get("savedAt");
+            stored = stored.get("level");
+        }
         moppLevel = stored instanceof Number && stored >= 0 && stored <= 4 ? stored : null;
+        var validSavedState = (stored == null || moppLevel != null)
+            && savedAt instanceof Number && savedAt >= 0 && savedAt <= Time.now().value();
+        takClient.selfStatus.setPpe(moppLevel, validSavedState
+            ? takClient.cotTimestamp(new Time.Moment(savedAt)) : null);
     }
 
     function setMoppLevel(level as Number?) as Boolean {
@@ -172,9 +181,9 @@ class StandaloneApp extends Application.AppBase {
             System.println("Invalid manual MOPP level");
             return false;
         }
+        var savedAt = Time.now();
         try {
-            if (level == null) { Application.Storage.deleteValue("moppLevel"); }
-            else { Application.Storage.setValue("moppLevel", level); }
+            Application.Storage.setValue("moppLevel", {"level" => level, "savedAt" => savedAt.value()});
         } catch (error instanceof Lang.StorageFullException) {
             System.println("MOPP storage full: " + error.getErrorMessage());
             WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
@@ -185,6 +194,7 @@ class StandaloneApp extends Application.AppBase {
             return false;
         }
         moppLevel = level;
+        takClient.selfStatus.setPpe(level, takClient.cotTimestamp(savedAt));
         WatchUi.requestUpdate();
         return true;
     }
@@ -620,9 +630,14 @@ class StandaloneApp extends Application.AppBase {
         return batdokCotEnabled;
     }
 
+    function isSelfStatusPhysioEnabled() as Boolean {
+        return physiologicalMonitoringEnabled && batdokCotEnabled;
+    }
+
     function setBatdokCotEnabled(enabled as Boolean) as Void {
         batdokCotEnabled = enabled;
         Application.Storage.setValue("batdokCotEnabled", enabled);
+        takClient.selfStatus.clearPhysio();
         lastPliSentTime = null;
         sendPliIfDue();
     }
@@ -631,6 +646,7 @@ class StandaloneApp extends Application.AppBase {
         physiologicalMonitoringEnabled = enabled;
         Application.Storage.setValue("physiologicalMonitoringEnabled", enabled);
         lastHeartRateSampleTime = null;
+        takClient.selfStatus.clearPhysio();
         resetPhysiologicalAlerts();
         applyPhysiologicalMonitoring();
         lastPliSentTime = null;
@@ -1407,6 +1423,7 @@ class StandaloneApp extends Application.AppBase {
 
     function onSensor(info as Sensor.Info) as Void {
         sensorInfo = info;
+        takClient.selfStatus.sample(info.heartRate, isSelfStatusPhysioEnabled());
         var now = Time.now().value();
         sendPliIfDue();
         if (!physiologicalMonitoringEnabled) {

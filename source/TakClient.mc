@@ -105,6 +105,7 @@ class TakClient {
     var dataSync as DataSyncClient;
     var bloodhoundSync as BloodhoundSync;
     var routeNavigationSync as RouteNavigationSync;
+    var selfStatus as SelfStatusSync;
     var verboseLoggingEnabled as Boolean = false;
     var lastRelayMessageType as String? = null;
     var lastRelayMessageTime as Time.Moment? = null;
@@ -128,6 +129,7 @@ class TakClient {
     var unitPreferencesCallback as Method? = null;
 
     function initialize() {
+        selfStatus = new SelfStatusSync(self);
         dataSync = new DataSyncClient(self);
         bloodhoundSync = new BloodhoundSync();
         bloodhoundSync.sendCallback = method(:sendBloodhoundMessage);
@@ -176,11 +178,10 @@ class TakClient {
             "callsign" => callsign,
             "role" => role,
             "team" => team,
-            "remarks" => "WearTAK Garmin PLI",
             "age" => age,
             "includeBatdok" => includeBatdok
         };
-        if (heartRate != null) { payload.put("hr", heartRate); }
+        if (heartRate != null && !selfStatus.supported) { payload.put("hr", heartRate); }
         if (lastPosition != null && lastPosition.speed != null) {
             payload.put("speed", lastPosition.speed);
         }
@@ -228,6 +229,7 @@ class TakClient {
             return;
         }
         status = :connecting;
+        selfStatus.reset();
         if (unitPreferencesCallback != null) { unitPreferencesCallback.invoke(null); }
         if (incomingUserLifecycleCallback != null) { incomingUserLifecycleCallback.invoke("reset", {}); }
         bloodhoundSync.connectionChanged(false);
@@ -246,7 +248,7 @@ class TakClient {
         transmit("relay_hello", {"watchLabel" => "Garmin watch", "protocolVersion" => 1,
             "relaySession" => relaySession, "bloodhoundVersion" => 1, "routeVersion" => 1, "routeNavigationVersion" => 1,
             "entitySyncVersion" => 2, "unitPrefsVersion" => 1,
-            "watchUid" => System.getDeviceSettings().uniqueIdentifier});
+            "watchUid" => getWatchDeviceUid()});
         notifyStatusChanged();
     }
 
@@ -256,6 +258,8 @@ class TakClient {
             WatchUi.showToast(error, null);
             return;
         }
+        selfStatus.clearRemote();
+        selfStatus.reset();
         if (dataSync.requestId != null) { dataSync.fail(Rez.Strings.DataSyncRelayOff); }
         automatedAlertSentAt = {};
         relayGeneration++;
@@ -278,6 +282,7 @@ class TakClient {
             return;
         }
         status = :connected;
+        selfStatus.flush(true);
         transmit("entity_sync_request", {"limit" => MAP_RETAINED_LIMIT, "protocolVersion" => 1, "routeVersion" => 1});
         flushPointReplies();
         notifyStatusChanged();
@@ -287,6 +292,7 @@ class TakClient {
         if (status == :idle) {
             return;
         }
+        selfStatus.reset();
         automatedAlertSentAt = {};
         relayGeneration++;
         pointReplyAttempt++;
@@ -565,6 +571,7 @@ class TakClient {
     }
 
     function flushPointReplies() as Void {
+        selfStatus.flush(false);
         if (dataSync.requestId != null && System.getTimer() - dataSync.requestedAt >= 65000) {
             dataSync.fail(Rez.Strings.DataSyncTimeout);
         }
@@ -965,6 +972,9 @@ class TakClient {
         if (!isCurrentEntitySession(payload) ||
                 !(payload.get("reliableDelivery") instanceof Boolean)) { return; }
         applyRelayUnitPreference(payload);
+        var selfStatusSupported = payload.get("selfStatus") instanceof Number && payload.get("selfStatus") == 1;
+        if (!selfStatusSupported) { selfStatus.disable(); }
+        else if (!selfStatus.supported) { selfStatus.supported = true; selfStatus.flush(true); }
         relayResultRequired = payload.get("reliableDelivery") == true;
         chatGroupsSupported = payload.get("chatGroups") == true;
         phoneLocationSupported = payload.get("phoneLocation") == true;
@@ -976,6 +986,10 @@ class TakClient {
             && payload.get("routeNavigationVersion") == 1);
         relayNegotiating = false;
         flushPointReplies();
+    }
+
+    function getWatchDeviceUid() as String {
+        return System.getDeviceSettings().uniqueIdentifier;
     }
 
     function applyRelayUnitPreference(payload as Dictionary) as Void {

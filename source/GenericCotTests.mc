@@ -112,8 +112,18 @@ function genericCotRelayRenderingAndSafeActions(logger) as Boolean {
 }
 
 (:test)
+class TestRetentionClockMap extends TestMapSelectionView {
+    var clock as Number;
+    function initialize() {
+        TestMapSelectionView.initialize();
+        clock = Time.now().value();
+    }
+    function incomingEntityNow() as Number { return clock; }
+}
+
+(:test)
 function genericCotHonorsStaleAndBoundedRetention(logger) as Boolean {
-    var map = new TestMapSelectionView();
+    var map = new TestRetentionClockMap();
     map.updateIncomingCot("expired", 0.0, 0.1, "a-n-A-C-F", null, null, null,
         {"stale" => "2000-01-01T00:00:00Z"});
     Test.assert(!map.incomingDetails.hasKey("cot-expired"));
@@ -130,7 +140,7 @@ function genericCotHonorsStaleAndBoundedRetention(logger) as Boolean {
     Test.assert(map.pruneIncomingEntities());
     Test.assert(!map.incomingDetails.hasKey(id));
     id = "cot-bounded-2";
-    map.incomingLastSeen.put(id, Time.now().value() - 301);
+    map.incomingLastSeen.put(id, map.clock - 301);
     Test.assert(map.pruneIncomingEntities());
     Test.assert(!map.incomingDetails.hasKey(id));
     return true;
