@@ -1018,6 +1018,27 @@ resource strings provide English fallbacks in all locales. `PluginsTests.mc`
 covers labels, repeated inert selections, Sensor Manager's default-off persisted
 toggle, and mixed-case sorting alongside existing entries.
 
+### Manual MOPP / PPE status
+
+Open **Settings > Tool Preferences > Plugins > MOPP**, identified by an original
+protective-mask glyph. **PPE Status** shows the saved manual value. Choose
+**None** (unset, not MOPP 0) or **MOPP 0** through **MOPP 4**, then select
+**Save PPE Status**. The selected marker is a draft until saved; Cancel or Back
+discards unsaved choices. The saved value survives restarts.
+
+This is explicitly **manual / local only**: no report is transmitted, no remote
+acknowledgment is implied, and no commanded level, CBR detection, filter-life
+timer, protection recommendation or compliance color is inferred. Garmin's
+native Menu2 provides whole-row selection for both buttons and touch rather than
+independently tappable trailing chips. Existing localized Selected/Cancel labels
+are reused; new MOPP explanatory labels currently use English, like the existing
+native preference labels, without exceeding older-device string-module limits.
+
+DataSync now has an original synchronization glyph and a navigation chevron.
+It retains its existing watch-side server/feed workflow and explicit unsupported
+states described below. There is no global DataSync enable control or newly
+claimed Companion support; subscriptions still require authoritative replies.
+
 ### Commands and Ditto feasibility
 
 The Garmin application currently has no functional Commands plugin, Commands configuration
