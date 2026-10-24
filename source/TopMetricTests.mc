@@ -1,0 +1,170 @@
+import Toybox.Application;
+import Toybox.Lang;
+import Toybox.Position;
+import Toybox.Test;
+import Toybox.WatchUi;
+
+(:test)
+class TestTopMetricApp extends StandaloneApp {
+    var location as Position.Location? = null;
+    var heartRate as Number? = null;
+    var exertionAvailable as Boolean = false;
+    var steps as Number? = null;
+    var monitoring as Boolean = true;
+    function initialize() {}
+    function getDashboardLocation() as Position.Location? { return location; }
+    function getHeartRate() as Number? { return heartRate; }
+    function isExertionAvailable() as Boolean { return exertionAvailable; }
+    function getExertionPercent() as Number { return 73; }
+    function getDashboardSteps() as Number? { return steps; }
+    function isPhysiologicalMonitoringEnabled() as Boolean { return monitoring; }
+    function getMapView() as StandaloneMapView { return (Application.getApp() as StandaloneApp).getMapView(); }
+}
+
+(:test)
+function topMetricChoicesAreExactSortedAndDoNotToggleRuntime(logger) as Boolean {
+    var app = Application.getApp() as StandaloneApp;
+    var previous = app.getDashboardMetric();
+    var alerts = app.isPhysiologicalAlertsEnabled();
+    var monitors = app.isPhysiologicalMonitoringEnabled();
+    var menu = buildTopMetricMenu(app);
+    var expected = ["Exertion", "Heart Rate", "Lat/Long", "MGRS", "Skin Temp", "Steps"];
+    var entries = [];
+    for (var i = 0; i < expected.size(); i++) {
+        entries.add({"id" => expected[i], "label" => app.dashboardMetricLabel(expected[i])});
+    }
+    sortMenuEntriesByLabel(entries);
+    var delegate = new TopMetricDelegate(app, menu, null);
+    for (var i = 0; i < expected.size(); i++) {
+        Test.assertEqual(menu.getItem(i).getId(), entries[i].get("id"));
+        Test.assertEqual(menu.getItem(i).getLabel(), entries[i].get("label"));
+        delegate.onSelect(menu.getItem(i));
+        Test.assertEqual(app.getDashboardMetric(), entries[i].get("id"));
+        Test.assertEqual(Application.Storage.getValue("dashboardMetric"), entries[i].get("id"));
+        Test.assertEqual(app.isPhysiologicalAlertsEnabled(), alerts);
+        Test.assertEqual(app.isPhysiologicalMonitoringEnabled(), monitors);
+    }
+    Test.assertEqual(menu.getItem(6).getId(), :topAlerts);
+    Test.assertEqual(menu.getItem(7).getId(), :topAlertThresholds);
+    Test.assertEqual(menu.getItem(8).getId(), :topMonitors);
+    Test.assert(menu.getItem(9) == null);
+    Test.assert((menu.getItem(menu.findItemById("Skin Temp")).getSubLabel() as String)
+        .find(app.text(Rez.Strings.TextUnavailable)) != null);
+    Test.assert(buildDisplayPreferencesMenu(app).findItemById(:topMetric) >= 0);
+    app.setDashboardMetric(previous);
+    return true;
+}
+
+(:test)
+function topMetricStoredSelectionMigratesAndStepsSurvives(logger) as Boolean {
+    var app = Application.getApp() as StandaloneApp;
+    var previous = app.getDashboardMetric();
+    var removed = ["Altitude", "Pressure", "", 42];
+    for (var i = 0; i < removed.size(); i++) {
+        Application.Storage.setValue("dashboardMetric", removed[i]);
+        app.loadDashboardMetric();
+        Test.assertEqual(app.getDashboardMetric(), "Exertion");
+        Test.assertEqual(Application.Storage.getValue("dashboardMetric"), "Exertion");
+    }
+    app.setDashboardMetric("Steps");
+    app.loadDashboardMetric();
+    Test.assertEqual(app.getDashboardMetric(), "Steps");
+    app.setDashboardMetric("Pressure");
+    Test.assertEqual(app.getDashboardMetric(), "Steps");
+    app.setDashboardMetric(previous);
+    return true;
+}
+
+(:test)
+function topMetricReadingsUseRealDataOrUnavailable(logger) as Boolean {
+    var actual = Application.getApp() as StandaloneApp;
+    var previous = actual.getDashboardMetric();
+    var app = new TestTopMetricApp();
+    var unavailable = app.text(Rez.Strings.TextUnavailable);
+    app.setDashboardMetric("Exertion");
+    Test.assertEqual(app.dashboardMetricLines()[0], unavailable);
+    app.exertionAvailable = true;
+    Test.assertEqual(app.dashboardMetricLines()[0], "73%");
+    app.setDashboardMetric("Heart Rate");
+    Test.assertEqual(app.dashboardMetricLines()[0], unavailable);
+    app.heartRate = 85;
+    Test.assertEqual(app.dashboardMetricLines()[0], "85 BPM");
+    app.setDashboardMetric("Steps");
+    Test.assertEqual(app.dashboardMetricLines()[0], unavailable);
+    app.steps = 12345;
+    Test.assertEqual(app.dashboardMetricLines()[0], "12345");
+    app.setDashboardMetric("Skin Temp");
+    Test.assertEqual(app.dashboardMetricLines()[0], unavailable);
+    app.monitoring = false;
+    var dependent = ["Exertion", "Heart Rate", "Skin Temp", "Steps"];
+    for (var i = 0; i < dependent.size(); i++) {
+        app.setDashboardMetric(dependent[i]);
+        Test.assertEqual(app.dashboardMetricLines()[0], app.text(Rez.Strings.LabelDisabled));
+    }
+    app.setDashboardMetric("Steps");
+    Test.assertEqual(app.dashboardMetricLines()[0], app.text(Rez.Strings.LabelDisabled));
+    app.setDashboardMetric("Lat/Long");
+    Test.assertEqual(app.dashboardMetricLines()[0], app.text(Rez.Strings.TextWaitingForLocation));
+    app.location = new Position.Location({:latitude => 38.8977, :longitude => -77.0365, :format => :degrees});
+    Test.assertEqual(app.dashboardMetricLines()[0], "38.89770,");
+    Test.assertEqual(app.dashboardMetricLines()[1], "-77.03650");
+    app.setDashboardMetric("MGRS");
+    Test.assertEqual(app.dashboardMetricLines()[0], "18S UJ");
+    Test.assertEqual(app.dashboardMetricLines()[1], "23394 07395");
+    Test.assert(!app.isPhysiologicalMonitoringEnabled());
+    app.location = new Position.Location({:latitude => 85.0, :longitude => 0.0, :format => :degrees});
+    Test.assertEqual(app.dashboardMetricLines()[0], unavailable);
+    actual.setDashboardMetric(previous);
+    return true;
+}
+
+(:test)
+function topMetricGpsRequiresUsableFreshEnabledFix(logger) as Boolean {
+    var app = Application.getApp() as StandaloneApp;
+    var location = new Position.Location({:latitude => 0.0, :longitude => 180.0, :format => :degrees});
+    Test.assert(app.dashboardLocationFromFix(location, Position.QUALITY_GOOD, 100, 100, true) != null);
+    Test.assert(app.dashboardLocationFromFix(location, Position.QUALITY_USABLE, 100, 160, true) != null);
+    Test.assert(app.dashboardLocationFromFix(location, Position.QUALITY_POOR, 100, 100, true) == null);
+    Test.assert(app.dashboardLocationFromFix(location, Position.QUALITY_GOOD, 100, 161, true) == null);
+    Test.assert(app.dashboardLocationFromFix(location, Position.QUALITY_GOOD, 100, 99, true) == null);
+    Test.assert(app.dashboardLocationFromFix(location, Position.QUALITY_GOOD, 100, 100, false) == null);
+    Test.assert(app.dashboardLocationFromFix(null, Position.QUALITY_GOOD, 100, 100, true) == null);
+    Test.assert(app.dashboardLocationFromFix(location, Position.QUALITY_GOOD, null, 100, true) == null);
+    Test.assert(app.getMapView().mgrsFromLatLon(0.0, 180.0).find("60N") == 0);
+    return true;
+}
+
+(:test)
+function topMetricAlertsAndMonitorsAreIndependentAndThresholdsRemainEditable(logger) as Boolean {
+    var app = Application.getApp() as StandaloneApp;
+    var alerts = app.isPhysiologicalAlertsEnabled();
+    var monitors = app.isPhysiologicalMonitoringEnabled();
+    var threshold = app.getAlertSetting(:exertionWarningThreshold);
+    var menu = buildTopMetricMenu(app);
+    var delegate = new TopMetricDelegate(app, menu, null);
+    delegate.onSelect(menu.getItem(6));
+    Test.assertEqual(app.isPhysiologicalAlertsEnabled(), !alerts);
+    Test.assertEqual(app.isPhysiologicalMonitoringEnabled(), monitors);
+    Test.assertEqual(app.getAlertSetting(:exertionWarningThreshold), threshold);
+    delegate.onSelect(menu.getItem(6));
+    Test.assertEqual(app.isPhysiologicalAlertsEnabled(), alerts);
+    delegate.onSelect(menu.getItem(8));
+    Test.assertEqual(app.isPhysiologicalMonitoringEnabled(), !monitors);
+    Test.assertEqual(app.isPhysiologicalAlertsEnabled(), alerts);
+    delegate.onSelect(menu.getItem(8));
+    app.setPhysiologicalAlertsEnabled(false);
+    delegate.onSelect(menu.getItem(7));
+    Test.assert(!app.isPhysiologicalAlertsEnabled());
+    Test.assertEqual(app.getAlertSetting(:exertionWarningThreshold), threshold);
+    Test.assert(buildPhysiologicalAlertsMenu(app).findItemById(:exertionAlerts) >= 0);
+    app.setAlertSetting(:exertionWarningThreshold, threshold == 80 ? 81 : 80);
+    Test.assert(!app.isPhysiologicalAlertsEnabled());
+    Test.assertEqual(app.getAlertSetting(:exertionWarningThreshold), threshold == 80 ? 81 : 80);
+    app.setAlertSetting(:exertionWarningThreshold, threshold);
+    app.setPhysiologicalAlertsEnabled(alerts);
+    (menu as TopMetricMenu).onShow();
+    Test.assertEqual(menu.getItem(6).getSubLabel(), app.text(alerts ? Rez.Strings.TextOn : Rez.Strings.TextOff));
+    Test.assertEqual(menu.getItem(8).getSubLabel(), app.text(monitors ? Rez.Strings.TextOn : Rez.Strings.TextOff));
+    Test.assertEqual(app.isPhysiologicalMonitoringEnabled(), monitors);
+    return true;
+}

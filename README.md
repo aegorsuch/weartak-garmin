@@ -665,6 +665,32 @@ features currently available:
 - Manual Alert becomes locally active even if the phone relay is stopped. When
 	the relay is active, the alert is sent to the companion; selecting the active
 	main-menu row again clears it.
+- The main-menu header displays the selected **Top Display Metric**. Open
+	**Settings > Display Preferences > Top Display Metric** (also available by
+	tapping the header on supported touch models) for a simple native list:
+	**Exertion**, **Heart Rate**, **Lat/Long**, **MGRS**, **Skin Temp**, **Steps**.
+	The six choices sort by their localized displayed labels; existing Exertion,
+	Heart Rate and Steps selections survive, while removed/invalid stored choices
+	reset to Exertion. This does not remove any underlying sensor feature.
+	Lat/Long uses signed decimal degrees (five decimals); MGRS reuses the map's
+	UTM-grid formatter and is unavailable outside 80 S–84 N. Coordinates require
+	location services and a usable/good watch fix no older than 60 seconds; without
+	one the header says **Waiting for location**. Coordinate values use two lines
+	to fit small, round watches. Steps is the watch's daily activity count.
+	**Skin Temp** remains selectable but explicitly **Unavailable**: the current
+	Connect IQ sensor API exposes temperature, not a verified skin measurement.
+	Exertion, Heart Rate, Skin Temp and Steps show **Disabled** when physiological monitoring
+	is explicitly off, ahead of any cached reading or unavailable capability.
+	With monitoring on, missing physiological data shows **Unavailable**. Coordinates
+	still work with monitoring off. Hiding Steps does not stop the watch's daily
+	activity collector.
+	The same list has independent **Enable alerts**, **Alert thresholds >**, and
+	**Physiological monitors** rows, usable with buttons as well as touch. They use
+	the existing physiological alert/heart-rate runtime; merely opening the screen,
+	selecting a metric or opening thresholds never enables either setting.
+	Thresholds remain editable while alerts are off; disabling clears pending
+	physiological warning timers and active physiological alerts, not environmental
+	alert settings or the manually activated emergency alert.
 - The Settings row displays the configured callsign and is blank when the
 	callsign is unset.
 - Open and navigate the map.

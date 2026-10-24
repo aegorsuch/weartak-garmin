@@ -168,9 +168,99 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function setDashboardMetric(value as String) as Void {
-        if (!value.equals("Exertion") && !value.equals("Heart Rate")) { return; }
+        if (!isDashboardMetric(value)) { return; }
+        try {
+            Application.Storage.setValue("dashboardMetric", value);
+        } catch (error instanceof Lang.StorageFullException) {
+            System.println("TAK top metric storage full: " + error.getErrorMessage());
+            WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
+            return;
+        } catch (error instanceof Application.ObjectStoreAccessException) {
+            System.println("TAK top metric storage unavailable: " + error.getErrorMessage());
+            WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
+            return;
+        }
         dashboardMetric = value;
-        Application.Storage.setValue("dashboardMetric", dashboardMetric);
+        WatchUi.requestUpdate();
+    }
+
+    function isDashboardMetric(value) as Boolean {
+        return value instanceof String && (value.equals("Exertion") || value.equals("Heart Rate")
+            || value.equals("Lat/Long") || value.equals("MGRS") || value.equals("Skin Temp") || value.equals("Steps"));
+    }
+
+    function loadDashboardMetric() as Void {
+        var stored = Application.Storage.getValue("dashboardMetric");
+        dashboardMetric = isDashboardMetric(stored) ? stored as String : "Exertion";
+        if (stored != null && !isDashboardMetric(stored)) { setDashboardMetric("Exertion"); }
+    }
+
+    function dashboardMetricLabel(metric as String) as String {
+        if (metric.equals("Exertion")) { return text(Rez.Strings.TextExertion); }
+        if (metric.equals("Heart Rate")) { return text(Rez.Strings.TextHeartRate); }
+        if (metric.equals("Lat/Long")) { return text(Rez.Strings.TextLatLon); }
+        if (metric.equals("MGRS")) { return text(Rez.Strings.TextMgrs); }
+        if (metric.equals("Skin Temp")) { return text(Rez.Strings.TopMetricSkinTemp); }
+        return text(Rez.Strings.TopMetricSteps);
+    }
+
+    function getDashboardLocation() as Position.Location? {
+        var info = takClient.lastPosition;
+        return info == null ? null : dashboardLocationFromFix(info.position, info.accuracy,
+            lastGpsFixTime, Time.now().value(), locationServices);
+    }
+
+    function dashboardLocationFromFix(location as Position.Location?, quality as Number,
+            fixTime as Number?, now as Number, enabled as Boolean) as Position.Location? {
+        if (!enabled || location == null || quality < Position.QUALITY_USABLE || fixTime == null
+                || now < fixTime || now - fixTime > 60) { return null; }
+        var degrees = location.toDegrees();
+        if (!(degrees[0] >= -90 && degrees[0] <= 90 && degrees[1] >= -180 && degrees[1] <= 180)) { return null; }
+        return location;
+    }
+
+    function getDashboardSteps() as Number? {
+        var info = ActivityMonitor.getInfo();
+        return info == null ? null : info.steps;
+    }
+
+    function dashboardMetricLines() as Array<String> {
+        var unavailable = text(Rez.Strings.TextUnavailable);
+        if (dashboardMetric.equals("Lat/Long") || dashboardMetric.equals("MGRS")) {
+            var location = getDashboardLocation();
+            if (location == null) { return [text(Rez.Strings.TextWaitingForLocation)]; }
+            var coordinates = location.toDegrees();
+            if (!(coordinates[0] >= -90 && coordinates[0] <= 90
+                    && coordinates[1] >= -180 && coordinates[1] <= 180)) { return [unavailable]; }
+            if (dashboardMetric.equals("Lat/Long")) {
+                var degrees = location.toDegrees();
+                return [degrees[0].format("%.5f") + ",", degrees[1].format("%.5f")];
+            }
+            var mgrs = getMapView().mgrsLabel(location);
+            var firstSpace = mgrs.find(" ");
+            var secondSpace = firstSpace == null ? null : mgrs.substring(firstSpace + 1, mgrs.length()).find(" ");
+            if (secondSpace == null) { return [unavailable]; }
+            var split = firstSpace + secondSpace + 1;
+            return [mgrs.substring(0, split), mgrs.substring(split + 1, mgrs.length())];
+        }
+        if (!isPhysiologicalMonitoringEnabled() && (dashboardMetric.equals("Exertion")
+                || dashboardMetric.equals("Heart Rate") || dashboardMetric.equals("Skin Temp")
+                || dashboardMetric.equals("Steps"))) {
+            return [text(Rez.Strings.LabelDisabled)];
+        }
+        if (dashboardMetric.equals("Exertion")) {
+            return [isExertionAvailable() ? getExertionPercent().format("%.0f") + "%" : unavailable];
+        }
+        if (dashboardMetric.equals("Heart Rate")) {
+            var heartRate = getHeartRate();
+            return [heartRate == null ? unavailable : heartRate.toString() + " BPM"];
+        }
+        if (dashboardMetric.equals("Steps")) {
+            var steps = getDashboardSteps();
+            return [steps == null ? unavailable : steps.toString()];
+        }
+        // Sensor.Info.temperature is not a skin-temperature measurement.
+        return [unavailable];
     }
 
     function setCallsign(value as String) as Void {
@@ -507,22 +597,11 @@ class StandaloneApp extends Application.AppBase {
         physiologicalMonitoringEnabled = enabled;
         Application.Storage.setValue("physiologicalMonitoringEnabled", enabled);
         lastHeartRateSampleTime = null;
-        highRestingSince = null;
-        lowRestingSince = null;
-        exertionWarningSince = null;
-        exertionAlertSince = null;
-        highRestingWarningActive = false;
-        highRestingAlertActive = false;
-        lowRestingWarningActive = false;
-        lowRestingAlertActive = false;
-        exertionWarningActive = false;
-        exertionAlertActive = false;
-        takClient.clearAutomatedAlert("High resting heart rate");
-        takClient.clearAutomatedAlert("Low resting heart rate");
-        takClient.clearAutomatedAlert("High exertion");
+        resetPhysiologicalAlerts();
         applyPhysiologicalMonitoring();
         lastPliSentTime = null;
         sendPliIfDue();
+        WatchUi.requestUpdate();
     }
 
     function applyPhysiologicalMonitoring() as Void {
@@ -824,8 +903,7 @@ class StandaloneApp extends Application.AppBase {
                 && (storedDistanceUnits as String).equals("Imperial") ? "Imperial" : "Metric";
         loadCustomManualAlerts();
         loadCustomChatQuickReplies();
-        dashboardMetric = storedString("dashboardMetric", dashboardMetric);
-        if (!dashboardMetric.equals("Exertion") && !dashboardMetric.equals("Heart Rate")) { dashboardMetric = "Exertion"; }
+        loadDashboardMetric();
         myTeamColor = storedString("myTeamColor", myTeamColor);
         if (!isSupportedTeamColor(myTeamColor)) {
             myTeamColor = "Blue";
@@ -1003,6 +1081,24 @@ class StandaloneApp extends Application.AppBase {
     function setPhysiologicalAlertsEnabled(enabled as Boolean) as Void {
         physiologicalAlertsEnabled = enabled;
         Application.Storage.setValue("physiologicalAlertsEnabled", enabled);
+        if (!enabled) { resetPhysiologicalAlerts(); }
+        WatchUi.requestUpdate();
+    }
+
+    function resetPhysiologicalAlerts() as Void {
+        highRestingSince = null;
+        lowRestingSince = null;
+        exertionWarningSince = null;
+        exertionAlertSince = null;
+        highRestingWarningActive = false;
+        highRestingAlertActive = false;
+        lowRestingWarningActive = false;
+        lowRestingAlertActive = false;
+        exertionWarningActive = false;
+        exertionAlertActive = false;
+        takClient.clearAutomatedAlert("High resting heart rate");
+        takClient.clearAutomatedAlert("Low resting heart rate");
+        takClient.clearAutomatedAlert("High exertion");
     }
 
     function isBatteryAlertsEnabled() as Boolean {
@@ -1278,6 +1374,7 @@ class StandaloneApp extends Application.AppBase {
         if (view != null) {
             view.updatePosition(info);
         }
+        WatchUi.requestUpdate();
     }
 
     function onSensor(info as Sensor.Info) as Void {

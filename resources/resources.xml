@@ -122,6 +122,12 @@
     <string id="TextDropPoint">Drop 2525D Point</string>
     <string id="TextEnvironment">Environment</string>
     <string id="TextEnvironmentalAlerts">Environmental Alerts</string>
+    <string id="TopMetricTitle">Top Display Metric</string>
+    <string id="TopMetricSkinTemp">Skin Temp</string>
+    <string id="TopMetricSteps">Steps</string>
+    <string id="TopMetricEnableAlerts">Enable alerts</string>
+    <string id="TopMetricAlertThresholds">Alert thresholds</string>
+    <string id="TopMetricPhysioMonitors">Physiological monitors</string>
     <string id="TextExertion">Exertion</string>
     <string id="TextExertionAlerts">Exertion Alerts</string>
     <string id="TextExit">Exit</string>
@@ -140,7 +146,7 @@
     <string id="TextImmersionAlerts">Immersion Alerts</string>
     <string id="TextInContact">In Contact</string>
     <string id="TextInjury">Injury</string>
-    <string id="TextLatLon">Lat/Lon</string>
+    <string id="TextLatLon">Lat/Long</string>
     <string id="TextLoadoutWeight">Loadout Weight</string>
     <string id="TextLocationServices">Location Services</string>
     <string id="TextLocationUnavailable">Location unavailable</string>

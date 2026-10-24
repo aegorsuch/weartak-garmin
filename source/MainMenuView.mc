@@ -3,6 +3,7 @@ import Toybox.Communications;
 import Toybox.System;
 import Toybox.WatchUi;
 import Toybox.Timer;
+import Toybox.Graphics;
 
 class MainMenuReturn {
     var timer as Timer.Timer;
@@ -76,6 +77,7 @@ class MainMenu extends WatchUi.Menu2 {
     function initialize(application as StandaloneApp) {
         Menu2.initialize({:title => "WearTAK"});
         app = application;
+        setTitle(new TopMetricTitle(app));
         populate();
     }
     function onShow() as Void { app.visibleMainMenu = self; refresh(); }
@@ -150,8 +152,106 @@ function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function buildDisplayPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu("Display Preferences");
+    addMenuEntry(menu, app.text(Rez.Strings.TopMetricTitle),
+        app.dashboardMetricLabel(app.getDashboardMetric()), :topMetric);
     addMenuEntry(menu, "Units", app.distanceUnitsSummary(), :distanceUnits);
     return menu;
+}
+
+class TopMetricTitle extends WatchUi.Drawable {
+    var app as StandaloneApp;
+    function initialize(application as StandaloneApp) {
+        Drawable.initialize({:locX => 0, :locY => 0, :width => System.getDeviceSettings().screenWidth, :height => 76});
+        app = application;
+    }
+    function draw(dc as Graphics.Dc) as Void {
+        if (!isVisible) { return; }
+        var center = locX + width / 2;
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(center, locY + 4, Graphics.FONT_XTINY,
+            app.dashboardMetricLabel(app.getDashboardMetric()), Graphics.TEXT_JUSTIFY_CENTER);
+        var lines = app.dashboardMetricLines();
+        for (var i = 0; i < lines.size(); i++) {
+            dc.drawText(center, locY + 28 + i * 22, Graphics.FONT_XTINY, lines[i], Graphics.TEXT_JUSTIFY_CENTER);
+        }
+    }
+}
+
+function buildTopMetricMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    return new TopMetricMenu(app);
+}
+
+class TopMetricMenu extends WatchUi.Menu2 {
+    var app as StandaloneApp;
+    function initialize(application as StandaloneApp) {
+        Menu2.initialize({:title => application.text(Rez.Strings.TopMetricTitle)});
+        app = application;
+        populateTopMetricMenu(self, app);
+    }
+    function onShow() as Void {
+        var focus = mFocus;
+        while (getItem(0) != null) { deleteItem(0); }
+        populateTopMetricMenu(self, app);
+        if (focus != null && getItem(focus) != null) { setFocus(focus); }
+    }
+}
+
+function topMetricChoiceStatus(app as StandaloneApp, id as String) as String? {
+    var selected = app.getDashboardMetric().equals(id) ? app.text(Rez.Strings.TextSelected) : null;
+    return id.equals("Skin Temp")
+        ? (selected == null ? "" : selected + " - ") + app.text(Rez.Strings.TextUnavailable) : selected;
+}
+
+function populateTopMetricMenu(menu as WatchUi.Menu2, app as StandaloneApp) as Void {
+    var values = ["Exertion", "Heart Rate", "Lat/Long", "MGRS", "Skin Temp", "Steps"];
+    var entries = [];
+    for (var i = 0; i < values.size(); i++) {
+        entries.add({"id" => values[i], "label" => app.dashboardMetricLabel(values[i])});
+    }
+    sortMenuEntriesByLabel(entries);
+    for (var i = 0; i < entries.size(); i++) {
+        var entry = entries[i] as Dictionary;
+        var id = entry.get("id") as String;
+        addMenuEntry(menu, entry.get("label") as String, topMetricChoiceStatus(app, id), id);
+    }
+    addMenuEntry(menu, app.text(Rez.Strings.TopMetricEnableAlerts),
+        app.text(app.isPhysiologicalAlertsEnabled() ? Rez.Strings.TextOn : Rez.Strings.TextOff), :topAlerts);
+    addMenuEntry(menu, app.text(Rez.Strings.TopMetricAlertThresholds), ">", :topAlertThresholds);
+    addMenuEntry(menu, app.text(Rez.Strings.TopMetricPhysioMonitors),
+        app.text(app.isPhysiologicalMonitoringEnabled() ? Rez.Strings.TextOn : Rez.Strings.TextOff), :topMonitors);
+}
+
+class TopMetricDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var menu as WatchUi.Menu2;
+    var parentItem as WatchUi.MenuItem?;
+    function initialize(application as StandaloneApp, choices as WatchUi.Menu2, parent as WatchUi.MenuItem?) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        menu = choices;
+        parentItem = parent;
+    }
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var id = item.getId();
+        if (id == :topAlerts) {
+            app.setPhysiologicalAlertsEnabled(!app.isPhysiologicalAlertsEnabled());
+            item.setSubLabel(app.text(app.isPhysiologicalAlertsEnabled() ? Rez.Strings.TextOn : Rez.Strings.TextOff));
+        } else if (id == :topMonitors) {
+            app.setPhysiologicalMonitoringEnabled(!app.isPhysiologicalMonitoringEnabled());
+            item.setSubLabel(app.text(app.isPhysiologicalMonitoringEnabled() ? Rez.Strings.TextOn : Rez.Strings.TextOff));
+        } else if (id == :topAlertThresholds) {
+            WatchUi.pushView(buildPhysiologicalAlertsMenu(app), new PhysiologicalAlertsDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (app.isDashboardMetric(id)) {
+            app.setDashboardMetric(id as String);
+            for (var i = 0; i < 6; i++) {
+                var row = menu.getItem(i);
+                var key = row.getId() as String;
+                row.setSubLabel(topMetricChoiceStatus(app, key));
+            }
+            if (parentItem != null) { parentItem.setSubLabel(app.dashboardMetricLabel(app.getDashboardMetric())); }
+        }
+        WatchUi.requestUpdate();
+    }
 }
 
 function buildDistanceUnitsMenu(app as StandaloneApp) as WatchUi.Menu2 {
@@ -725,6 +825,11 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
         app = application;
     }
 
+    function onTitle() as Void {
+        var menu = buildTopMetricMenu(app);
+        WatchUi.pushView(menu, new TopMetricDelegate(app, menu, null), WatchUi.SLIDE_LEFT);
+    }
+
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
         if (id == :map) {
@@ -876,6 +981,9 @@ class DisplayPreferencesDelegate extends WatchUi.Menu2InputDelegate {
         if (item.getId() == :distanceUnits) {
             var unitsMenu = buildDistanceUnitsMenu(app);
             WatchUi.pushView(unitsMenu, new DistanceUnitsDelegate(app, unitsMenu, item), WatchUi.SLIDE_LEFT);
+        } else if (item.getId() == :topMetric) {
+            var menu = buildTopMetricMenu(app);
+            WatchUi.pushView(menu, new TopMetricDelegate(app, menu, item), WatchUi.SLIDE_LEFT);
         }
     }
 }
