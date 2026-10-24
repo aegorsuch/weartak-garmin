@@ -696,13 +696,20 @@ features currently available:
 	With monitoring on, missing physiological data shows **Unavailable**. Coordinates
 	still work with monitoring off. Hiding Steps does not stop the watch's daily
 	activity collector.
-	The same list has independent **Enable alerts**, **Alert thresholds >**, and
-	**Physiological monitors** rows, usable with buttons as well as touch. They use
+	The same list starts with independent **Physiological Monitoring** and
+	**Physiological Alerts** rows, followed by **Alert thresholds >** and the six
+	metric choices. Controls use native whole-row actions with buttons and touch
+	(the thresholds row is separate because Menu2 has no split toggle).
+	The physiological-alerts menu also starts with these same monitoring/alerting
+	controls, and Reporting Strategy puts monitoring first. They use
 	the existing physiological alert/heart-rate runtime; merely opening the screen,
 	selecting a metric or opening thresholds never enables either setting.
 	Thresholds remain editable while alerts are off; disabling clears pending
 	physiological warning timers and active physiological alerts, not environmental
 	alert settings or the manually activated emergency alert.
+	Heart Rate has an original filled-heart glyph in the picker and when selected
+	in the main header; this is not an ECG/pulse glyph. MGRS remains text-only in
+	the header, with unchanged full coordinate precision.
 - The Settings row displays the configured callsign and is blank when the
 	callsign is unset.
 - Open and navigate the map.
@@ -1100,6 +1107,19 @@ bare `MOPP0`–`MOPP4`/HR remarks (no space or PPE prefix; None has no remarks s
 the generated `WearTAK Garmin PLI` remark. When the new capability is negotiated,
 legacy `pli.hr` is omitted so freshness/cleanup comes only from `self_status`.
 No physical-watch acceptance is implied by simulator or signed-release evidence.
+
+After a new phone-relay session is both connected and acknowledged by a valid
+current-session `relay_status`, Garmin requests a fresh self-PLI once through
+the existing `location_request` (`action:"pli"`) and immediate current `pli`
+paths. Repeated status messages do not repeat this refresh. The phone retains
+authority over its actual fix, identity and upstream connectivity; this does
+not create direct Ditto, multicast or other watch network transports. Location
+Services opt-out prevents the refresh. Legacy PLI heart rate also requires
+both monitoring and BATDOK enabled and a sensor callback no older than 60 seconds;
+capable bridges continue using timestamped `self_status` instead. The new refresh
+neither reads nor replays saved chats/alerts/history or adds entries to the
+durable queue; existing reliable-delivery behavior is unchanged. Commands and
+unavailable plugin placeholders remain inactive.
 
 ### Commands and Ditto feasibility
 

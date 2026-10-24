@@ -127,7 +127,7 @@
     <string id="TopMetricSteps">Steps</string>
     <string id="TopMetricEnableAlerts">Enable alerts</string>
     <string id="TopMetricAlertThresholds">Alert thresholds</string>
-    <string id="TopMetricPhysioMonitors">Physiological monitors</string>
+    <string id="TopMetricPhysioMonitors">Physiological Monitoring</string>
     <string id="TextExertion">Exertion</string>
     <string id="TextExertionAlerts">Exertion Alerts</string>
     <string id="TextExit">Exit</string>

@@ -158,6 +158,21 @@ function buildDisplayPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     return menu;
 }
 
+class HeartRateGlyph extends WatchUi.Drawable {
+    function initialize() {
+        Drawable.initialize({:locX => 0, :locY => 0, :width => 24, :height => 24});
+    }
+    function draw(dc as Graphics.Dc) as Void {
+        if (!isVisible) { return; }
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.fillPolygon([[locX + 12, locY + 21], [locX + 3, locY + 12],
+            [locX + 2, locY + 8], [locX + 3, locY + 5], [locX + 6, locY + 3],
+            [locX + 9, locY + 3], [locX + 12, locY + 6], [locX + 15, locY + 3],
+            [locX + 18, locY + 3], [locX + 21, locY + 5], [locX + 22, locY + 8],
+            [locX + 21, locY + 12]]);
+    }
+}
+
 class TopMetricTitle extends WatchUi.Drawable {
     var app as StandaloneApp;
     function initialize(application as StandaloneApp) {
@@ -168,8 +183,16 @@ class TopMetricTitle extends WatchUi.Drawable {
         if (!isVisible) { return; }
         var center = locX + width / 2;
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(center, locY + 4, Graphics.FONT_XTINY,
-            app.dashboardMetricLabel(app.getDashboardMetric()), Graphics.TEXT_JUSTIFY_CENTER);
+        var label = app.dashboardMetricLabel(app.getDashboardMetric());
+        var heartRate = app.getDashboardMetric().equals("Heart Rate");
+        if (heartRate) {
+            var glyph = new HeartRateGlyph();
+            glyph.locX = center - (dc.getTextWidthInPixels(label, Graphics.FONT_XTINY) + 28) / 2;
+            glyph.locY = locY + 4;
+            glyph.draw(dc);
+        }
+        dc.drawText(center + (heartRate ? 14 : 0), locY + 4, Graphics.FONT_XTINY,
+            label, Graphics.TEXT_JUSTIFY_CENTER);
         var lines = app.dashboardMetricLines();
         for (var i = 0; i < lines.size(); i++) {
             dc.drawText(center, locY + 28 + i * 22, Graphics.FONT_XTINY, lines[i], Graphics.TEXT_JUSTIFY_CENTER);
@@ -195,7 +218,7 @@ class TopMetricMenu extends WatchUi.Menu2 {
         if (focus != null && getItem(focus) != null) { setFocus(focus); }
     }
     function refreshMetricReadings() as Void {
-        for (var i = 0; i < 6; i++) {
+        for (var i = 3; i < 9; i++) {
             var item = getItem(i);
             var status = topMetricChoiceStatus(app, item.getId() as String);
             if (!(item.getSubLabel() as String).equals(status)) { item.setSubLabel(status); }
@@ -215,6 +238,11 @@ function topMetricChoiceStatus(app as StandaloneApp, id as String) as String {
 }
 
 function populateTopMetricMenu(menu as WatchUi.Menu2, app as StandaloneApp) as Void {
+    addMenuEntry(menu, app.text(Rez.Strings.TopMetricPhysioMonitors),
+        app.text(app.isPhysiologicalMonitoringEnabled() ? Rez.Strings.TextOn : Rez.Strings.TextOff), :topMonitors);
+    addMenuEntry(menu, app.text(Rez.Strings.TextPhysiologicalAlerts),
+        app.text(app.isPhysiologicalAlertsEnabled() ? Rez.Strings.TextOn : Rez.Strings.TextOff), :topAlerts);
+    addMenuEntry(menu, app.text(Rez.Strings.TopMetricAlertThresholds), ">", :topAlertThresholds);
     var values = ["Exertion", "Heart Rate", "Lat/Long", "MGRS", "Skin Temp", "Steps"];
     var entries = [];
     for (var i = 0; i < values.size(); i++) {
@@ -224,13 +252,11 @@ function populateTopMetricMenu(menu as WatchUi.Menu2, app as StandaloneApp) as V
     for (var i = 0; i < entries.size(); i++) {
         var entry = entries[i] as Dictionary;
         var id = entry.get("id") as String;
-        addMenuEntry(menu, entry.get("label") as String, topMetricChoiceStatus(app, id), id);
+        if (id.equals("Heart Rate")) {
+            menu.addItem(new WatchUi.IconMenuItem(entry.get("label") as String,
+                topMetricChoiceStatus(app, id), id, new HeartRateGlyph(), null));
+        } else { addMenuEntry(menu, entry.get("label") as String, topMetricChoiceStatus(app, id), id); }
     }
-    addMenuEntry(menu, app.text(Rez.Strings.TopMetricEnableAlerts),
-        app.text(app.isPhysiologicalAlertsEnabled() ? Rez.Strings.TextOn : Rez.Strings.TextOff), :topAlerts);
-    addMenuEntry(menu, app.text(Rez.Strings.TopMetricAlertThresholds), ">", :topAlertThresholds);
-    addMenuEntry(menu, app.text(Rez.Strings.TopMetricPhysioMonitors),
-        app.text(app.isPhysiologicalMonitoringEnabled() ? Rez.Strings.TextOn : Rez.Strings.TextOff), :topMonitors);
 }
 
 class TopMetricDelegate extends WatchUi.Menu2InputDelegate {
@@ -255,7 +281,7 @@ class TopMetricDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.pushView(buildPhysiologicalAlertsMenu(app), new PhysiologicalAlertsDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (app.isDashboardMetric(id)) {
             app.setDashboardMetric(id as String);
-            for (var i = 0; i < 6; i++) {
+            for (var i = 3; i < 9; i++) {
                 var row = menu.getItem(i);
                 var key = row.getId() as String;
                 row.setSubLabel(topMetricChoiceStatus(app, key));
@@ -303,10 +329,10 @@ function buildDevicePreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function buildReportingStrategyMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu("Reporting Strategy");
+    addToggleEntry(menu, app.text(Rez.Strings.TopMetricPhysioMonitors), app.isPhysiologicalMonitoringEnabled(), :physiologicalMonitoring);
     addMenuEntry(menu, "Dynamic Reporting", app.isDynamicReportingEnabled() ? "Selected" : null, :dynamicReporting);
     addMenuEntry(menu, "Constant Reporting", !app.isDynamicReportingEnabled() ? "Selected" : null, :constantReporting);
     addMenuEntry(menu, "Save Battery on WiFi", app.getSaveBatteryOnWifiMode(), :saveBatteryOnWifi);
-    addToggleEntry(menu, "Physiological Monitoring", app.isPhysiologicalMonitoringEnabled(), :physiologicalMonitoring);
     addToggleEntry(menu, "BATDOK", app.isBatdokCotEnabled(), :batdokCot);
     return menu;
 }
@@ -545,6 +571,7 @@ function buildAtmPressureAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function buildPhysiologicalAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu(app.text(Rez.Strings.TextPhysiologicalAlerts));
+    addToggleEntry(menu, app.text(Rez.Strings.TopMetricPhysioMonitors), app.isPhysiologicalMonitoringEnabled(), :physiologicalMonitoring);
     addMenuEntry(menu, app.text(Rez.Strings.TextPhysiologicalAlerts), physiologicalAlertsLabel(app), :physiologicalAlertsToggle);
     addMenuEntry(menu, app.text(Rez.Strings.TextRestingHeartRateAlerts), null, :restingHeartRateAlerts);
     addMenuEntry(menu, app.text(Rez.Strings.TextExertionAlerts), null, :exertionAlerts);
@@ -1696,7 +1723,11 @@ class PhysiologicalAlertsDelegate extends WatchUi.Menu2InputDelegate {
 
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
-        if (id == :physiologicalAlertsToggle) {
+        if (id == :physiologicalMonitoring) {
+            app.setPhysiologicalMonitoringEnabled(!app.isPhysiologicalMonitoringEnabled());
+            item.setSubLabel(toolToggleLabel(app.isPhysiologicalMonitoringEnabled()));
+            WatchUi.requestUpdate();
+        } else if (id == :physiologicalAlertsToggle) {
             app.setPhysiologicalAlertsEnabled(!app.isPhysiologicalAlertsEnabled());
             item.setSubLabel(physiologicalAlertsLabel(app));
             WatchUi.requestUpdate();
