@@ -1,4 +1,5 @@
 import Toybox.Application;
+import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.Position;
 import Toybox.Test;
@@ -49,7 +50,7 @@ function topMetricChoicesAreExactSortedAndDoNotToggleRuntime(logger) as Boolean 
     Test.assertEqual(menu.getItem(8).getId(), :topMonitors);
     Test.assert(menu.getItem(9) == null);
     Test.assert((menu.getItem(menu.findItemById("Skin Temp")).getSubLabel() as String)
-        .find(app.text(Rez.Strings.TextUnavailable)) != null);
+        .find(app.text(monitors ? Rez.Strings.TextUnavailable : Rez.Strings.LabelDisabled)) != null);
     Test.assert(buildDisplayPreferencesMenu(app).findItemById(:topMetric) >= 0);
     app.setDashboardMetric(previous);
     return true;
@@ -72,6 +73,31 @@ function topMetricStoredSelectionMigratesAndStepsSurvives(logger) as Boolean {
     app.setDashboardMetric("Pressure");
     Test.assertEqual(app.getDashboardMetric(), "Steps");
     app.setDashboardMetric(previous);
+    return true;
+}
+
+(:test)
+function topMetricPreviewsDoNotChangeSelectionAndRefresh(logger) as Boolean {
+    var app = new TestTopMetricApp();
+    var stored = Application.Storage.getValue("dashboardMetric");
+    var selected = app.getDashboardMetric();
+    app.heartRate = 90;
+    app.steps = 1234;
+    var menu = new TopMetricMenu(app);
+    Test.assertEqual(menu.getItem(menu.findItemById("Heart Rate")).getSubLabel(), "90 BPM");
+    Test.assertEqual(menu.getItem(menu.findItemById("Steps")).getSubLabel(), "1234");
+    app.heartRate = 91;
+    var bitmap = Graphics.createBufferedBitmap({:width => 280, :height => 280});
+    menu.onUpdate((bitmap.get() as Graphics.BufferedBitmap).getDc());
+    Test.assertEqual(menu.getItem(menu.findItemById("Heart Rate")).getSubLabel(), "91 BPM");
+    app.monitoring = false;
+    menu.refreshMetricReadings();
+    Test.assertEqual(menu.getItem(menu.findItemById("Steps")).getSubLabel(), app.text(Rez.Strings.LabelDisabled));
+    Test.assertEqual(menu.getItem(menu.findItemById("Skin Temp")).getSubLabel(), app.text(Rez.Strings.LabelDisabled));
+    Test.assertEqual(menu.getItem(menu.findItemById("Lat/Long")).getSubLabel(), app.text(Rez.Strings.TextWaitingForLocation));
+    Test.assertEqual(app.getDashboardMetric(), selected);
+    if (stored == null) { Test.assert(Application.Storage.getValue("dashboardMetric") == null); }
+    else { Test.assertEqual(Application.Storage.getValue("dashboardMetric"), stored); }
     return true;
 }
 

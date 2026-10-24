@@ -255,14 +255,18 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function dashboardMetricLines() as Array<String> {
+        return dashboardMetricLinesFor(dashboardMetric);
+    }
+
+    function dashboardMetricLinesFor(metric as String) as Array<String> {
         var unavailable = text(Rez.Strings.TextUnavailable);
-        if (dashboardMetric.equals("Lat/Long") || dashboardMetric.equals("MGRS")) {
+        if (metric.equals("Lat/Long") || metric.equals("MGRS")) {
             var location = getDashboardLocation();
             if (location == null) { return [text(Rez.Strings.TextWaitingForLocation)]; }
             var coordinates = location.toDegrees();
             if (!(coordinates[0] >= -90 && coordinates[0] <= 90
                     && coordinates[1] >= -180 && coordinates[1] <= 180)) { return [unavailable]; }
-            if (dashboardMetric.equals("Lat/Long")) {
+            if (metric.equals("Lat/Long")) {
                 var degrees = location.toDegrees();
                 return [degrees[0].format("%.5f") + ",", degrees[1].format("%.5f")];
             }
@@ -273,19 +277,19 @@ class StandaloneApp extends Application.AppBase {
             var split = firstSpace + secondSpace + 1;
             return [mgrs.substring(0, split), mgrs.substring(split + 1, mgrs.length())];
         }
-        if (!isPhysiologicalMonitoringEnabled() && (dashboardMetric.equals("Exertion")
-                || dashboardMetric.equals("Heart Rate") || dashboardMetric.equals("Skin Temp")
-                || dashboardMetric.equals("Steps"))) {
+        if (!isPhysiologicalMonitoringEnabled() && (metric.equals("Exertion")
+                || metric.equals("Heart Rate") || metric.equals("Skin Temp")
+                || metric.equals("Steps"))) {
             return [text(Rez.Strings.LabelDisabled)];
         }
-        if (dashboardMetric.equals("Exertion")) {
+        if (metric.equals("Exertion")) {
             return [isExertionAvailable() ? getExertionPercent().format("%.0f") + "%" : unavailable];
         }
-        if (dashboardMetric.equals("Heart Rate")) {
+        if (metric.equals("Heart Rate")) {
             var heartRate = getHeartRate();
             return [heartRate == null ? unavailable : heartRate.toString() + " BPM"];
         }
-        if (dashboardMetric.equals("Steps")) {
+        if (metric.equals("Steps")) {
             var steps = getDashboardSteps();
             return [steps == null ? unavailable : steps.toString()];
         }
@@ -803,16 +807,7 @@ class StandaloneApp extends Application.AppBase {
             for (var index = 0; index < (stored as Array).size(); index++) {
                 var candidate = (stored as Array)[index];
                 if (!(candidate instanceof String)) { continue; }
-                var normalized = normalizeCustomManualAlert(candidate as String);
-                if (normalized == null || isBuiltInManualAlert(normalized as String)) { continue; }
-                var duplicate = false;
-                for (var existing = 0; existing < loaded.size(); existing++) {
-                    if (loaded[existing].toLower().equals((normalized as String).toLower())) {
-                        duplicate = true;
-                        break;
-                    }
-                }
-                if (!duplicate) { loaded.add(normalized as String); }
+                loaded.add(candidate as String);
             }
         }
         customManualAlerts = loaded;
@@ -820,13 +815,15 @@ class StandaloneApp extends Application.AppBase {
 
     function addCustomManualAlert(value as String) as String? {
         var normalized = normalizeCustomManualAlert(value);
-        if (normalized == null) { return "Use 1-32 characters without line breaks"; }
+        if (normalized == null) { return "Use 1-60 characters; no control characters"; }
         if (isBuiltInManualAlert(normalized as String)) { return "Alert already saved"; }
         for (var index = 0; index < customManualAlerts.size(); index++) {
-            if (customManualAlerts[index].toLower().equals((normalized as String).toLower())) {
+            var existing = normalizeCustomManualAlert(customManualAlerts[index]);
+            if (manualAlertLabelsEqual(existing == null ? customManualAlerts[index] : existing, normalized as String)) {
                 return "Alert already saved";
             }
         }
+        if (customManualAlerts.size() >= MANUAL_ALERT_MAX_SAVED) { return "20 saved alerts maximum; delete one first"; }
         var updated = getCustomManualAlerts();
         updated.add(normalized as String);
         if (!saveCustomManualAlerts(updated)) { return text(Rez.Strings.OfflineStorageFailed); }

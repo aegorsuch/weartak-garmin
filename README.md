@@ -679,8 +679,10 @@ features currently available:
 	**Settings > Display Preferences > Top Display Metric** (also available by
 	tapping the header on supported touch models) for a simple native list:
 	**Exertion**, **Heart Rate**, **Lat/Long**, **MGRS**, **Skin Temp**, **Steps**.
-	The six choices sort by their localized displayed labels; existing Exertion,
-	Heart Rate and Steps selections survive, while removed/invalid stored choices
+	The six choices sort by their localized displayed labels.
+	Each choice also previews its current reading/status without changing the
+	selected metric; updates retain native menu focus.
+	Existing Exertion, Heart Rate and Steps selections survive, while removed/invalid stored choices
 	reset to Exertion. This does not remove any underlying sensor feature.
 	Lat/Long uses signed decimal degrees (five decimals); MGRS reuses the map's
 	UTM-grid formatter and is unavailable outside 80 S–84 N. Coordinates require
@@ -886,6 +888,13 @@ this build:
 	active state remains local. Use **+** at the bottom to enter and save a custom
 	alert. Alert choices sort alphabetically by their displayed labels. The
 	**Gunshot Injury** preset is removed; **Gunshot** and **Injury** remain.
+	New custom manual alerts allow 1–60 UTF-16 code units after trimming and
+	collapsing Unicode whitespace, with at most 20 saved entries. Control
+	characters (including tabs and line breaks) are rejected, as are
+	case-insensitive duplicates and built-in alert labels. Saving never sends.
+	Previously saved strings are retained verbatim, including over-limit entries,
+	and remain individually removable; loading does not truncate or rewrite them.
+	These limits do not change chat quick replies.
 	Each saved custom alert has an adjacent red trash-icon **Delete** row. Select
 	**Manual Alert (Active)** to clear the current alert.
 	In a chat conversation, use **+** below the built-in quick replies to save a
@@ -1027,6 +1036,13 @@ are sorted together by their displayed labels, case-insensitively. The plugin
 resource strings provide English fallbacks in all locales. `PluginsTests.mc`
 covers labels, repeated inert selections, Sensor Manager's default-off persisted
 toggle, and mixed-case sorting alongside existing entries.
+
+Existing catalog rows use original 24px functional glyphs: Commands megaphone,
+Ditto linked nodes (the existing Edge Sync entry), Everywhere Comms globe,
+GoTenna/Somewear radio, and Sensor Manager waveform. These are neutral native
+fallbacks, not brand-logo reproductions. MOPP retains its mask and DataSync its
+separate sync glyph. Whole-row selection, off toggles and capability labels
+are unchanged; icons do not activate paused Commands or placeholder integrations.
 
 ### Manual MOPP / PPE status
 
