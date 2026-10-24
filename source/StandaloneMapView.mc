@@ -908,6 +908,7 @@ class StandaloneMapView extends WatchUi.MapView {
             "team" => team == null ? "" : trimMapText(team),
             "role" => role == null ? "" : trimMapText(role),
             "isPoint" => isPoint, "isAlert" => isAlert,
+            "isCamera" => isIncomingCamera(cotType, metadata),
             "isUser" => isIncomingUser(cotType, metadata),
             "source" => incomingPointSource(metadata),
             "senderUID" => incomingPointSender(metadata),

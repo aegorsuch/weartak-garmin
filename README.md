@@ -123,6 +123,16 @@ glyph is amber. Native rows are used on every supported Garmin: two independent 
 row background/border are **not** implemented on Garmin's Menu2. Native focus and
 row colors remain device-specific; the amber glyph identifies the active row.
 
+Actual video/camera entries use a compact video-camera glyph. Classification
+requires the exact CoT type `b-i-v` or a phone-normalized `__video` dictionary
+(presence-only `{}`; no stream URL or credentials). The map record retains only
+a derived camera flag; later updates without video evidence clear it. Names,
+distance subtitles, tracking and removal actions are unchanged, and emergencies
+retain their alert priority. Names containing "camera", generic sensors, UAVs and
+SPI alone are not camera evidence. Older companions that omit video metadata
+cannot identify video-bearing ordinary tracks; a compatible bridge must forward
+the agreed signal. This adds no player, stream connection or KLV ingestion.
+
 Selecting a row opens the approved Garmin action-menu fallback:
 
 - **Show on map** (grey crosshair): centers tightly on a point without changing

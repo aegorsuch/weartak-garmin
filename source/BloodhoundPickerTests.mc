@@ -6,6 +6,53 @@ import Toybox.Test;
 import Toybox.WatchUi;
 
 (:test)
+function pickerCameraRequiresExactTypeOrVideoDetail(logger) as Boolean {
+    Test.assert(isIncomingCamera("b-i-v", {}));
+    Test.assert(isIncomingCamera("a-f-A-M-F-Q", {"__video" => {}}));
+    var notCameras = ["b-i-v-other", "b-i-video", "b-m-p-s-p-i", "a-f-G-E-S",
+        "a-f-A-M-F-Q", "a-f-G-U-C"];
+    for (var i = 0; i < notCameras.size(); i++) {
+        Test.assert(!isIncomingCamera(notCameras[i], {"callSign" => "Video Camera", "sensor" => {}}));
+        Test.assert(!isIncomingCamera(notCameras[i], {"__video" => true}));
+        Test.assert(!isIncomingCamera(notCameras[i], {"__video" => "rtsp://ignored"}));
+    }
+    var map = new PickerMapCapture();
+    map.currentPosition = RouteNavigation.location({"lat" => 0.0, "lon" => 0.0});
+    map.updateIncomingCot("camera", 0.0, 0.01, "b-i-v", "Camera 1", null, null, {"isPoint" => true});
+    Test.assertEqual(pickerTargetKind(map, "cot-camera"), :camera);
+    var row = createMenu("Picker");
+    addPickerTarget(row, map, "cot-camera");
+    Test.assertEqual(row.getItem(0).getLabel(), "Camera 1");
+    Test.assertEqual((row.getItem(0).getIcon() as PickerTypeGlyph).kind, :camera);
+    Test.assertEqual((row.getItem(0).getIcon() as PickerTypeGlyph).width, 24);
+    var subtitle = row.getItem(0).getSubLabel();
+    Test.assertEqual(buildPickerTargetActions(map, "cot-camera").getItem(0).getId(), :showOnMap);
+    Test.assert(applyPickerTargetAction(map, "cot-camera", :track));
+    Test.assert(pickerTargetActive(map, "cot-camera"));
+    Test.assertEqual(pickerTargetSubtitle(map, "cot-camera"), subtitle);
+    map.updateIncomingCot("camera", 0.0, 0.01, "a-f-G", "Camera 1", null, null, {"isPoint" => true});
+    Test.assertEqual(pickerTargetKind(map, "cot-camera"), :point);
+    map.updateIncomingCot("camera", 0.0, 0.01, "a-f-G", "Camera 1", null, null,
+        {"isPoint" => true, "__video" => {}});
+    Test.assertEqual(pickerTargetKind(map, "cot-camera"), :camera);
+    Test.assert(!map.incomingDetails.get("cot-camera").hasKey("__video"));
+    var relay = new TestPointRelay();
+    relay.incomingCotCallback = map.method(:updateIncomingCot);
+    relay.forwardEntity({"uid" => "wire-video", "type" => "a-f-A-M-F-Q",
+        "lat" => 0.0, "lon" => 0.01, "__video" => {}});
+    Test.assertEqual(pickerTargetKind(map, "cot-wire-video"), :camera);
+    relay.forwardEntity({"uid" => "wire-alias", "type" => "b-i-v",
+        "lat" => 0.0, "lon" => 0.01, "isPoint" => true});
+    Test.assertEqual(pickerTargetKind(map, "cot-wire-alias"), :camera);
+    relay.forwardEntity({"uid" => "nested-only", "type" => "a-f-G",
+        "lat" => 0.0, "lon" => 0.01, "isPoint" => true, "detail" => {"__video" => {}}});
+    Test.assertEqual(pickerTargetKind(map, "cot-nested-only"), :point);
+    map.updateIncomingCot("alert-video", 0.0, 0.02, "b-a-o", "Alert", null, null, {"__video" => {}});
+    Test.assertEqual(pickerTargetKind(map, "cot-alert-video"), :alert);
+    return true;
+}
+
+(:test)
 class PickerMapCapture extends TestMapSelectionView {
     var areaApplied = 0;
     function initialize() { TestMapSelectionView.initialize(); areaApplied = 0; }
