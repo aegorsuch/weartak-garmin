@@ -848,12 +848,18 @@ this build:
 	type, including **911 Alert**, **Geofence Breached**, **In Contact**, and
 	**Ring The Bell**. It is sent through an active Garmin relay; without one, its
 	active state remains local. Use **+** at the bottom to enter and save a custom
-	alert; saved custom alerts can be deleted from the alert menu. Select
+	alert. Alert choices sort alphabetically by their displayed labels. The
+	**Gunshot Injury** preset is removed; **Gunshot** and **Injury** remain.
+	Each saved custom alert has an adjacent red trash-icon **Delete** row. Select
 	**Manual Alert (Active)** to clear the current alert.
 	In a chat conversation, use **+** below the built-in quick replies to save a
 	custom quick-reply message without sending it. Saved messages appear as
-	single-line rows, can be selected to send or deleted, and are available in
-	every conversation.
+	single-line rows, sorted alphabetically with the preset replies, and are
+	available in every conversation. Select the message row to send it or its
+	adjacent red trash-icon **Delete** row to remove it without sending.
+	Native Garmin Menu2 does not expose separate trailing-icon controls, so
+	these dedicated delete rows work with both touch and watch buttons; no
+	long press or deletion submenu is required.
 7. To configure Sit(x), open **Network Preferences** > **Sit(x) TAK**, turn on
 	TAK, enter the organization under **Address**, authorize with the displayed
 	code, and select a permitted **Group**. **Sit(x) State** will say that the

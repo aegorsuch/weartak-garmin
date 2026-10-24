@@ -38,6 +38,26 @@ function addMenuEntry(menu as WatchUi.Menu2, label as String, subLabel, id) as V
     menu.addItem(new WatchUi.MenuItem(label, subLabel, id, null));
 }
 
+function sortMenuEntriesByLabel(entries as Array) as Void {
+    for (var index = 1; index < entries.size(); index++) {
+        var candidate = entries[index] as Dictionary;
+        var label = (candidate.get("label") as String).toLower();
+        var insertion = index;
+        while (insertion > 0
+                && ((entries[insertion - 1] as Dictionary).get("label") as String).toLower().compareTo(label) > 0) {
+            entries[insertion] = entries[insertion - 1];
+            insertion--;
+        }
+        entries[insertion] = candidate;
+    }
+}
+
+function addSavedEntryDelete(menu as WatchUi.Menu2, label as String, id as Dictionary) as Void {
+    // Menu2 has no independently selectable trailing control; keep delete beside its entry in the list.
+    menu.addItem(new WatchUi.IconMenuItem(WatchUi.loadResource(Rez.Strings.TextDelete) + " " + label,
+        null, id, new PickerDeleteGlyph(), null));
+}
+
 function addLabelValueEntry(menu as WatchUi.Menu2, label as String, value as String, id as Symbol) as Void {
     addMenuEntry(menu, label, value, id);
 }

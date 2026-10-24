@@ -96,10 +96,31 @@ function customManualAlertsPersistAndDelete(logger) as Boolean {
     Test.assert(app.getCustomManualAlerts().indexOf(label) >= 0);
     Test.assert(app.addCustomManualAlert(label.toLower()) != null);
     Test.assert(app.addCustomManualAlert("   ") != null);
-    var deleteMenu = buildCustomAlertDeletionMenu(app);
-    Test.assert(deleteMenu.findItemById(:deleteCustomAlert) >= 0);
-    Test.assert(app.removeCustomManualAlert(label));
+    var menu = buildSosMenu(app);
+    var deletion = null;
+    for (var index = 0; menu.getItem(index) != null; index++) {
+        var item = menu.getItem(index);
+        if (item.getId() == :customAlert && (item.getLabel() as String).equals(label)) {
+            deletion = menu.getItem(index + 1);
+            break;
+        }
+    }
+    Test.assert(deletion instanceof Toybox.WatchUi.IconMenuItem);
+    Test.assertEqual((deletion.getId() as Dictionary).get("deleteAlert"), label);
+    Test.assertEqual(deletion.getLabel(), Toybox.WatchUi.loadResource(Rez.Strings.TextDelete) + " " + label);
+    Test.assert(deletion.getSubLabel() == null);
+    Test.assert(menu.findItemById(:deleteCustomAlerts) < 0);
+    var client = app.getTakClient();
+    var wasAlerting = client.isAlerting();
+    var previousType = client.getAlertType();
+    var queuedCount = client.pointReplies.replies.size();
+    new SosMenuDelegate(app, false).onSelect(deletion);
     Test.assert(app.getCustomManualAlerts().indexOf(label) < 0);
+    app.loadCustomManualAlerts();
+    Test.assert(app.getCustomManualAlerts().indexOf(label) < 0);
+    Test.assertEqual(client.isAlerting(), wasAlerting);
+    Test.assertEqual(client.getAlertType(), previousType);
+    Test.assertEqual(client.pointReplies.replies.size(), queuedCount);
     if (alreadyExisted) { Test.assert(app.addCustomManualAlert(label) == null); }
     return true;
 }
