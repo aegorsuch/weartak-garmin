@@ -79,8 +79,12 @@ try {
     $jungle = Join-Path $root "monkey.jungle"
     $program = Join-Path $OutputDirectory "tests.prg"
     Invoke-Compiler @("-f", $jungle, "-d", $TestDevice, "-t", "-o", $program, "-y", $key)
-    if (Get-Process -Name simulator -ErrorAction SilentlyContinue) {
+    $existingSimulators = @(Get-CimInstance Win32_Process -Filter "Name = 'simulator.exe'")
+    if ($existingSimulators | Where-Object { $_.ThreadCount -gt 0 }) {
         throw "Use a dedicated runner with no existing Garmin simulator session."
+    }
+    if ($existingSimulators.Count -gt 0) {
+        Write-Warning "Ignoring exited zero-thread simulator process entries; no simulator is running."
     }
     $simulator = Start-Process (Join-Path $SdkPath "bin\simulator.exe") -PassThru
     Start-Sleep -Seconds 5

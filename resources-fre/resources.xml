@@ -132,4 +132,10 @@
     <string id="PickerShowOnMap">Afficher sur la carte</string>
     <string id="PickerDetails">Détails</string>
     <string id="PickerRemaining">$1$ restants</string>
+    <string id="TopMetricAlertThresholds">Alert thresholds</string>
+    <string id="TopMetricEnableAlerts">Enable alerts</string>
+    <string id="TopMetricPhysioMonitors">Physiological monitors</string>
+    <string id="TopMetricSkinTemp">Skin Temp</string>
+    <string id="TopMetricSteps">Steps</string>
+    <string id="TopMetricTitle">Top Display Metric</string>
 </resources>

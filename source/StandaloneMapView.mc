@@ -2018,7 +2018,7 @@ class StandaloneMapView extends WatchUi.MapView {
         if (latitude < -80 || latitude > 84) {
             return "MGRS unavailable";
         }
-        var zone = Math.floor((longitude + 180) / 6).toNumber() + 1;
+        var zone = clamp(Math.floor((longitude + 180) / 6).toNumber() + 1, 1, 60);
         if (latitude >= 56 && latitude < 64 && longitude >= 3 && longitude < 12) {
             zone = 32;
         }

@@ -168,4 +168,10 @@
     <string id="PickerShowOnMap">Zobraziť na mape</string>
     <string id="PickerDetails">Podrobnosti</string>
     <string id="PickerRemaining">Zostáva $1$</string>
+    <string id="TopMetricAlertThresholds">Alert thresholds</string>
+    <string id="TopMetricEnableAlerts">Enable alerts</string>
+    <string id="TopMetricPhysioMonitors">Physiological monitors</string>
+    <string id="TopMetricSkinTemp">Skin Temp</string>
+    <string id="TopMetricSteps">Steps</string>
+    <string id="TopMetricTitle">Top Display Metric</string>
 </resources>

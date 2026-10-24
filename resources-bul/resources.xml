@@ -166,4 +166,10 @@
     <string id="PickerShowOnMap">Покажи на картата</string>
     <string id="PickerDetails">Подробности</string>
     <string id="PickerRemaining">Остават $1$</string>
+    <string id="TopMetricAlertThresholds">Alert thresholds</string>
+    <string id="TopMetricEnableAlerts">Enable alerts</string>
+    <string id="TopMetricPhysioMonitors">Physiological monitors</string>
+    <string id="TopMetricSkinTemp">Skin Temp</string>
+    <string id="TopMetricSteps">Steps</string>
+    <string id="TopMetricTitle">Top Display Metric</string>
 </resources>

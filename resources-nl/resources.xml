@@ -132,4 +132,10 @@
     <string id="PickerShowOnMap">Toon op kaart</string>
     <string id="PickerDetails">Details</string>
     <string id="PickerRemaining">Nog $1$</string>
+    <string id="TopMetricAlertThresholds">Alert thresholds</string>
+    <string id="TopMetricEnableAlerts">Enable alerts</string>
+    <string id="TopMetricPhysioMonitors">Physiological monitors</string>
+    <string id="TopMetricSkinTemp">Skin Temp</string>
+    <string id="TopMetricSteps">Steps</string>
+    <string id="TopMetricTitle">Top Display Metric</string>
 </resources>
