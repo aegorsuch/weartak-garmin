@@ -26,6 +26,7 @@ function pickerTargetKind(map as StandaloneMapView, id as String) as Symbol {
     var details = map.incomingDetails.get(id);
     if (!(details instanceof Dictionary)) { return :marker; }
     if (details.get("isAlert") == true) { return :alert; }
+    if (details.get("isCamera") == true) { return :camera; }
     return details.get("isPoint") == true ? :point : :contact;
 }
 
@@ -46,6 +47,9 @@ function pickerTargetSubtitle(map as StandaloneMapView, id as String) as String 
             + pickerDistance(map, RouteNavigation.distance(map.currentPosition, RouteNavigation.location(points[nearest])));
     }
     var kind = pickerTargetKind(map, id);
+    if (kind == :camera) {
+        kind = map.incomingDetails.get(id).get("isPoint") == true ? :point : :contact;
+    }
     var label = WatchUi.loadResource(kind == :marker ? Rez.Strings.PickerMarker
         : kind == :contact ? Rez.Strings.PickerContact : kind == :alert ? Rez.Strings.IncomingAlertLabel : Rez.Strings.PickerPoint);
     var location = map.pointLocations.get(id);
@@ -72,6 +76,11 @@ class PickerTypeGlyph extends WatchUi.Drawable {
             dc.drawLine(locX + 4, locY + 16, locX + 9, locY + 6);
             dc.drawLine(locX + 9, locY + 6, locX + 15, locY + 18);
             dc.drawLine(locX + 15, locY + 18, locX + 20, locY + 8);
+        } else if (kind == :camera) {
+            dc.drawRectangle(locX + 4, locY + 7, 12, 10);
+            dc.drawLine(locX + 16, locY + 10, locX + 20, locY + 7);
+            dc.drawLine(locX + 20, locY + 7, locX + 20, locY + 17);
+            dc.drawLine(locX + 20, locY + 17, locX + 16, locY + 14);
         } else if (kind == :contact) {
             dc.fillCircle(locX + 12, locY + 7, 4); dc.fillRectangle(locX + 7, locY + 14, 10, 6);
         } else { dc.fillCircle(locX + 12, locY + 12, 5); }

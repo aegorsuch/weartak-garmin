@@ -920,6 +920,9 @@ class StandaloneMapView extends WatchUi.MapView {
             "stale" => false,
             "lastKnownLocation" => location
         });
+        if (isIncomingCamera(cotType, metadata)) {
+            incomingDetails.get(markerId).put("isCamera", true);
+        }
         if (location != null) {
             pointLocations.put(markerId, location);
         } else {

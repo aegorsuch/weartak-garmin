@@ -1,5 +1,9 @@
 import Toybox.Lang;
 
+function isIncomingCamera(cotType as String, metadata as Dictionary) as Boolean {
+    return cotType.equals("b-i-v") || metadata.get("__video") instanceof Dictionary;
+}
+
 function isIncomingUser(cotType as String, metadata as Dictionary) as Boolean {
     return !isIncomingAlert(cotType, metadata)
         && incomingCotSymbol(cotType).length() == 0
