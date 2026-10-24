@@ -450,8 +450,7 @@ function offlineLocationPendingPoint(logger) as Boolean {
     Test.assertEqual(relay.pointReplies.replies[0].get("messageId"), messageId);
     map.deletePoint(id);
     Test.assert(!map.pointLocations.hasKey(id));
-    Test.assertEqual(relay.pointReplies.replies.size(), 1);
-    Test.assertEqual(relay.pointReplies.replies[0].get("msgType"), "marker_delete");
+    Test.assertEqual(relay.pointReplies.replies.size(), 0);
     relay.pointReplies.replies = [];
     relay.savePointReplies();
     map.takClient = original;

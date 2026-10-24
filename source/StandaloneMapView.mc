@@ -2249,6 +2249,7 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function queuePoint(location, type, label, droppedAt as String, atSelf as Boolean) as Boolean {
+        label = trimNewPointTitle(label as String);
         var id = "point-" + nextPointNumber.toString();
         if (takClient == null) { return false; }
         var phoneOwned = atSelf && takClient.phoneLocationSupported;
@@ -2360,6 +2361,20 @@ class StandaloneMapView extends WatchUi.MapView {
     function newPointTitle(droppedAt as String) as String {
         var callsign = application.getCallsign();
         return callsign.length() == 0 ? droppedAt : callsign + "_" + droppedAt;
+    }
+
+    function trimNewPointTitle(value as String) as String {
+        var chars = value.toCharArray();
+        var end = chars.size();
+        while (end > 0) {
+            var code = chars[end - 1].toNumber();
+            if (!((code >= 9 && code <= 13) || code == 0x20 || code == 0x85
+                    || code == 0xa0 || code == 0x1680 || (code >= 0x2000 && code <= 0x200a)
+                    || code == 0x2028 || code == 0x2029 || code == 0x202f
+                    || code == 0x205f || code == 0x3000)) { break; }
+            end--;
+        }
+        return value.substring(0, end);
     }
 
     function utcTimeLabel(moment as Time.Moment) as String {
@@ -2717,7 +2732,8 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function deletePoint(id) as Boolean {
-        if (id == null || pointLocations == null || pointLocations.hasKey(id) == false) {
+        if (id == null || pointLocations == null || pointLocations.hasKey(id) == false
+                || !pointDetails.hasKey(id) || pointOrder.indexOf(id) < 0) {
             WatchUi.showToast(WatchUi.loadResource(Rez.Strings.IncomingPointUnavailable), null);
             return false;
         }
@@ -2761,14 +2777,18 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         if (!complete) { return false; }
 
+        clearPersistedDroppedWaypoints();
+        WatchUi.requestUpdate();
+        return true;
+    }
+
+    function clearPersistedDroppedWaypoints() as Void {
         var waypoints = PersistedContent.getAppWaypoints();
         var waypoint = waypoints.next();
         while (waypoint != null) {
             waypoint.remove();
             waypoint = waypoints.next();
         }
-        WatchUi.requestUpdate();
-        return true;
     }
 
     function incomingEntityNow() as Number { return Time.now().value(); }

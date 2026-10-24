@@ -930,9 +930,27 @@ the phone must have a valid location fix. A successful watch-side transmit is
 not an end-to-end delivery acknowledgement; validate alert and cancellation
 handling with the companion integration on physical devices.
 
-Marker create and update operations use the `marker` envelope when relay plumbing
-is available. Deletion uses a `marker_delete` envelope with the Garmin marker UID,
-for example `garmin-marker-point-1`; full ATAK handling remains future work.
+Marker create and update operations use the durable `marker` envelope when relay
+plumbing is available. New pin titles have trailing whitespace removed at creation;
+existing titles and remarks are not rewritten.
+
+**Delete / Clear All** removes only this watch's own dropped pins. Pending marker
+creates/updates are canceled durably before local removal, so they cannot later
+recreate the deleted pin. Storage failures leave the pin available to retry.
+Received markers remain on their separate local-dismissal path and never send a
+remote deletion. The own-pin path checks local ownership, not merely map presence.
+
+With a compatible connected phone advertising `relay_status.markerDelete:1`,
+own-pin deletion also attempts an immediate best-effort `marker_delete` with
+`{uid:"garmin-marker-<localId>",relaySession,messageId,createdAt}`. Deletes are
+never queued/retried; older queued delete intents are discarded on restore.
+Unsupported/disconnected bridges perform local removal only. A transport ACK is
+**not** confirmation of remote deletion. Companion p53 and earlier acknowledge
+this message but do not delete anything; a matching newer receiver is required.
+That receiver must validate the current authorized watch/session and its exact
+registered marker ownership, never a UID prefix alone. Its ownership records are
+bounded and process-local: a phone restart fails closed until marker creation is
+registered again. No remote delivery guarantee is made.
 
 ### Incoming-point workflow and reply handoff
 
@@ -1057,7 +1075,8 @@ Open **Settings > Tool Preferences > Plugins > MOPP**, identified by an original
 protective-mask glyph. **PPE Status** shows the saved manual value. Choose
 **None** (unset, not MOPP 0) or **MOPP 0** through **MOPP 4**, then select
 **Save PPE Status**. The selected marker is a draft until saved; Cancel or Back
-discards unsaved choices. The saved value survives restarts.
+discards unsaved choices. The saved value survives restarts locally; when enabled,
+a compatible connected phone relay can also share it as described below.
 
 This is explicitly **manual**: no remote acknowledgment is implied,
 and no commanded level, CBR detection, filter-life
