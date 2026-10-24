@@ -908,7 +908,6 @@ class StandaloneMapView extends WatchUi.MapView {
             "team" => team == null ? "" : trimMapText(team),
             "role" => role == null ? "" : trimMapText(role),
             "isPoint" => isPoint, "isAlert" => isAlert,
-            "isCamera" => isIncomingCamera(cotType, metadata),
             "isUser" => isIncomingUser(cotType, metadata),
             "source" => incomingPointSource(metadata),
             "senderUID" => incomingPointSender(metadata),
@@ -921,6 +920,9 @@ class StandaloneMapView extends WatchUi.MapView {
             "stale" => false,
             "lastKnownLocation" => location
         });
+        if (isIncomingCamera(cotType, metadata)) {
+            incomingDetails.get(markerId).put("isCamera", true);
+        }
         if (location != null) {
             pointLocations.put(markerId, location);
         } else {
