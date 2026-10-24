@@ -117,6 +117,7 @@ function buildPointManagementMenu() as WatchUi.Menu2 {
 function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu(app.text(Rez.Strings.TextSettings));
     addMenuEntry(menu, "Callsign and Device Preferences", app.isPhoneManagedSettings() ? "Phone Managed" : null, :devicePreferences);
+    addMenuEntry(menu, "Display Preferences", null, :displayPreferences);
     addMenuEntry(menu, app.text(Rez.Strings.TextNetworkPreferences),
         app.isNetworkPreferencesLocked() || app.isPhoneManagedSettings() ? "Locked" : null, :networkPreferences);
     addMenuEntry(menu, app.text(Rez.Strings.TextAlertingPreferences), null, :alertingPreferences);
@@ -124,6 +125,21 @@ function buildSettingsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     addMenuEntry(menu, "Admin Preferences", null, :adminPreferences);
     addMenuEntry(menu, "Developer Preferences", null, :developerPreferences);
     addMenuEntry(menu, "Version " + app.getAppVersion(), null, :appVersion);
+    return menu;
+}
+
+function buildDisplayPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = createMenu("Display Preferences");
+    addMenuEntry(menu, "Units", app.distanceUnitsSummary(), :distanceUnits);
+    return menu;
+}
+
+function buildDistanceUnitsMenu(app as StandaloneApp) as WatchUi.Menu2 {
+    var menu = createMenu("Units");
+    addMenuEntry(menu, "Metric",
+        app.getDistanceUnitPreference().equals("Metric") ? "Selected" : null, :metric);
+    addMenuEntry(menu, "Imperial",
+        app.getDistanceUnitPreference().equals("Imperial") ? "Selected" : null, :imperial);
     return menu;
 }
 
@@ -646,14 +662,19 @@ function buildSensorManagerMenu(app as StandaloneApp) as WatchUi.Menu2 {
 function buildBloodhoundMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu(app.text(Rez.Strings.TextBloodhoundCompass));
     addToggleEntry(menu, app.text(Rez.Strings.TextProximityVibration), app.isBloodhoundProximityVibrationEnabled(), :bloodhoundProximityVibrationToggle);
-    addLabelValueEntry(menu, app.text(Rez.Strings.TextProximityRadius), app.getBloodhoundProximityRadius().toString() + " meters", :bloodhoundProximityRadius);
+    addLabelValueEntry(menu, app.text(Rez.Strings.TextProximityRadius),
+        app.formatDistance(app.getBloodhoundProximityRadius(), 0), :bloodhoundProximityRadius);
     addLabelValueEntry(menu, app.text(Rez.Strings.TextProximityIntensity), app.getBloodhoundProximityIntensity(), :bloodhoundProximityIntensity);
     return menu;
 }
 
 function buildBloodhoundRadiusMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu(app.text(Rez.Strings.TextProximityRadius));
-    addAlertValues(menu, 10, 200, 10);
+    var value = 10;
+    while (value <= 200) {
+        addMenuEntry(menu, app.formatDistance(value, 0), null, value);
+        value += 10;
+    }
     return menu;
 }
 
@@ -786,6 +807,9 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
         if (id == :devicePreferences) {
             var deviceMenu = buildDevicePreferencesMenu(app);
             WatchUi.pushView(deviceMenu, new DevicePreferencesDelegate(app, deviceMenu), WatchUi.SLIDE_LEFT);
+        } else if (id == :displayPreferences) {
+            var displayMenu = buildDisplayPreferencesMenu(app);
+            WatchUi.pushView(displayMenu, new DisplayPreferencesDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (id == :networkPreferences) {
             if (app.isNetworkPreferencesLocked() || app.isPhoneManagedSettings()) {
                 WatchUi.showToast("Network settings are locked", null);
@@ -817,6 +841,47 @@ class SettingsMenuDelegate extends WatchUi.Menu2InputDelegate {
                 WatchUi.switchToView(buildSettingsMenu(app), new SettingsMenuDelegate(app), WatchUi.SLIDE_LEFT);
             }
         }
+    }
+}
+
+class DisplayPreferencesDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+
+    function initialize(application as StandaloneApp) {
+        Menu2InputDelegate.initialize();
+        app = application;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        if (item.getId() == :distanceUnits) {
+            var unitsMenu = buildDistanceUnitsMenu(app);
+            WatchUi.pushView(unitsMenu, new DistanceUnitsDelegate(app, unitsMenu, item), WatchUi.SLIDE_LEFT);
+        }
+    }
+}
+
+class DistanceUnitsDelegate extends WatchUi.Menu2InputDelegate {
+    var app as StandaloneApp;
+    var menu as WatchUi.Menu2;
+    var parentItem as WatchUi.MenuItem;
+
+    function initialize(application as StandaloneApp, unitsMenu as WatchUi.Menu2, displayItem as WatchUi.MenuItem) {
+        Menu2InputDelegate.initialize();
+        app = application;
+        menu = unitsMenu;
+        parentItem = displayItem;
+    }
+
+    function onSelect(item as WatchUi.MenuItem) as Void {
+        var selected = item.getId();
+        var units = selected == :metric ? "Metric" : selected == :imperial ? "Imperial" : null;
+        if (units == null || !app.setDistanceUnitPreference(units as String)) { return; }
+        var metricItem = menu.getItem(menu.findItemById(:metric));
+        var imperialItem = menu.getItem(menu.findItemById(:imperial));
+        metricItem.setSubLabel(units.equals("Metric") ? "Selected" : null);
+        imperialItem.setSubLabel(units.equals("Imperial") ? "Selected" : null);
+        parentItem.setSubLabel(app.distanceUnitsSummary());
+        WatchUi.requestUpdate();
     }
 }
 
@@ -1734,7 +1799,7 @@ class BloodhoundValueDelegate extends WatchUi.Menu2InputDelegate {
         var value = item.getId();
         if (setting == :radius) {
             app.setBloodhoundProximityRadius(value as Number);
-            parentItem.setSubLabel((value as Number).toString() + " meters");
+            parentItem.setSubLabel(app.formatDistance(value as Number, 0));
         } else {
             app.setBloodhoundProximityIntensity(value as String);
             parentItem.setSubLabel(value as String);

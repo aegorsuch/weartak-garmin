@@ -11,8 +11,8 @@ function pickerTargetActive(map as StandaloneMapView, id as String) as Boolean {
     return id.equals(map.followingRouteId) || map.isBloodhoundTarget(id);
 }
 
-function pickerDistance(meters) as String {
-    return meters < 1000 ? meters.toNumber().toString() + " m" : (meters / 1000.0).format("%.1f") + " km";
+function pickerDistance(map as StandaloneMapView, meters) as String {
+    return map.application.formatDistance(meters, 1);
 }
 
 function pickerTargetTitle(map as StandaloneMapView, id as String) as String {
@@ -36,21 +36,21 @@ function pickerTargetSubtitle(map as StandaloneMapView, id as String) as String 
         if (id.equals(map.followingRouteId)) {
             var remaining = map.currentPosition == null ? WatchUi.loadResource(Rez.Strings.RouteNeedsLocation)
                 : Lang.format(WatchUi.loadResource(Rez.Strings.PickerRemaining),
-                    [pickerDistance(RouteNavigation.remaining(points, map.followingRouteIndex, map.currentPosition))]);
+                    [pickerDistance(map, RouteNavigation.remaining(points, map.followingRouteIndex, map.currentPosition))]);
             return map.routeProgress() + " \u00b7 " + remaining;
         }
         var label = WatchUi.loadResource(Rez.Strings.PickerRoute) + " \u00b7 "
             + Lang.format(WatchUi.loadResource(Rez.Strings.RoutePointCount), [points.size()]);
         var nearest = RouteNavigation.nearest(points, map.currentPosition);
         return nearest == null ? label : label + " \u00b7 "
-            + pickerDistance(RouteNavigation.distance(map.currentPosition, RouteNavigation.location(points[nearest])));
+            + pickerDistance(map, RouteNavigation.distance(map.currentPosition, RouteNavigation.location(points[nearest])));
     }
     var kind = pickerTargetKind(map, id);
     var label = WatchUi.loadResource(kind == :marker ? Rez.Strings.PickerMarker
         : kind == :contact ? Rez.Strings.PickerContact : kind == :alert ? Rez.Strings.IncomingAlertLabel : Rez.Strings.PickerPoint);
     var location = map.pointLocations.get(id);
     return map.currentPosition == null || location == null ? label : label + " \u00b7 "
-        + pickerDistance(RouteNavigation.distance(map.currentPosition, location));
+        + pickerDistance(map, RouteNavigation.distance(map.currentPosition, location));
 }
 
 class PickerTypeGlyph extends WatchUi.Drawable {

@@ -215,10 +215,42 @@ function manualAlertRepeatedPressKeepsEventIdentity(logger) as Boolean {
     Test.assertEqual(relay.envelopes.size(), 3);
     var cancelId = relay.pointReplyInFlight as String;
     Test.assertEqual((relay.envelopes[2].get("payload") as Dictionary).get("state"), "CANCEL");
+    Test.assertEqual((relay.envelopes[0].get("payload") as Dictionary).get("type"), "b-a-o-tbl");
+    Test.assertEqual((relay.envelopes[0].get("payload") as Dictionary).get("category"), "Manual Alert");
+    Test.assertEqual((relay.envelopes[0].get("payload") as Dictionary).get("priority"), 1);
+    Test.assertEqual((relay.envelopes[2].get("payload") as Dictionary).get("type"), "b-a-o-can");
+    Test.assertEqual((relay.envelopes[2].get("payload") as Dictionary).get("priority"), 1);
+    Test.assertEqual((relay.envelopes[0].get("payload") as Dictionary).get("uid"),
+        (relay.envelopes[2].get("payload") as Dictionary).get("uid"));
     relay.result(cancelId, true);
     Test.assert(relay.activateManualAlert("911 Alert"));
     Test.assertEqual(relay.envelopes.size(), 4);
     Test.assert(!(relay.pointReplyInFlight as String).equals(id));
+    return true;
+}
+
+(:test)
+function manualAlertKindsAndPriorityAreStable(logger) as Boolean {
+    var alertTypes = ["911 Alert", "Gate Runner", "Geofence Breached", "Gunshot", "Gunshot Injury",
+        "In Contact", "Injury", "Ring The Bell", "UAS", "Vehicle", "Custom Alert"];
+    var cotTypes = ["b-a-o-tbl", "b-a-o", "b-a-g", "b-a-o", "b-a-o",
+        "b-a-o-opn", "b-a-o", "b-a-o-pan", "b-a-o", "b-a-o", "b-a-o"];
+    for (var index = 0; index < alertTypes.size(); index++) {
+        var relay = new TestReliableRelay();
+        relay.pointReplies.replies = [];
+        relay.relayResultRequired = true;
+        Test.assert(relay.activateManualAlert(alertTypes[index]));
+        for (var repeat = 0; repeat < 5; repeat++) {
+            Test.assert(relay.activateManualAlert(alertTypes[index]));
+        }
+        Test.assertEqual(relay.envelopes.size(), 1);
+        Test.assertEqual(relay.pointReplies.replies.size(), 1);
+        var payload = relay.envelopes[0].get("payload") as Dictionary;
+        Test.assertEqual(payload.get("alertType"), alertTypes[index]);
+        Test.assertEqual(payload.get("type"), cotTypes[index]);
+        Test.assertEqual(payload.get("category"), "Manual Alert");
+        Test.assertEqual(payload.get("priority"), 1);
+    }
     return true;
 }
 
