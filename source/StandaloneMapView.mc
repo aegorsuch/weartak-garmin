@@ -52,6 +52,10 @@ class StandaloneMapView extends WatchUi.MapView {
     var routesVisible as Boolean = true;
     var followingRouteId as String? = null;
     var followingRouteIndex as Number = 0;
+    var followingRoutePhoneOwned as Boolean = false;
+    var applyingPhoneRoute as Boolean = false;
+    var reachedRoutePoints as Array<Number> = [];
+    var routePositionUsable as Boolean = false;
     var routeFollowMenu as RouteFollowMenu? = null;
     var pendingSelfPoints as Array<Dictionary> = [];
 
@@ -60,16 +64,23 @@ class StandaloneMapView extends WatchUi.MapView {
         var route = routeStore.route(id);
         if (route == null) { routeUnavailable(); return false; }
         var points = route.get("points") as Array;
-        var index = nearest ? RouteNavigation.nearest(points, currentPosition) : 0;
+        var index = nearest ? RouteNavigation.nearestObjective(points, currentPosition) : RouteNavigation.nextObjective(points, 0);
         if (index == null) {
             WatchUi.showToast(WatchUi.loadResource(Rez.Strings.RouteNeedsLocation), null);
             return false;
         }
         setBloodhoundPoint(null);
+        notifyBloodhoundChanged();
         followingRouteId = id;
         followingRouteIndex = index;
+        followingRoutePhoneOwned = takClient != null && takClient.routeNavigationSync.connected;
+        if (followingRoutePhoneOwned && !takClient.routeNavigationSync.startLocal(route, index)) {
+            setBloodhoundPoint(null);
+            return false;
+        }
         updateRouteFollow();
         refreshBloodhoundPicker();
+        if (application != null) { application.refreshIncomingPointCount(); }
         notifyBloodhoundChanged();
         WatchUi.requestUpdate();
         return true;
@@ -89,7 +100,10 @@ class StandaloneMapView extends WatchUi.MapView {
             return;
         }
         var points = route.get("points") as Array;
-        followingRouteIndex = RouteNavigation.advance(points, followingRouteIndex, currentPosition);
+        if (!followingRoutePhoneOwned) {
+            followingRouteIndex = RouteNavigation.advance(points, followingRouteIndex,
+                routePositionUsable ? currentPosition : null, route.get("method"), reachedRoutePoints);
+        }
         if (followingRouteIndex == points.size()) {
             stopRoute();
             WatchUi.showToast(WatchUi.loadResource(Rez.Strings.RouteComplete), null);
@@ -102,6 +116,37 @@ class StandaloneMapView extends WatchUi.MapView {
         }
         bloodhoundPointId = id;
         pointLocations.put(id, routeStore.location(points[followingRouteIndex]));
+    }
+
+    function applyPhoneRouteState(payload as Dictionary) as Boolean {
+        if (payload.get("action").equals("stop")) {
+            if (!followingRoutePhoneOwned) { return true; }
+            applyingPhoneRoute = true;
+            setBloodhoundPoint(null);
+            applyingPhoneRoute = false;
+            if (payload.get("completed") == true) {
+                WatchUi.showToast(WatchUi.loadResource(Rez.Strings.RouteComplete), null);
+            }
+            return true;
+        }
+        var route = routeStore.find(payload.get("serverId") as String, payload.get("routeUid") as String);
+        var index = payload.get("targetPointIndex");
+        if (!(index instanceof Number) || index < 0 || route == null || index >= (route.get("points") as Array).size()) { return false; }
+        var id = routeStore.routeId(route);
+        if (!followingRoutePhoneOwned || !id.equals(followingRouteId)) {
+            applyingPhoneRoute = true;
+            setBloodhoundPoint(null);
+            applyingPhoneRoute = false;
+        }
+        followingRouteId = id;
+        followingRouteIndex = index;
+        followingRoutePhoneOwned = true;
+        updateRouteFollow();
+        refreshBloodhoundPicker();
+        if (application != null) { application.refreshIncomingPointCount(); }
+        notifyBloodhoundChanged();
+        WatchUi.requestUpdate();
+        return true;
     }
 
     function routeProgress() as String {
@@ -118,6 +163,9 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function receiveRoute(kind as String, payload as Dictionary) as Void {
+        var following = followingRouteId == null ? null : routeStore.route(followingRouteId);
+        var resetArrival = following != null && (kind.equals("routes_reset")
+            || (following.get("serverId").equals(payload.get("serverId")) && following.get("uid").equals(payload.get("uid"))));
         if (kind.equals("routes_error")) {
             var message = payload.get("error");
             if (payload.get("routeVersion") == 1 && routeStore.validText(message, 256, false)) {
@@ -133,6 +181,7 @@ class StandaloneMapView extends WatchUi.MapView {
             WatchUi.showToast(routeStore.error, null);
             return;
         }
+        if (resetArrival) { reachedRoutePoints = []; }
         refreshRouteBloodhound();
         if (application != null) { application.refreshIncomingPointCount(); }
         refreshBloodhoundPicker();
@@ -455,8 +504,10 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function updatePosition(info) {
         if (info == null || info.position == null) {
+            routePositionUsable = false;
             return;
         }
+        routePositionUsable = info.accuracy >= Position.QUALITY_USABLE;
         currentPosition = info.position;
         markersDirty = true;
         if (info.accuracy >= Position.QUALITY_USABLE) { resolvePendingPoints(info.position); }
@@ -476,6 +527,7 @@ class StandaloneMapView extends WatchUi.MapView {
         client.bloodhoundSync.startTrackingCallback = method(:startBloodhoundFromPhone);
         client.bloodhoundSync.stopTrackingCallback = method(:stopBloodhoundFromPhone);
         client.bloodhoundSync.updateTrackingCallback = method(:updateBloodhoundFromPhone);
+        client.routeNavigationSync.applyCallback = method(:applyPhoneRouteState);
     }
 
     function setApplication(app as StandaloneApp) as Void {
@@ -583,8 +635,13 @@ class StandaloneMapView extends WatchUi.MapView {
     }
 
     function setBloodhoundPoint(pointId) as Void {
+        if (followingRoutePhoneOwned && !applyingPhoneRoute && takClient != null) {
+            takClient.routeNavigationSync.stopLocal();
+        }
         followingRouteId = null;
         followingRouteIndex = 0;
+        followingRoutePhoneOwned = false;
+        reachedRoutePoints = [];
         if (bloodhoundPointId instanceof String && bloodhoundPointId.find("route-point:") == 0
                 && !bloodhoundPointId.equals(pointId)) { pointLocations.remove(bloodhoundPointId); }
         bloodhoundPointId = pointId;
@@ -593,18 +650,21 @@ class StandaloneMapView extends WatchUi.MapView {
             var currentInfo = Position.getInfo();
             if (currentInfo != null && currentInfo.position != null) {
                 currentPosition = currentInfo.position;
+                routePositionUsable = currentInfo.accuracy >= Position.QUALITY_USABLE;
                 markersDirty = true;
             }
         }
         bloodhoundProximityNotified = false;
         evaluateBloodhoundProximity();
         refreshBloodhoundPicker();
+        if (application != null) { application.refreshIncomingPointCount(); }
         WatchUi.requestUpdate();
     }
 
     // Phone-initiated changes must not echo a command back, so only local edits notify.
     function notifyBloodhoundChanged() as Void {
         if (takClient != null) { takClient.bloodhoundSync.localTargetChanged(); }
+        if (application != null) { application.refreshIncomingPointCount(); }
     }
 
     function bloodhoundTarget() as Dictionary? {
@@ -1355,6 +1415,11 @@ class StandaloneMapView extends WatchUi.MapView {
                 removeIncomingPoint(id, true);
             }
         }
+        var routes = routeStore.routes.slice(0, routeStore.routes.size());
+        for (var r = 0; r < routes.size(); r++) {
+            removeLocalRoute(routeStore.routeId(routes[r]));
+        }
+        refreshBloodhoundPicker();
     }
 
     function removeIncomingPoint(id as String, dismiss as Boolean) as Void {
@@ -1394,6 +1459,7 @@ class StandaloneMapView extends WatchUi.MapView {
             notifyBloodhoundChanged();
         }
         markersDirty = true;
+        refreshBloodhoundPicker();
         WatchUi.requestUpdate();
     }
 

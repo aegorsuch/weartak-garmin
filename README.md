@@ -92,10 +92,10 @@ becomes a synthetic contact or replaces the watch's own navigation fix.
 
 Starting a whole route closes the route/picker screens and returns to the main
 menu, retaining active navigation. Garmin's main screen is a native menu rather
-than a compass dashboard: its Bloodhound row shows a routes icon for an active
-route point and a hound for any other active target. The same icon appears
-beside the dedicated Bloodhound compass. Both hide the icon with no active
-target. The own-package-name managed-configuration issue does not apply to
+than a compass dashboard: its Bloodhound entry is hidden while any target is
+active and restored when tracking stops. Active guidance and stop controls remain
+available on the map's Bloodhound panel; the dedicated compass retains its
+route/hound target icon. The own-package-name managed-configuration issue does not apply to
 this Monkey C application.
 
 ## Routes (phone companion route protocol v1)
@@ -135,13 +135,19 @@ Selecting a row opens the approved Garmin action-menu fallback:
 - **Stop Bloodhound** (red circle, white stop square): replaces the hound action
   for the sole active target, including whole routes.
 - **Details** retains the existing route/point/contact details, point RGR/nPos,
-  chat and removal flows. **Cancel** returns without changing the target.
+  chat and removal flows.
+- **Remove** provides direct deletion from the picker action menu (24 px trash
+  glyph). Received items are dismissed locally, dropped markers use their existing
+  delete workflow, and whole routes open the existing watch-only confirmation.
+  **Cancel** returns without changing the target.
 
 This menu fallback deliberately avoids touch-only controls and large image
 assets. Action icons are 24 x 24 px. The picker refreshes on route delivery,
-GPS updates, target changes and when shown again. **Remove All Points** retains
-its existing received-point/alert scope; it does not remove routes, contacts or
-local markers. Native picker layout, icon legibility and translations still
+GPS updates, target changes and when shown again. **Remove All** now clears every
+received route as well as received points/alerts, including when there are no
+received points. It stops navigation of a removed route. Contacts and dropped
+markers retain their existing separate removal controls. Native picker layout,
+icon legibility and translations still
 need physical-watch/native-speaker acceptance.
 
 #### ATAK artwork attribution
@@ -162,37 +168,96 @@ The **Bloodhound** picker lists each received route once, with its name, total
 vertex count and distance to its nearest vertex when GPS is available. Select a
 route, choose **Bloodhound**, then **Start nearest** or **Start from beginning**. Nearest requires a
 known position (otherwise the menu explains **Location required**, with no silent
-fallback); ties use the earliest vertex. Beginning targets original vertex zero.
-Both modes follow the original received order, including unnamed vertices, not
-the filtered named-point list. Whole-route details also provide a **Bloodhound**
+fallback). It projects the position onto the closest route segment and selects
+the next checkpoint at or ahead of that along-route position; equal projections
+use the earliest segment. Beginning targets the first checkpoint. Explicit
+`b-m-p-w` points are checkpoints; controls (`b-m-p-c`) and missing types remain
+geometry rather than objectives. The final original vertex is always the
+destination fallback, including routes containing only controls.
+Both modes preserve original vertex indices and unnamed geometry, not the
+filtered named-point list. Whole-route details also provide a **Bloodhound**
 action; individual point Bloodhound remains available and does not auto-advance.
 
 The existing map/compass shows the route name, **Point X of N** (one-based), and
 remaining distance: current position to the target plus every remaining route
-segment. The arrow continues to point at the current vertex. Within
-`ROUTE_ARRIVAL_RADIUS_METERS` (**20 m**, inclusive), tracking advances in order,
-skipping all consecutive vertices inside the radius in the same GPS update.
-Reaching the last vertex displays **Route complete** and clears the target.
-Missing GPS never advances the route; beginning can wait for the first fix.
-This is vertex guidance, not road routing, turn instructions, or off-route
-recalculation. Arrival uses distance to a vertex, not crossing its segment.
+segment. The arrow continues to point at the current checkpoint. Arrival radii
+are **10 m walking/swimming**, **20 m driving**, **100 m watercraft** and
+**1000 m flying**, inclusive; absent/unrecognized methods use 10 m.
+Entering a checkpoint's bubble remembers arrival, but advancement waits until
+the closest-segment projection reaches/passes that checkpoint's along-route
+position. Projection alone cannot skip an unvisited checkpoint. Dense/duplicate
+checkpoints advance in order without discarding control-point geometry.
+Entering the final destination bubble completes the route even if earlier
+checkpoints were missed: **Route complete** clears the target.
+Missing, unavailable or poor-quality GPS never advances the route; beginning can
+wait for a usable fix.
+
+Standalone guidance approximates ATAK's checkpoint/projection rules, not its
+native spatial index, cue engine, road routing, turn instructions or off-route
+recalculation. Connect IQ `Position.Info.accuracy` provides only a quality enum,
+not horizontal circular error in meters: Garmin gates advancement on usable/good
+quality but does **not** invent a CE value or inflate the method radius. Paired
+ATAK navigation uses the phone's real GNSS uncertainty.
 
 Select the active route again for **Stop Bloodhound**, open its Bloodhound
 chooser/details for progress and **Stop route**, or tap the map's
 Bloodhound panel. Starting a different route or selecting any other Bloodhound
 target stops the previous route. Removing/resetting its route also stops it.
 Geometry updates retain the original target index (or stop if that index no
-longer exists), so changed vertex order changes the target at that index.
-Follow state is in memory and local only; no route-follow messages are sent.
-Switching away from a synchronized ordinary point still stops its previous
-phone Bloodhound session, as with individual route-point tracking.
+longer exists), reset remembered arrivals, and move a standalone control target
+to the next checkpoint/destination. Changed vertex order changes the target at
+that index.
+Standalone follow state is in memory. Switching away from a synchronized ordinary
+point still stops its previous phone Bloodhound session, as with individual
+route-point tracking.
+
+### Two-way Android Companion route navigation (v1)
+
+Compatible Android Companions advertise `routeNavigationVersion: 1` in
+`relay_status`, in response to the watch's `relay_hello` capability. While that
+capability is present, starting a whole route on either device starts navigation
+on both. **ATAK owns advancement and completion**, so watch GPS cannot race the
+phone or consume checkpoints. ATAK's method-dependent arrival radii are 10 m for
+walking/swimming, 20 m for driving, 100 m for watercraft, and 1000 m for flying
+(subject to ATAK preferences and GPS uncertainty). This is ATAK route guidance,
+not a new Garmin turn-by-turn engine. Unpaired watches and older/iPhone companions
+without this capability use the standalone checkpoint guidance above.
+
+Garmin uses Connect IQ dictionary envelopes, never raw route CoT XML:
+
+- Phone geometry arrives first through the existing bounded `route` protocol.
+  `phone_route_navigation` then carries `version: 1`, the current `relaySession`,
+  UUID `sessionId`, increasing integer `sequence`, `action` (`start`, `progress`,
+  `stop`), `serverId`, `routeUid`, and zero-based original `targetPointIndex` for
+  start/progress. Stop requires Boolean `completed`. Unknown or oversized routes,
+  invalid indices, stale sessions and older sequences cannot change the target.
+- Watch controls use `watch_route_navigation` with `version: 1`, `relaySession`,
+  distinct UUID `requestId`, watch-proposed UUID `sessionId`, `serverId`,
+  `routeUid`, `action` (`start` or `stop`), and `targetPointIndex` for start.
+  `route_navigation_ack` must echo `relaySession`, `requestId`, `sessionId` and
+  Boolean `ok` (with `error` when false). A successful start also requires its
+  authoritative phone snapshot within eight seconds. No watch progress command
+  is sent.
+
+Stops, replacement targets, route removal and Remove All send session-scoped stop
+controls. Phone-originated progress/stops do not echo. Rejected/timed-out starts
+and transport failures display an error rather than silently claiming sync.
+Disconnect clears phone-owned guidance rather than silently switching arrival
+rules; standalone guidance can then be started explicitly. Snapshots follow the
+existing 8-route / 64-vertices-per-route / 128-total-vertices watch limits, and
+source-server identity remains part of every route selection/removal.
 
 [RouteNavigation.mc](source/RouteNavigation.mc) contains pure nearest-index,
 arrival advancement and remaining-distance logic. The simulator suite in
 [RouteNavigationTests.mc](source/RouteNavigationTests.mc) covers missing GPS,
-nearest ties, dense vertices, the arrival threshold, completion, original vertex
+nearest-segment ties, dense checkpoints, method thresholds, projection/departure,
+control-point/final fallback, poor-quality fixes, completion, original vertex
 order, dateline distance, switching targets, route removal/reset/update, picker
-summaries, GPS-dependent chooser refresh and local-only tracking.
+summaries, GPS-dependent chooser refresh and standalone tracking.
+[RouteNavigationSyncTests.mc](source/RouteNavigationSyncTests.mc) covers
+two-way starts/stops, authoritative progress/completion, capability negotiation,
+session/sequence rejection, acknowledgement failures/timeouts, disconnect,
+removal/reset and replacement targets.
 [BloodhoundPickerTests.mc](source/BloodhoundPickerTests.mc) covers icon resources,
 point/route map focus (including date-line and polar coordinates), immediate
 point/marker/contact tracking, active summaries, stop actions and stale/no-fix
@@ -242,7 +307,7 @@ The watch advertises numeric `routeVersion: 1` in `relay_hello` and
 
 | Message | Payload |
 | --- | --- |
-| `route` | `routeVersion`, `serverId`, `uid`, `name`, `points: [{lat, lon, name?}]`, optional `missionName`, `senderUid` |
+| `route` | `routeVersion`, `serverId`, `uid`, `name`, `points: [{lat, lon, name?, type?}]`, optional `missionName`, `senderUid`, `method` |
 | `route_remove` | `routeVersion`, `serverId`, `uid` |
 | `routes_reset` | `routeVersion` |
 | `routes_error` | `routeVersion`, `error` |
@@ -250,7 +315,9 @@ The watch advertises numeric `routeVersion: 1` in `relay_hello` and
 Each route is replaced atomically after validation. Bounds are **8 routes**,
 **2–64 vertices per route**, **128 vertices total**, and **6,000 UTF-8 bytes per
 serialized envelope** on the companion. Text bounds in UTF-8 bytes are server ID
-64, UID 128, route/point name 64, mission/sender UID 128, error 256. Latitude and
+64, UID 128, route/point name and point type 64, method 32, mission/sender UID 128,
+error 256. `method` is `Walking`, `Swimming`, `Driving`, `Watercraft` or `Flying`;
+older companions may omit it and point `type`. Latitude and
 longitude must be finite and within geographic ranges. Over-capacity/invalid
 updates produce an explicit error and retain the previous valid geometry, if any;
 tracking that older geometry continues until corrected, removed or refreshed.
@@ -699,7 +766,7 @@ features currently available:
 	replies with an error instead of inventing a marker. This is the same native
 	ATAK tracking contract as the WearOS WearTAK app, so one ATAK plugin drives
 	both watches.
-- Open **Bloodhound** from the main menu to browse incoming map points.
+- Open **Bloodhound** from the main menu while no target is active to browse incoming map points.
 	Active remote alerts appear first with an **(Alert)** prefix, followed by
 	**Remove All** and received points. Alerts disappear when their cancellation
 	arrives or they expire; clearing a tracked alert also stops Bloodhound.
@@ -767,11 +834,11 @@ this build:
 	add it at the current location. **Clear 2525D** opens the saved
 	marker list or Clear Last Marker. Open **Map** to edit points, view coordinates,
 	or start Bloodhound. Long-press the map to place the current default marker.
-	**Bloodhound** on the main menu lists received 2525D map items and shows a
+	**Bloodhound** on the main menu (hidden while tracking) lists received 2525D map items and shows a
 	new-item count. Select an item to navigate, send RGR/nPos, or remove it locally.
 	Active remote alerts appear at the top, labeled **(Alert)**, and can be tracked.
-	**Remove All** below the alerts clears all received points locally and stops
-	tracking a removed target; it leaves active alerts, live users, and your dropped markers intact.
+	**Remove All** clears received points/alerts and routes locally and stops
+	tracking a removed target; it leaves live users and your dropped markers intact.
 6. Select **Manual Alert** from the main menu and choose an alphabetized alert
 	type, including **911 Alert**, **Geofence Breached**, **In Contact**, and
 	**Ring The Bell**. It is sent through an active Garmin relay; without one, its
