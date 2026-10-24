@@ -48,6 +48,15 @@ class PointReplyListener extends Communications.ConnectionListener {
     }
 }
 
+class MarkerDeleteListener extends Communications.ConnectionListener {
+    function initialize() { ConnectionListener.initialize(); }
+    function onComplete() as Void {}
+    function onError() as Void {
+        System.println("Garmin marker deletion handoff failed; remote deletion unconfirmed");
+        WatchUi.showToast("Removed locally; remote delete unconfirmed", null);
+    }
+}
+
 // Relays watch input to ATAK; server connectivity, credentials, identity, and PLI stay on the phone.
 class BloodhoundRelayListener extends Communications.ConnectionListener {
     var client;
@@ -126,6 +135,7 @@ class TakClient {
     var userProfileCallback as Method? = null;
     var locationRequestSequence as Number = 0;
     var phoneLocationSupported as Boolean = false;
+    var markerDeleteSupported as Boolean = false;
     var unitPreferencesCallback as Method? = null;
     var relayReadyCallback as Method? = null;
     var relayStatusAccepted as Boolean = false;
@@ -143,6 +153,7 @@ class TakClient {
         var sequence = loadOfflineValue("pointReplySequence");
         if (sequence instanceof Number) { pointReplySequence = sequence; }
         pointReplies.restore(loadOfflineValue("pointReplies"), relayEpochNow());
+        discardLegacyQueuedMarkerDeletes();
         if (pointReplies.expiredOnRestore > 0) {
             System.println("TAK offline events expired during restart");
         }
@@ -241,6 +252,7 @@ class TakClient {
         routeNavigationSync.connectionChanged(false);
         chatGroupsSupported = false;
         phoneLocationSupported = false;
+        markerDeleteSupported = false;
         relayGeneration++;
         pointReplyAttempt++;
         pointReplyInFlight = null;
@@ -276,6 +288,7 @@ class TakClient {
         status = :idle;
         chatGroupsSupported = false;
         phoneLocationSupported = false;
+        markerDeleteSupported = false;
         bloodhoundSync.connectionChanged(false);
         routeNavigationSync.connectionChanged(false);
         if (incomingSourceRemovedCallback != null) { incomingSourceRemovedCallback.invoke("phone-relay"); }
@@ -311,6 +324,7 @@ class TakClient {
         status = :failed;
         chatGroupsSupported = false;
         phoneLocationSupported = false;
+        markerDeleteSupported = false;
         bloodhoundSync.connectionChanged(false);
         routeNavigationSync.connectionChanged(false);
         notifyStatusChanged();
@@ -381,7 +395,56 @@ class TakClient {
     }
 
     function deleteMarker(id as String) as Boolean {
-        return queueRelay("marker_delete", {"uid" => "garmin-marker-" + id}, "marker-" + id);
+        if (pointReplies.restoreFailed) {
+            WatchUi.showToast(WatchUi.loadResource(Rez.Strings.OfflineStorageFailed), null);
+            return false;
+        }
+        var previous = pointReplies.replies.slice(0, pointReplies.replies.size());
+        var canceledInFlight = false;
+        for (var i = pointReplies.replies.size() - 1; i >= 0; i--) {
+            var entry = pointReplies.replies[i];
+            if (!("marker-" + id).equals(entry.get("key"))
+                    || !(entry.get("msgType").equals("marker") || entry.get("msgType").equals("marker_delete"))) { continue; }
+            if (pointReplyInFlight != null && pointReplyInFlight.equals(entry.get("messageId"))) { canceledInFlight = true; }
+            pointReplies.replies.remove(entry);
+        }
+        if (previous.size() != pointReplies.replies.size() && !savePointReplies()) {
+            pointReplies.replies = previous;
+            return false;
+        }
+        if (canceledInFlight) {
+            pointReplyInFlight = null;
+            pointReplyAttempt++;
+            pointReplyRetryAt = 0;
+            pointReplyRetryDelay = 5000;
+        }
+        if (!isConnected() || !relayStatusAccepted || !markerDeleteSupported) {
+            System.println("Garmin marker removed locally; no compatible connected delete relay");
+            WatchUi.showToast("Removed locally; remote delete unavailable", null);
+            return true;
+        }
+        pointReplySequence++;
+        var now = relayEpochNow();
+        var messageId = "garmin-delete-" + relaySession + "-" + now.toString() + "-" + pointReplySequence.toString();
+        try {
+            transmitEnvelope({"msgType" => "marker_delete", "payload" => {
+                "uid" => "garmin-marker-" + id, "relaySession" => relaySession,
+                "messageId" => messageId, "createdAt" => now}}, new MarkerDeleteListener());
+            WatchUi.showToast("Remote delete requested; TAK unconfirmed", null);
+        } catch (error) {
+            System.println("Garmin marker deletion handoff failed: " + error.getErrorMessage());
+            WatchUi.showToast("Removed locally; remote delete unconfirmed", null);
+        }
+        return true;
+    }
+
+    function discardLegacyQueuedMarkerDeletes() as Void {
+        for (var i = pointReplies.replies.size() - 1; i >= 0; i--) {
+            if (pointReplies.replies[i].get("msgType").equals("marker_delete")) {
+                pointReplies.replies.remove(pointReplies.replies[i]);
+                System.println("Garmin discarded legacy queued marker deletion; remote deletion unconfirmed");
+            }
+        }
     }
 
     function sendSosEvent() as Void {
@@ -988,6 +1051,7 @@ class TakClient {
         relayResultRequired = payload.get("reliableDelivery") == true;
         chatGroupsSupported = payload.get("chatGroups") == true;
         phoneLocationSupported = payload.get("phoneLocation") == true;
+        markerDeleteSupported = payload.get("markerDelete") instanceof Number && payload.get("markerDelete") == 1;
         bloodhoundSync.relaySession = relaySession;
         bloodhoundSync.connectionChanged(payload.get("bloodhoundVersion") instanceof Number
             && payload.get("bloodhoundVersion") == 1 && payload.get("bloodhoundControl") == true);
