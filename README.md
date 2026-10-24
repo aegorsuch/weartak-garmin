@@ -1052,8 +1052,8 @@ protective-mask glyph. **PPE Status** shows the saved manual value. Choose
 **Save PPE Status**. The selected marker is a draft until saved; Cancel or Back
 discards unsaved choices. The saved value survives restarts.
 
-This is explicitly **manual / local only**: no report is transmitted, no remote
-acknowledgment is implied, and no commanded level, CBR detection, filter-life
+This is explicitly **manual**: no remote acknowledgment is implied,
+and no commanded level, CBR detection, filter-life
 timer, protection recommendation or compliance color is inferred. Garmin's
 native Menu2 provides whole-row selection for both buttons and touch rather than
 independently tappable trailing chips. Existing localized Selected/Cancel labels
@@ -1064,6 +1064,42 @@ DataSync now has an original synchronization glyph and a navigation chevron.
 It retains its existing watch-side server/feed workflow and explicit unsupported
 states described below. There is no global DataSync enable control or newly
 claimed Companion support; subscriptions still require authoritative replies.
+
+### Saved PPE and fresh heart-rate phone enrichment
+
+A connected phone bridge must advertise `relay_status.payload.selfStatus: 1`
+for Garmin to send `SELF_STATUS v1`. Unsupported/older bridges receive no new
+metadata messages. **Save PPE Status** persists the value and its actual save
+time together; draft choices and Back never send. A saved **None** is distinct
+from **MOPP 0**. Legacy saved levels remain visible locally but are omitted from
+phone snapshots until explicitly saved again: their historical save time is unknown.
+
+The full `self_status` snapshot contains `version:1`, the current relay `session`,
+strictly increasing `seq`, `deviceUid`, `model:"GARMIN"`, and nullable `ppe` and
+`physio`. PPE carries `level` and UTC `savedAt`. Physio carries only real heart
+rate (20–250 bpm) and UTC `measuredAt` captured at the sensor callback, not at send.
+Both **Physiological monitors** and the existing **BATDOK** outbound option must
+be enabled; disabling either immediately clears the HR contribution. No skin temperature, inferred sensors,
+exertion or other uncontracted biometrics are sent. Samples send at most every
+15 seconds, with keepalives at least every 60 seconds while the app/relay runtime
+is running. These best-effort messages never enter the durable outbox.
+
+Monitor changes immediately clear cached HR; reconnects also discard it and
+require a new sensor callback. HR older than 120 seconds is omitted. Explicit
+disconnect attempts a clearing snapshot; physical disconnect/unbond detection
+and cleanup belong to the phone bridge, which must remove contributions on
+disconnect/transport stop and after 300 seconds without a snapshot. A suspended
+watch cannot guarantee a keepalive, so the phone expiry is required.
+
+Android Companion enriches the actual ATAK phone selfPLI without replacing its
+UID/location or existing remarks/details. On iPhone, the supported outcome is
+the existing watch-identity/phone-location PLI proxy, **not** an independent
+iPhone self-marker. Matching phone releases are required. Phones own managed
+bare `MOPP0`–`MOPP4`/HR remarks (no space or PPE prefix; None has no remarks segment) and HR
+`<biometrics version="1">` details. The watch no longer adds
+the generated `WearTAK Garmin PLI` remark. When the new capability is negotiated,
+legacy `pli.hr` is omitted so freshness/cleanup comes only from `self_status`.
+No physical-watch acceptance is implied by simulator or signed-release evidence.
 
 ### Commands and Ditto feasibility
 

@@ -901,7 +901,7 @@ class StandaloneMapView extends WatchUi.MapView {
                 removeIncomingPoint(incomingIds[0], false);
             }
         }
-        incomingLastSeen.put(markerId, Time.now().value());
+        incomingLastSeen.put(markerId, incomingEntityNow());
         incomingDetails.put(markerId, {
             "uid" => uid, "type" => cotType,
             "callSign" => callSign == null ? "" : trimMapText(callSign),
@@ -2771,8 +2771,10 @@ class StandaloneMapView extends WatchUi.MapView {
         return true;
     }
 
+    function incomingEntityNow() as Number { return Time.now().value(); }
+
     function pruneIncomingEntities() as Boolean {
-        var now = Time.now().value();
+        var now = incomingEntityNow();
         var pendingCount = pendingSelfPoints.size();
         expirePendingSelfPoints();
         if (pendingSelfPoints.size() != pendingCount && takClient != null) {

@@ -76,7 +76,7 @@ class MoppMenu extends WatchUi.Menu2 {
     function populate() as Void {
         while (getItem(0) != null) { deleteItem(0); }
         addMenuEntry(self, "PPE Status", moppLevelLabel(app.getMoppLevel()), :status);
-        addMenuEntry(self, "Manual / local only", null, :localOnly);
+        addMenuEntry(self, "Manual / phone relay when supported", null, :localOnly);
         for (var i = -1; i <= 4; i++) {
             var level = i == -1 ? null : i;
             addMenuEntry(self, moppLevelLabel(level),
