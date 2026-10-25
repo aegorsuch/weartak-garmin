@@ -6,6 +6,70 @@ import Toybox.Test;
 import Toybox.WatchUi;
 
 (:test)
+function coordinateTitleNativeFontBoundsProbe(logger) as Boolean {
+    var app = new TestTopMetricApp();
+    var actual = Application.getApp() as StandaloneApp;
+    var previous = actual.getDashboardMetric();
+    var buffer;
+    var bitmap;
+    var size = Toybox.System.getDeviceSettings().screenWidth;
+    if (Graphics has :createBufferedBitmap) {
+        buffer = Graphics.createBufferedBitmap({:width => size, :height => size});
+        bitmap = buffer.get();
+    } else { bitmap = new Graphics.BufferedBitmap({:width => size, :height => size}); }
+    var dc = bitmap.getDc();
+    var height = dc.getFontHeight(Graphics.FONT_XTINY);
+    logger.debug("Native XTINY height=" + height);
+    var title = new TopMetricTitle(app);
+    Test.assert(title.readingOffset >= 4 + height + 4);
+    Test.assert(title.readingPitch >= height + 2);
+    Test.assert(title.readingOffset + title.readingPitch + height + 4 <= title.height);
+    var metrics = ["MGRS", "Lat/Long"];
+    var coordinates = [[38.8977, -77.0365], [-79.99999, -179.99999],
+        [83.99999, 179.99999], [0.0, 180.0]];
+    for (var metric = 0; metric < metrics.size(); metric++) {
+        app.setDashboardMetric(metrics[metric]);
+        for (var location = 0; location < coordinates.size(); location++) {
+            app.location = new Position.Location({:latitude => coordinates[location][0],
+                :longitude => coordinates[location][1], :format => :degrees});
+            var lines = title.readingLines();
+            if (metrics[metric].equals("MGRS")) { Test.assertEqual(lines.size(), 1); }
+            for (var i = 0; i < lines.size(); i++) {
+                var textWidth = dc.getTextWidthInPixels(lines[i], Graphics.FONT_XTINY);
+                // Conservatively use the round-screen chord at the top of each line.
+                var y = title.readingTop(dc, lines[i]) + i * title.readingPitch;
+                var radius = size / 2;
+                var dy = radius - y;
+                var available = 2 * Toybox.Math.sqrt(radius * radius - dy * dy) - 8;
+                logger.debug(metrics[metric] + " " + lines[i] + ": width=" + textWidth + " available=" + available);
+                Test.assert(textWidth <= available);
+                Test.assert(y + height + 4 <= title.height);
+            }
+            title.draw(dc);
+        }
+    }
+    actual.setDashboardMetric(previous);
+    return true;
+}
+
+(:test)
+function coordinateTitleKeepsFullPrecision(logger) as Boolean {
+    var app = new TestTopMetricApp();
+    var actual = Application.getApp() as StandaloneApp;
+    var previous = actual.getDashboardMetric();
+    app.location = new Position.Location({:latitude => 38.8977, :longitude => -77.0365, :format => :degrees});
+    app.setDashboardMetric("MGRS");
+    Test.assertEqual(app.dashboardMetricLines()[0], "18S UJ");
+    Test.assertEqual(app.dashboardMetricLines()[1], "23394 07395");
+    Test.assertEqual(new TopMetricTitle(app).readingLines()[0], "18S UJ 23394 07395");
+    app.setDashboardMetric("Lat/Long");
+    Test.assertEqual(app.dashboardMetricLines()[0], "38.89770,");
+    Test.assertEqual(app.dashboardMetricLines()[1], "-77.03650");
+    actual.setDashboardMetric(previous);
+    return true;
+}
+
+(:test)
 class TestTopMetricApp extends StandaloneApp {
     var location as Position.Location? = null;
     var heartRate as Number? = null;
