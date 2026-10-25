@@ -4,6 +4,7 @@ import Toybox.System;
 import Toybox.WatchUi;
 import Toybox.Timer;
 import Toybox.Graphics;
+import Toybox.Math;
 
 class MainMenuReturn {
     var timer as Timer.Timer;
@@ -175,9 +176,30 @@ class HeartRateGlyph extends WatchUi.Drawable {
 
 class TopMetricTitle extends WatchUi.Drawable {
     var app as StandaloneApp;
+    var readingOffset as Number;
+    var readingPitch as Number;
     function initialize(application as StandaloneApp) {
-        Drawable.initialize({:locX => 0, :locY => 0, :width => System.getDeviceSettings().screenWidth, :height => 76});
+        var fontHeight = Graphics.getFontHeight(Graphics.FONT_XTINY);
+        readingOffset = fontHeight + 8 > 28 ? fontHeight + 8 : 28;
+        readingPitch = fontHeight + 2 > 22 ? fontHeight + 2 : 22;
+        var titleHeight = readingOffset + readingPitch + fontHeight + 4;
+        Drawable.initialize({:locX => 0, :locY => 0, :width => System.getDeviceSettings().screenWidth,
+            :height => titleHeight > 76 ? titleHeight : 76});
         app = application;
+    }
+    function readingLines() as Array<String> {
+        var lines = app.dashboardMetricLines();
+        if (app.getDashboardMetric().equals("MGRS") && lines.size() == 2) {
+            return [lines[0] + " " + lines[1]];
+        }
+        return lines;
+    }
+    function readingTop(dc as Graphics.Dc, text as String) as Number {
+        var halfText = (dc.getTextWidthInPixels(text, Graphics.FONT_XTINY) + 8) / 2.0;
+        var radius = width / 2.0;
+        // Keep the whole line inside the round title's usable chord.
+        var inset = halfText < radius ? Math.ceil(radius - Math.sqrt(radius * radius - halfText * halfText)) : 0;
+        return inset > readingOffset ? inset.toNumber() : readingOffset;
     }
     function draw(dc as Graphics.Dc) as Void {
         if (!isVisible) { return; }
@@ -193,9 +215,11 @@ class TopMetricTitle extends WatchUi.Drawable {
         }
         dc.drawText(center + (heartRate ? 14 : 0), locY + 4, Graphics.FONT_XTINY,
             label, Graphics.TEXT_JUSTIFY_CENTER);
-        var lines = app.dashboardMetricLines();
+        var lines = readingLines();
         for (var i = 0; i < lines.size(); i++) {
-            dc.drawText(center, locY + 28 + i * 22, Graphics.FONT_XTINY, lines[i], Graphics.TEXT_JUSTIFY_CENTER);
+            var top = readingTop(dc, lines[i]);
+            dc.drawText(center, locY + top + i * readingPitch, Graphics.FONT_XTINY,
+                lines[i], Graphics.TEXT_JUSTIFY_CENTER);
         }
     }
 }

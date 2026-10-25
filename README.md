@@ -687,8 +687,13 @@ features currently available:
 	Lat/Long uses signed decimal degrees (five decimals); MGRS reuses the map's
 	UTM-grid formatter and is unavailable outside 80 S–84 N. Coordinates require
 	location services and a usable/good watch fix no older than 60 seconds; without
-	one the header says **Waiting for location**. Coordinate values use two lines
-	to fit small, round watches. Steps is the watch's daily activity count.
+	one the header says **Waiting for location**. The home MGRS readout keeps its
+	full 1 m grid on one line using the native extra-small font, positioned inside
+	the round display's usable width. Lat/Long keeps its two full-precision lines.
+	Title height and line spacing follow the device's actual native font metrics,
+	including larger AMOLED fonts; no truncation, global font override, or Android
+	font-scale setting is used. Tapping the title still opens the metric picker.
+	Steps is the watch's daily activity count.
 	**Skin Temp** remains selectable but explicitly **Unavailable**: the current
 	Connect IQ sensor API exposes temperature, not a verified skin measurement.
 	Exertion, Heart Rate, Skin Temp and Steps show **Disabled** when physiological monitoring
