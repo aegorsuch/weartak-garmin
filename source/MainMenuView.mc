@@ -517,18 +517,26 @@ function buildMyRoleOptionsMenu(app as StandaloneApp, category as String) as Wat
 
 function buildNetworkPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu(app.text(Rez.Strings.TextNetworkPreferences));
-    addMenuEntry(menu, "TAK Relay", null, :takRelayMenu);
-    addMenuEntry(menu, "Sit(x) TAK", app.getSitxClient().networkStatusLabel(), :sitxDeviceApi);
+    menu.addItem(new WatchUi.ToggleMenuItem(app.getTakClient().relayLabel("title"), app.getTakClient().relayStateLabel(),
+        :wearTakCompanionRelay, app.getTakClient().relayEnabled, null));
+    var entries = [
+        {"label" => app.getTakClient().relayLabel("configuration"), "id" => :takRelayMenu, "sub" => null},
+        {"label" => app.getTakClient().relayLabel("sitxConfiguration"), "id" => :sitxDeviceApi,
+            "sub" => app.getSitxClient().networkStatusLabel()}
+    ];
+    sortMenuEntriesByLabel(entries);
+    for (var i = 0; i < entries.size(); i++) {
+        addMenuEntry(menu, entries[i].get("label"), entries[i].get("sub"), entries[i].get("id"));
+    }
     return menu;
 }
 
 function buildTakRelayMenu(app as StandaloneApp) as WatchUi.Menu2 {
-    var menu = createMenu("TAK Relay");
+    var menu = createMenu(app.getTakClient().relayLabel("configuration"));
     var client = app.getTakClient();
-    addToggleEntry(menu, "ATAK Relay", client.status == :connecting || client.isConnected(), :atakRelayToggle);
+    addMenuEntry(menu, client.relayLabel("state"), client.relayStateLabel(), :relayState);
     addMenuEntry(menu, "iTAK", "Teaming", :itakRelay);
     addMenuEntry(menu, "TAK Aware", "Teaming", :takAwareRelay);
-    addToggleEntry(menu, "WearTAK Companion", client.status == :connecting || client.isConnected(), :wearTakCompanionRelay);
     addMenuEntry(menu, "Companion Setup", "iPhone", :wearTakCompanionSetup);
     return menu;
 }
@@ -1438,11 +1446,13 @@ class CallsignTextPickerDelegate extends WatchUi.TextPickerDelegate {
 class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
     var app as StandaloneApp;
     var menu as WatchUi.Menu2;
+    var parentCallback as Method? = null;
 
     function initialize(application as StandaloneApp, preferencesMenu as WatchUi.Menu2) {
         Menu2InputDelegate.initialize();
         app = application;
         menu = preferencesMenu;
+        app.getTakClient().statusCallback = method(:onClientStatusChanged);
     }
 
     function getRelayClient() as TakClient {
@@ -1451,16 +1461,23 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
 
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
+        if (app.isNetworkPreferencesLocked() || app.isPhoneManagedSettings()) {
+            WatchUi.showToast(app.getTakClient().relayLabel("locked"), null);
+            onClientStatusChanged();
+            return;
+        }
         if (id == :sitxDeviceApi) {
             var sitxMenu = buildSitxDeviceApiMenu(app);
             WatchUi.pushView(sitxMenu, new SitxDeviceApiDelegate(app, sitxMenu, menu), WatchUi.SLIDE_LEFT);
         } else if (id == :takRelayMenu) {
             var relayMenu = buildTakRelayMenu(app);
-            WatchUi.pushView(relayMenu, new NetworkPreferencesDelegate(app, relayMenu), WatchUi.SLIDE_LEFT);
-        } else if (id == :atakRelayToggle || id == :wearTakCompanionRelay) {
+            var delegate = new NetworkPreferencesDelegate(app, relayMenu);
+            delegate.parentCallback = method(:onClientStatusChanged);
+            WatchUi.pushView(relayMenu, delegate, WatchUi.SLIDE_LEFT);
+        } else if (id == :wearTakCompanionRelay) {
             var client = getRelayClient();
             client.statusCallback = method(:onClientStatusChanged);
-            if (client.status == :connecting || client.isConnected()) {
+            if (client.relayEnabled) {
                 client.disconnect();
             } else {
                 client.connect();
@@ -1475,16 +1492,23 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
 
     function onClientStatusChanged() as Void {
         var client = getRelayClient();
-        var ids = [:atakRelayToggle, :wearTakCompanionRelay];
-        for (var i = 0; i < ids.size(); i++) {
-            var index = menu.findItemById(ids[i]);
-            if (index < 0) { continue; }
-            var relayItem = menu.getItem(index);
-            if (relayItem != null) {
-                relayItem.setSubLabel(toolToggleLabel(client.status == :connecting || client.isConnected()));
-            }
+        var index = menu.findItemById(:wearTakCompanionRelay);
+        if (index >= 0) {
+            var item = menu.getItem(index);
+            if (item instanceof WatchUi.ToggleMenuItem) { item.setEnabled(client.relayEnabled); }
+            item.setSubLabel(client.relayStateLabel());
+        }
+        var statusIndex = menu.findItemById(:relayState);
+        if (statusIndex >= 0) {
+            menu.getItem(statusIndex).setSubLabel(client.relayStateLabel());
         }
         WatchUi.requestUpdate();
+    }
+
+    function onBack() as Void {
+        app.getTakClient().statusCallback = parentCallback;
+        if (parentCallback != null) { parentCallback.invoke(); }
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
     }
 }
 
@@ -1584,6 +1608,11 @@ class SitxDeviceApiDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function onSelect(item as WatchUi.MenuItem) as Void {
+        if (item.getId() == :sitxBack) { WatchUi.popView(WatchUi.SLIDE_DOWN); return; }
+        if (app.isNetworkPreferencesLocked() || app.isPhoneManagedSettings()) {
+            WatchUi.showToast(app.getTakClient().relayLabel("locked"), null);
+            return;
+        }
         var id = item.getId();
         var client = app.getSitxClient();
         if (id == :sitxEnabledToggle) {
@@ -1652,6 +1681,10 @@ class SitxGroupsDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.popView(WatchUi.SLIDE_DOWN);
             return;
         }
+        if (app.isNetworkPreferencesLocked() || app.isPhoneManagedSettings()) {
+            WatchUi.showToast(app.getTakClient().relayLabel("locked"), null);
+            return;
+        }
         if (!(id instanceof Number)) { return; }
         var groups = app.getSitxClient().getGroups();
         var index = id as Number;
@@ -1678,6 +1711,10 @@ class SitxSettingsTextPickerDelegate extends WatchUi.TextPickerDelegate {
     }
 
     function onTextEntered(value as String, changed as Boolean) as Boolean {
+        if (app.isNetworkPreferencesLocked() || app.isPhoneManagedSettings()) {
+            WatchUi.showToast(app.getTakClient().relayLabel("locked"), null);
+            return false;
+        }
         if (changed) {
             app.getSitxClient().setApiHost(value);
             var organization = app.getSitxClient().getOrganizationAddress();

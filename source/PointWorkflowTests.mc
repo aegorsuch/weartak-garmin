@@ -349,7 +349,12 @@ class TestPointRelay extends TakClient {
 
     function initialize() {
         TakClient.initialize();
+        relayEnabled = true;
     }
+
+    function startRelayRuntime() as Void {}
+    function stopRelayRuntime() as Void { relayRuntimeRunning = false; }
+    function deliverEnvelope(envelope as Dictionary, listener as Toybox.Communications.ConnectionListener) as Void {}
 
     function queuePointReply(recipientUid as String, pointUid as String, text as String) as Boolean {
         lastReply = text;

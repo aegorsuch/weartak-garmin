@@ -24,6 +24,10 @@ class PhoneRelayListener extends Communications.ConnectionListener {
     function onError() as Void {
         if (generation == client.relayGeneration) { client.onRelayTransmitError(); }
     }
+
+    function onPhoneMessage(message as Communications.PhoneAppMessage) as Void {
+        if (generation == client.relayGeneration && client.relayEnabled) { client.onPhoneMessage(message); }
+    }
 }
 
 
@@ -49,9 +53,16 @@ class PointReplyListener extends Communications.ConnectionListener {
 }
 
 class MarkerDeleteListener extends Communications.ConnectionListener {
-    function initialize() { ConnectionListener.initialize(); }
+    var client;
+    var generation as Number;
+    function initialize(relayClient) {
+        ConnectionListener.initialize();
+        client = relayClient;
+        generation = client.relayGeneration;
+    }
     function onComplete() as Void {}
     function onError() as Void {
+        if (!client.relayEnabled || generation != client.relayGeneration) { return; }
         System.println("Garmin marker deletion handoff failed; remote deletion unconfirmed");
         WatchUi.showToast("Removed locally; remote delete unconfirmed", null);
     }
@@ -94,6 +105,8 @@ class RouteNavigationRelayListener extends Communications.ConnectionListener {
 }
 
 class TakClient {
+    var relayEnabled as Boolean = false;
+    var relayRuntimeRunning as Boolean = false;
     var status as Symbol = :idle;
     var lastResponseCode as Number?  = null;
     var lastPosition as Position.Info?  = null;
@@ -166,12 +179,46 @@ class TakClient {
             if (type instanceof String) { alertType = type; }
         }
         outboxTimer = new Timer.Timer();
-        startRelayRuntime();
+        relayEnabled = loadOfflineValue("companionRelayEnabled") == true;
     }
 
     function startRelayRuntime() as Void {
         outboxTimer.start(method(:flushPointReplies), 5000, true);
-        Communications.registerForPhoneAppMessages(method(:onPhoneMessage));
+        var listener = new PhoneRelayListener(self);
+        Communications.registerForPhoneAppMessages(listener.method(:onPhoneMessage));
+    }
+
+    function stopRelayRuntime() as Void {
+        outboxTimer.stop();
+        Communications.registerForPhoneAppMessages(null);
+        relayRuntimeRunning = false;
+    }
+
+    function resumeRelay() as Void {
+        if (relayEnabled) {
+            if (!relayRuntimeRunning) { status = :idle; }
+            connect();
+        }
+    }
+
+    function saveRelayEnabled(enabled as Boolean) as Boolean {
+        if (saveOfflineValue("companionRelayEnabled", enabled)) { return true; }
+        System.println("Companion relay preference not saved; relay state unchanged");
+        WatchUi.showToast(relayLabel("saveFailed"), null);
+        return false;
+    }
+
+    function relayStateLabel() as String {
+        var state = !relayEnabled ? Rez.Strings.LabelDisabled
+            : status == :connected ? Rez.Strings.StatusConnected
+            : status == :connecting ? Rez.Strings.StatusConnecting
+            : status == :failed ? Rez.Strings.StatusFailed : Rez.Strings.StatusIdle;
+        return WatchUi.loadResource(state);
+    }
+
+    function relayLabel(key as String) as String {
+        // A localizable resource dictionary avoids the legacy 254-string-symbol limit.
+        return (WatchUi.loadResource(Rez.JsonData.RelayLabels) as Dictionary).get(key) as String;
     }
 
     function loadOfflineValue(key as String) {
@@ -234,10 +281,14 @@ class TakClient {
     }
 
     function isConnected() as Boolean {
-        return status == :connected;
+        return relayEnabled && status == :connected;
     }
 
     function connect() as Void {
+        if (!relayEnabled) {
+            if (!saveRelayEnabled(true)) { return; }
+            relayEnabled = true;
+        }
         if (status == :connecting || isConnected()) {
             return;
         }
@@ -261,6 +312,20 @@ class TakClient {
         relayNegotiating = true;
         relayNegotiationAt = relayNow();
         pointReplyRetryAt = 0;
+        if (relayRuntimeRunning) { stopRelayRuntime(); }
+        try {
+            startRelayRuntime();
+            relayRuntimeRunning = true;
+        } catch (error instanceof Lang.Exception) {
+            stopRelayRuntime();
+            relayRuntimeRunning = false;
+            status = :failed;
+            System.println("Companion relay runtime could not start");
+            Diagnostics.record(Diagnostics.RELAY_ERROR);
+            WatchUi.showToast(relayLabel("startFailed"), null);
+            notifyStatusChanged();
+            return;
+        }
         transmit("relay_hello", {"watchLabel" => "Garmin watch", "protocolVersion" => 1,
             "relaySession" => relaySession, "bloodhoundVersion" => 1, "routeVersion" => 1, "routeNavigationVersion" => 1,
             "entitySyncVersion" => 2, "unitPrefsVersion" => 1,
@@ -269,12 +334,22 @@ class TakClient {
     }
 
     function disconnect() as Void {
+        if (!relayEnabled) { return; }
+        if (!saveRelayEnabled(false)) { return; }
         var error = phoneSettingsCallback != null ? releasePhoneManagement() : null;
         if (error != null) {
+            if (!saveRelayEnabled(true)) {
+                System.println("Companion relay disable rollback failed; saved state may differ after restart");
+                WatchUi.showToast(relayLabel("rollbackFailed"), null);
+                return;
+            }
             WatchUi.showToast(error, null);
             return;
         }
         selfStatus.clearRemote();
+        relayEnabled = false;
+        stopRelayRuntime();
+        relayRuntimeRunning = false;
         selfStatus.reset();
         relayStatusAccepted = false;
         relayReadyNotified = false;
@@ -284,6 +359,8 @@ class TakClient {
         pointReplyAttempt++;
         pointReplyInFlight = null;
         relayNegotiating = false;
+        relaySession = "";
+        if (unitPreferencesCallback != null) { unitPreferencesCallback.invoke(null); }
         status = :idle;
         chatGroupsSupported = false;
         phoneLocationSupported = false;
@@ -297,7 +374,7 @@ class TakClient {
     }
 
     function onRelayTransmitComplete() as Void {
-        if (status != :connecting) {
+        if (!relayEnabled || status != :connecting) {
             return;
         }
         status = :connected;
@@ -309,7 +386,7 @@ class TakClient {
     }
 
     function onRelayTransmitError() as Void {
-        if (status == :idle) {
+        if (!relayEnabled || status == :idle) {
             return;
         }
         Diagnostics.record(Diagnostics.RELAY_ERROR);
@@ -429,7 +506,8 @@ class TakClient {
         try {
             transmitEnvelope({"msgType" => "marker_delete", "payload" => {
                 "uid" => "garmin-marker-" + id, "relaySession" => relaySession,
-                "messageId" => messageId, "createdAt" => now}}, new MarkerDeleteListener());
+                "messageId" => messageId, "createdAt" => now
+            }}, new MarkerDeleteListener(self));
             WatchUi.showToast("Remote delete requested; TAK unconfirmed", null);
         } catch (error) {
             System.println("Garmin marker deletion handoff failed: " + error.getErrorMessage());
@@ -646,6 +724,7 @@ class TakClient {
     }
 
     function flushPointReplies() as Void {
+        if (!relayEnabled) { return; }
         selfStatus.flush(false);
         if (dataSync.requestId != null && System.getTimer() - dataSync.requestedAt >= 65000) {
             dataSync.fail(Rez.Strings.DataSyncTimeout);
@@ -687,6 +766,7 @@ class TakClient {
     }
 
     function sendQueuedPointReply(reply as Dictionary) as Void {
+        if (!relayEnabled) { return; }
         var original = reply.get("payload") as Dictionary;
         var payload = {};
         var keys = original.keys();
@@ -697,7 +777,12 @@ class TakClient {
     }
 
     function transmitEnvelope(envelope as Dictionary, listener as Communications.ConnectionListener) as Void {
+        if (!relayEnabled) { return; }
         Diagnostics.record(Diagnostics.RELAY_TRANSMITTED);
+        deliverEnvelope(envelope, listener);
+    }
+
+    function deliverEnvelope(envelope as Dictionary, listener as Communications.ConnectionListener) as Void {
         Communications.transmit(envelope, null, listener);
     }
 
@@ -720,6 +805,7 @@ class TakClient {
     }
 
     function onPointReplyComplete(id as String) as Void {
+        if (!relayEnabled) { return; }
         if (pointReplyInFlight == null || !pointReplyInFlight.equals(id)) { return; }
         if (relayResultRequired) { return; }
         pointReplyInFlight = null;
@@ -739,6 +825,7 @@ class TakClient {
     }
 
     function onPointReplyError(id as String) as Void {
+        if (!relayEnabled) { return; }
         if (pointReplyInFlight == null || !pointReplyInFlight.equals(id)) { return; }
         retryPointReply("TAK relay: phone handoff failed; event retained for retry");
     }
@@ -764,12 +851,14 @@ class TakClient {
     }
 
     function transmit(msgType as String, payload as Dictionary) as Void {
+        if (!relayEnabled) { return; }
         lastRelayMessageType = "-> " + msgType;
         lastRelayMessageTime = Time.now();
         transmitEnvelope({"msgType" => msgType, "payload" => payload}, new PhoneRelayListener(self));
     }
 
     function onPhoneMessage(message as Communications.PhoneAppMessage) as Void {
+        if (!relayEnabled) { return; }
         if (!(message.data instanceof Dictionary)) {
             return;
         }
@@ -777,6 +866,7 @@ class TakClient {
     }
 
     function handlePhoneEnvelope(envelope as Dictionary) as Void {
+        if (!relayEnabled) { return; }
         var msgType = envelope.get("msgType");
         var payload = envelope.get("payload");
         if (!(msgType instanceof String) || !(payload instanceof Dictionary)) {
@@ -901,7 +991,7 @@ class TakClient {
 
     function isCurrentEntitySession(envelope as Dictionary) as Boolean {
         var session = envelope.get("relaySession");
-        return (status == :connecting || status == :connected) && relaySession.length() > 0
+        return relayEnabled && (status == :connecting || status == :connected) && relaySession.length() > 0
             && session instanceof String && relaySession.equals(session as String);
     }
 
@@ -1042,6 +1132,7 @@ class TakClient {
     }
 
     function applyRelayStatus(payload as Dictionary) as Void {
+        if (!relayEnabled) { return; }
         if (!isCurrentEntitySession(payload) ||
                 !(payload.get("reliableDelivery") instanceof Boolean)) { return; }
         applyRelayUnitPreference(payload);

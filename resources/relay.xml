@@ -1,0 +1,14 @@
+<resources>
+    <jsonData id="RelayLabels">
+        {
+            "title": "WearTAK Companion",
+            "configuration": "TAK Relay",
+            "sitxConfiguration": "Sit(x) TAK",
+            "state": "Relay Status",
+            "locked": "Network settings are locked",
+            "saveFailed": "Relay setting not saved; state unchanged. Retry.",
+            "startFailed": "Relay enabled; could not start. Retry or restart app.",
+            "rollbackFailed": "Relay still enabled; saved state uncertain. Retry before restart."
+        }
+    </jsonData>
+</resources>

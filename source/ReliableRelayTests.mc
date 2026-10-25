@@ -15,12 +15,14 @@ class TestReliableRelay extends TakClient {
 
     function initialize() {
         TakClient.initialize();
+        relayEnabled = true;
         status = :connected;
         relaySession = "test-session";
         addEvent("test-event", null);
     }
 
     function startRelayRuntime() as Void {}
+    function stopRelayRuntime() as Void { relayRuntimeRunning = false; }
     function loadOfflineValue(key as String) { return stored.get(key); }
     function saveOfflineValue(key as String, value) as Boolean {
         if (!storageAvailable) { return false; }
@@ -29,7 +31,7 @@ class TestReliableRelay extends TakClient {
     }
     function relayNow() as Number { return clock; }
     function relayEpochNow() as Number { return epoch; }
-    function transmitEnvelope(envelope as Dictionary, listener as Communications.ConnectionListener) as Void {
+    function deliverEnvelope(envelope as Dictionary, listener as Communications.ConnectionListener) as Void {
         envelopes.add(envelope);
         listeners.add(listener);
     }
@@ -413,35 +415,40 @@ class TestRelayMenuDelegate extends NetworkPreferencesDelegate {
 (:test)
 function reliableRelayCompanionMenuToggle(logger) as Boolean {
     var app = Application.getApp() as StandaloneApp;
-    var menu = buildTakRelayMenu(app);
+    var menu = buildNetworkPreferencesMenu(app);
     var relay = new TestReliableRelay();
     relay.status = :idle;
+    relay.relayEnabled = false;
     var delegate = new TestRelayMenuDelegate(app, menu, relay);
     var companion = menu.getItem(menu.findItemById(:wearTakCompanionRelay));
-    var atak = menu.getItem(menu.findItemById(:atakRelayToggle));
-    Test.assert(companion != null && atak != null);
-    Test.assertEqual(companion.getLabel(), "WearTAK Companion");
-    Test.assert(menu.findItemById(:wearTakCompanionSetup) >= 0);
+    Test.assert(companion instanceof WatchUi.ToggleMenuItem);
+    Test.assertEqual(companion.getLabel(), relay.relayLabel("title"));
+    Test.assert(menu.findItemById(:atakRelayToggle) < 0);
+    Test.assert(buildTakRelayMenu(app).findItemById(:wearTakCompanionSetup) >= 0);
     delegate.onClientStatusChanged();
-    Test.assertEqual(companion.getSubLabel(), toolToggleLabel(false));
-    Test.assertEqual(atak.getSubLabel(), toolToggleLabel(false));
+    Test.assertEqual(companion.getSubLabel(), WatchUi.loadResource(Rez.Strings.LabelDisabled));
+    Test.assert(!(companion as WatchUi.ToggleMenuItem).isEnabled());
     delegate.onSelect(companion);
     Test.assertEqual(relay.status, :connecting);
     Test.assertEqual(relay.envelopes.size(), 1);
     var hello = relay.envelopes[0].get("payload") as Dictionary;
     Test.assertEqual(hello.get("unitPrefsVersion"), 1);
     Test.assertEqual(hello.get("relaySession"), relay.relaySession);
-    Test.assertEqual(companion.getSubLabel(), toolToggleLabel(true));
-    Test.assertEqual(atak.getSubLabel(), toolToggleLabel(true));
-    delegate.onSelect(atak);
+    Test.assertEqual(companion.getSubLabel(), WatchUi.loadResource(Rez.Strings.StatusConnecting));
+    Test.assert((companion as WatchUi.ToggleMenuItem).isEnabled());
+    relay.onRelayTransmitError();
+    delegate.onClientStatusChanged();
+    Test.assert((companion as WatchUi.ToggleMenuItem).isEnabled());
+    Test.assertEqual(companion.getSubLabel(), WatchUi.loadResource(Rez.Strings.StatusFailed));
+    delegate.onSelect(companion);
     Test.assertEqual(relay.status, :idle);
-    Test.assertEqual(companion.getSubLabel(), toolToggleLabel(false));
-    Test.assertEqual(atak.getSubLabel(), toolToggleLabel(false));
-    delegate.onSelect(atak);
+    Test.assertEqual(companion.getSubLabel(), WatchUi.loadResource(Rez.Strings.LabelDisabled));
+    Test.assert(!(companion as WatchUi.ToggleMenuItem).isEnabled());
+    delegate.onSelect(companion);
     Test.assertEqual(relay.status, :connecting);
     delegate.onSelect(companion);
     Test.assertEqual(relay.status, :idle);
     Test.assertEqual(relay.pointReplies.replies.size(), 1);
-    Test.assertEqual(companion.getSubLabel(), atak.getSubLabel());
+    Test.assert(!(companion as WatchUi.ToggleMenuItem).isEnabled());
     return true;
 }

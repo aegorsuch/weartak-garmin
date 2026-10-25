@@ -1406,9 +1406,15 @@ class StandaloneApp extends Application.AppBase {
 
     function onStart(params) {
         Diagnostics.record(Diagnostics.START);
+        if (takClient != null) { takClient.resumeRelay(); }
     }
 
     function onStop(state) {
+        if (takClient != null) {
+            takClient.relayGeneration++;
+            takClient.pointReplyAttempt++;
+            takClient.stopRelayRuntime();
+        }
         Diagnostics.record(Diagnostics.STOP);
         if (Diagnostics.journal.enabled) { Diagnostics.journal.persist(true, Time.now().value()); }
     }
