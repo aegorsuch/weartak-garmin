@@ -55,7 +55,7 @@ class StandaloneApp extends Application.AppBase {
     private var lastStepTime as Number? = null;
     private var lastGpsMovementTime as Number? = null;
     private var lastGpsFixTime as Number? = null;
-    private var lastGpsSpeed as Number? = null;
+    private var reportingSpeed as DynamicReporting = new DynamicReporting();
     private var lastHeartRateSampleTime as Number? = null;
     private var lastPliSentTime as Number? = null;
     private var lastActionPliSentTime as Number? = null;
@@ -742,7 +742,10 @@ class StandaloneApp extends Application.AppBase {
 
     function setLocationServices(enabled as Boolean) as Void {
         locationServices = enabled;
-        if (!enabled) { locationRefreshPending = false; }
+        if (!enabled) {
+            locationRefreshPending = false;
+            reportingSpeed.clear();
+        }
         Application.Storage.setValue("locationServices", enabled);
         applyLocationServices();
     }
@@ -1394,9 +1397,8 @@ class StandaloneApp extends Application.AppBase {
             return;
         }
         takClient.updatePosition(info);
-        if (info.speed != null) {
-            lastGpsSpeed = info.speed;
-        }
+        reportingSpeed.observe(self, info.speed, info.when == null ? null : info.when.value(),
+            info.accuracy, info.position != null, Time.now().value(), locationServices);
         if (info.position != null) {
             lastGpsFixTime = Time.now().value();
         }
@@ -1519,11 +1521,7 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function getActiveReportingInterval() as Number {
-        if (!dynamicReportingEnabled) { return constantReportingInterval; }
-        if (takClient.isAlerting()) { return whileAlertingReportingInterval; }
-        if (!isMoving()) { return stationaryReportingInterval; }
-        if (lastGpsSpeed != null && lastGpsSpeed > 5.5) { return vehicleReportingInterval; }
-        return onFootReportingInterval;
+        return reportingSpeed.currentInterval(self, Time.now().value(), locationServices);
     }
 
     function hasMotionInfo() as Boolean {

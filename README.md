@@ -753,8 +753,27 @@ features currently available:
 	Physiological Monitoring controls heart-rate sampling. When the ATAK relay is
 	connected, Garmin sends PLI updates using the selected reporting strategy;
 	CoT stale time is twice the active interval plus 15 seconds. Dynamic mode uses
-	the stationary, on-foot, vehicle, and alerting intervals according to current
-	movement/speed and alert state. Wi-Fi preferences are stored only because
+	the saved stationary interval below 0.44704 m/s, then smoothly interpolates the
+	saved on-foot to vehicle intervals through 13.4112 m/s; at or above that speed
+	it uses the saved vehicle interval. Interpolated seconds round half-up and
+	stay within the two saved endpoints, including reversed user rates.
+	Constant mode keeps its native precedence; Dynamic mode's alerting override
+	still uses the saved While Alerting interval. Existing defaults and settings
+	are not rewritten. Steps do not override this speed-based send selector.
+	Missing, invalid, future, disabled-location, poor-quality or expired speed is
+	**Unknown**, not stationary, and uses the slower of the saved on-foot/vehicle
+	intervals. Only actual usable/good watch Position samples with their native
+	sample timestamps are accepted; phone PLI location remains phone-authoritative.
+	Each accepted sample's validity deadline is frozen at its actual timestamp plus
+	`min(60 seconds, saved on-foot, saved vehicle, current selected reporting interval)`.
+	The existing continuous Connect IQ Position source is reused: Garmin exposes no
+	configurable observation interval or app acquisition timeout here, so this budget
+	is a send-selection validity bound, not a guaranteed GPS delivery schedule.
+	Expiry only changes the send selector; it never requests a fix, reschedules a
+	pending acquisition, redraws coordinates or sends an extra PLI. No subscription,
+	timer, power/dock policy or action-triggered fresh-location path is added or
+	changed, and no battery improvement is claimed.
+	Wi-Fi preferences are stored only because
 	active SSID detection is not implemented on Garmin. The adjacent BATDOK toggle
 	adds an `includeBatdok` flag to Garmin PLI messages. The companion must consume
 	that flag to add AMIST; the current companion implementation does not yet do so.
