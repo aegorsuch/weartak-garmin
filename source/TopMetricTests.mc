@@ -101,18 +101,19 @@ function topMetricChoicesAreExactSortedAndDoNotToggleRuntime(logger) as Boolean 
     sortMenuEntriesByLabel(entries);
     var delegate = new TopMetricDelegate(app, menu, null);
     for (var i = 0; i < expected.size(); i++) {
-        Test.assertEqual(menu.getItem(i + 3).getId(), entries[i].get("id"));
-        Test.assertEqual(menu.getItem(i + 3).getLabel(), entries[i].get("label"));
-        delegate.onSelect(menu.getItem(i + 3));
+        Test.assertEqual(menu.getItem(i + 4).getId(), entries[i].get("id"));
+        Test.assertEqual(menu.getItem(i + 4).getLabel(), entries[i].get("label"));
+        delegate.onSelect(menu.getItem(i + 4));
         Test.assertEqual(app.getDashboardMetric(), entries[i].get("id"));
         Test.assertEqual(Application.Storage.getValue("dashboardMetric"), entries[i].get("id"));
         Test.assertEqual(app.isPhysiologicalAlertsEnabled(), alerts);
         Test.assertEqual(app.isPhysiologicalMonitoringEnabled(), monitors);
     }
-    Test.assertEqual(menu.getItem(0).getId(), :topMonitors);
+    Test.assertEqual(menu.getItem(0).getId(), :topEnvironmentalAlerts);
     Test.assertEqual(menu.getItem(1).getId(), :topAlerts);
-    Test.assertEqual(menu.getItem(2).getId(), :topAlertThresholds);
-    Test.assert(menu.getItem(9) == null);
+    Test.assertEqual(menu.getItem(2).getId(), :topMonitors);
+    Test.assertEqual(menu.getItem(3).getId(), :topAlertThresholds);
+    Test.assert(menu.getItem(10) == null);
     Test.assert((menu.getItem(menu.findItemById("Skin Temp")).getSubLabel() as String)
         .find(app.text(monitors ? Rez.Strings.TextUnavailable : Rez.Strings.LabelDisabled)) != null);
     Test.assert(buildDisplayPreferencesMenu(app).findItemById(:topMetric) >= 0);
@@ -232,18 +233,18 @@ function topMetricAlertsAndMonitorsAreIndependentAndThresholdsRemainEditable(log
     var threshold = app.getAlertSetting(:exertionWarningThreshold);
     var menu = buildTopMetricMenu(app);
     var delegate = new TopMetricDelegate(app, menu, null);
-    delegate.onSelect(menu.getItem(1));
+    delegate.onSelect(menu.getItem(menu.findItemById(:topAlerts)));
     Test.assertEqual(app.isPhysiologicalAlertsEnabled(), !alerts);
     Test.assertEqual(app.isPhysiologicalMonitoringEnabled(), monitors);
     Test.assertEqual(app.getAlertSetting(:exertionWarningThreshold), threshold);
-    delegate.onSelect(menu.getItem(1));
+    delegate.onSelect(menu.getItem(menu.findItemById(:topAlerts)));
     Test.assertEqual(app.isPhysiologicalAlertsEnabled(), alerts);
-    delegate.onSelect(menu.getItem(0));
+    delegate.onSelect(menu.getItem(menu.findItemById(:topMonitors)));
     Test.assertEqual(app.isPhysiologicalMonitoringEnabled(), !monitors);
     Test.assertEqual(app.isPhysiologicalAlertsEnabled(), alerts);
-    delegate.onSelect(menu.getItem(0));
+    delegate.onSelect(menu.getItem(menu.findItemById(:topMonitors)));
     app.setPhysiologicalAlertsEnabled(false);
-    delegate.onSelect(menu.getItem(2));
+    delegate.onSelect(menu.getItem(menu.findItemById(:topAlertThresholds)));
     Test.assert(!app.isPhysiologicalAlertsEnabled());
     Test.assertEqual(app.getAlertSetting(:exertionWarningThreshold), threshold);
     Test.assert(buildPhysiologicalAlertsMenu(app).findItemById(:exertionAlerts) >= 0);
@@ -253,8 +254,8 @@ function topMetricAlertsAndMonitorsAreIndependentAndThresholdsRemainEditable(log
     app.setAlertSetting(:exertionWarningThreshold, threshold);
     app.setPhysiologicalAlertsEnabled(alerts);
     (menu as TopMetricMenu).onShow();
-    Test.assertEqual(menu.getItem(1).getSubLabel(), app.text(alerts ? Rez.Strings.TextOn : Rez.Strings.TextOff));
-    Test.assertEqual(menu.getItem(0).getSubLabel(), app.text(monitors ? Rez.Strings.TextOn : Rez.Strings.TextOff));
+    Test.assertEqual(menu.getItem(menu.findItemById(:topAlerts)).getSubLabel(), app.text(alerts ? Rez.Strings.TextOn : Rez.Strings.TextOff));
+    Test.assertEqual(menu.getItem(menu.findItemById(:topMonitors)).getSubLabel(), app.text(monitors ? Rez.Strings.TextOn : Rez.Strings.TextOff));
     Test.assertEqual(app.isPhysiologicalMonitoringEnabled(), monitors);
     return true;
 }
@@ -266,20 +267,20 @@ function nativePhysioControlsAndHeartPreserveMetricBehavior(logger) as Boolean {
     var alerts = app.isPhysiologicalAlertsEnabled();
     var metric = app.getDashboardMetric();
     var menu = buildPhysiologicalAlertsMenu(app);
-    Test.assertEqual(menu.getItem(0).getId(), :physiologicalMonitoring);
-    Test.assertEqual(menu.getItem(1).getId(), :physiologicalAlertsToggle);
-    Test.assertEqual(menu.getItem(0).getLabel(), buildTopMetricMenu(app).getItem(0).getLabel());
-    Test.assertEqual(menu.getItem(1).getLabel(), buildTopMetricMenu(app).getItem(1).getLabel());
+    var monitoringItem = menu.getItem(menu.findItemById(:physiologicalMonitoring));
+    var alertsItem = menu.getItem(menu.findItemById(:physiologicalAlertsToggle));
+    Test.assertEqual(monitoringItem.getLabel(), buildTopMetricMenu(app).getItem(2).getLabel());
+    Test.assertEqual(alertsItem.getLabel(), buildTopMetricMenu(app).getItem(1).getLabel());
     Test.assertEqual(buildReportingStrategyMenu(app).getItem(0).getId(), :physiologicalMonitoring);
     var delegate = new PhysiologicalAlertsDelegate(app);
-    delegate.onSelect(menu.getItem(0));
+    delegate.onSelect(monitoringItem);
     Test.assertEqual(app.isPhysiologicalMonitoringEnabled(), !monitors);
     Test.assertEqual(app.isPhysiologicalAlertsEnabled(), alerts);
-    delegate.onSelect(menu.getItem(0));
-    delegate.onSelect(menu.getItem(1));
+    delegate.onSelect(monitoringItem);
+    delegate.onSelect(alertsItem);
     Test.assertEqual(app.isPhysiologicalMonitoringEnabled(), monitors);
     Test.assertEqual(app.isPhysiologicalAlertsEnabled(), !alerts);
-    delegate.onSelect(menu.getItem(1));
+    delegate.onSelect(alertsItem);
     var choices = buildTopMetricMenu(app);
     var hr = choices.getItem(choices.findItemById("Heart Rate")) as WatchUi.IconMenuItem;
     Test.assert(hr.getIcon() instanceof HeartRateGlyph);
@@ -292,5 +293,45 @@ function nativePhysioControlsAndHeartPreserveMetricBehavior(logger) as Boolean {
     app.setDashboardMetric("MGRS");
     new TopMetricTitle(app).draw(dc);
     app.setDashboardMetric(metric);
+    return true;
+}
+
+(:test)
+function alertConfigurationMenusAlphabetizeAndKeepActions(logger) as Boolean {
+    var app = Application.getApp() as StandaloneApp;
+    Test.assertEqual(compareMenuLabels("Alerts", "alerts"), 0);
+    Test.assert(compareMenuLabels("Alert", "Alerts") < 0);
+    Test.assert(compareMenuLabels("Monitoring", "Alerts") > 0);
+    var menus = [buildEnvironmentalAlertsMenu(app), buildPhysiologicalAlertsMenu(app),
+        buildAlertingPreferencesMenu(app)];
+    for (var m = 0; m < menus.size(); m++) {
+        var menu = menus[m];
+        for (var i = 1; menu.getItem(i) != null; i++) {
+            Test.assert((menu.getItem(i - 1).getLabel() as String).toLower()
+                .compareTo((menu.getItem(i).getLabel() as String).toLower()) <= 0);
+        }
+    }
+    Test.assert(menus[0].findItemById(:immersionAlertsToggle) >= 0);
+    Test.assert(menus[0].findItemById(:atmPressureAlerts) >= 0);
+    Test.assertEqual(menus[1].getItem(menus[1].findItemById(:physiologicalMonitoring)).getSubLabel(),
+        toolToggleLabel(app.isPhysiologicalMonitoringEnabled()));
+    Test.assert(menus[1].findItemById(:physiologicalAlertsToggle) >= 0);
+    Test.assert(menus[1].findItemById(:restingHeartRateAlerts) >= 0);
+    Test.assert(menus[1].findItemById(:exertionAlerts) >= 0);
+    var topMenu = buildTopMetricMenu(app);
+    var environmental = topMenu.getItem(0);
+    Test.assertEqual(environmental.getId(), :topEnvironmentalAlerts);
+    Test.assertEqual(environmental.getSubLabel(), ">");
+    var immersion = app.isImmersionAlertsEnabled();
+    var low = app.isLowPressureAlertsEnabled();
+    var high = app.isHighPressureAlertsEnabled();
+    new TopMetricDelegate(app, topMenu, null).onSelect(environmental);
+    Test.assertEqual(app.isImmersionAlertsEnabled(), immersion);
+    Test.assertEqual(app.isLowPressureAlertsEnabled(), low);
+    Test.assertEqual(app.isHighPressureAlertsEnabled(), high);
+    WatchUi.popView(WatchUi.SLIDE_IMMEDIATE);
+    Test.assert(menus[2].findItemById(:batteryAlertsToggle) >= 0);
+    Test.assert(menus[2].findItemById(:environmentalAlerts) >= 0);
+    Test.assert(menus[2].findItemById(:physiologicalAlerts) >= 0);
     return true;
 }

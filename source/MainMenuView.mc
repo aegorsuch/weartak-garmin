@@ -40,18 +40,41 @@ function addMenuEntry(menu as WatchUi.Menu2, label as String, subLabel, id) as V
     menu.addItem(new WatchUi.MenuItem(label, subLabel, id, null));
 }
 
+function alphabetizeMenu(menu as WatchUi.Menu2) as Void {
+    var entries = [];
+    while (menu.getItem(0) != null) {
+        var item = menu.getItem(0);
+        entries.add({"label" => item.getLabel(), "item" => item});
+        menu.deleteItem(0);
+    }
+    sortMenuEntriesByLabel(entries);
+    for (var i = 0; i < entries.size(); i++) { menu.addItem(entries[i].get("item")); }
+}
+
 function sortMenuEntriesByLabel(entries as Array) as Void {
     for (var index = 1; index < entries.size(); index++) {
         var candidate = entries[index] as Dictionary;
         var label = (candidate.get("label") as String).toLower();
         var insertion = index;
         while (insertion > 0
-                && ((entries[insertion - 1] as Dictionary).get("label") as String).toLower().compareTo(label) > 0) {
+                && compareMenuLabels((entries[insertion - 1] as Dictionary).get("label") as String, label) > 0) {
             entries[insertion] = entries[insertion - 1];
             insertion--;
         }
         entries[insertion] = candidate;
     }
+}
+
+function compareMenuLabels(left as String, right as String) as Number {
+    // String.compareTo is unavailable on the supported fenix 6 native runtime.
+    var a = left.toLower().toCharArray();
+    var b = right.toLower().toCharArray();
+    var count = a.size() < b.size() ? a.size() : b.size();
+    for (var i = 0; i < count; i++) {
+        var difference = a[i].toNumber() - b[i].toNumber();
+        if (difference != 0) { return difference; }
+    }
+    return a.size() - b.size();
 }
 
 function addSavedEntryDelete(menu as WatchUi.Menu2, label as String, id as Dictionary) as Void {
@@ -242,7 +265,7 @@ class TopMetricMenu extends WatchUi.Menu2 {
         if (focus != null && getItem(focus) != null) { setFocus(focus); }
     }
     function refreshMetricReadings() as Void {
-        for (var i = 3; i < 9; i++) {
+        for (var i = 4; i < 10; i++) {
             var item = getItem(i);
             var status = topMetricChoiceStatus(app, item.getId() as String);
             if (!(item.getSubLabel() as String).equals(status)) { item.setSubLabel(status); }
@@ -262,10 +285,11 @@ function topMetricChoiceStatus(app as StandaloneApp, id as String) as String {
 }
 
 function populateTopMetricMenu(menu as WatchUi.Menu2, app as StandaloneApp) as Void {
-    addMenuEntry(menu, app.text(Rez.Strings.TopMetricPhysioMonitors),
-        app.text(app.isPhysiologicalMonitoringEnabled() ? Rez.Strings.TextOn : Rez.Strings.TextOff), :topMonitors);
+    addMenuEntry(menu, app.text(Rez.Strings.TextEnvironmentalAlerts), ">", :topEnvironmentalAlerts);
     addMenuEntry(menu, app.text(Rez.Strings.TextPhysiologicalAlerts),
         app.text(app.isPhysiologicalAlertsEnabled() ? Rez.Strings.TextOn : Rez.Strings.TextOff), :topAlerts);
+    addMenuEntry(menu, app.text(Rez.Strings.TopMetricPhysioMonitors),
+        app.text(app.isPhysiologicalMonitoringEnabled() ? Rez.Strings.TextOn : Rez.Strings.TextOff), :topMonitors);
     addMenuEntry(menu, app.text(Rez.Strings.TopMetricAlertThresholds), ">", :topAlertThresholds);
     var values = ["Exertion", "Heart Rate", "Lat/Long", "MGRS", "Skin Temp", "Steps"];
     var entries = [];
@@ -295,7 +319,9 @@ class TopMetricDelegate extends WatchUi.Menu2InputDelegate {
     }
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
-        if (id == :topAlerts) {
+        if (id == :topEnvironmentalAlerts) {
+            WatchUi.pushView(buildEnvironmentalAlertsMenu(app), new EnvironmentalAlertsDelegate(app), WatchUi.SLIDE_LEFT);
+        } else if (id == :topAlerts) {
             app.setPhysiologicalAlertsEnabled(!app.isPhysiologicalAlertsEnabled());
             item.setSubLabel(app.text(app.isPhysiologicalAlertsEnabled() ? Rez.Strings.TextOn : Rez.Strings.TextOff));
         } else if (id == :topMonitors) {
@@ -305,7 +331,7 @@ class TopMetricDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.pushView(buildPhysiologicalAlertsMenu(app), new PhysiologicalAlertsDelegate(app), WatchUi.SLIDE_LEFT);
         } else if (app.isDashboardMetric(id)) {
             app.setDashboardMetric(id as String);
-            for (var i = 3; i < 9; i++) {
+            for (var i = 4; i < 10; i++) {
                 var row = menu.getItem(i);
                 var key = row.getId() as String;
                 row.setSubLabel(topMetricChoiceStatus(app, key));
@@ -574,6 +600,7 @@ function buildAlertingPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     addMenuEntry(menu, app.text(Rez.Strings.TextPhysiologicalAlerts), null, :physiologicalAlerts);
     addMenuEntry(menu, app.text(Rez.Strings.TextEnvironmentalAlerts), null, :environmentalAlerts);
     addMenuEntry(menu, app.text(Rez.Strings.TextBatteryAlerts), batteryAlertsLabel(app), :batteryAlertsToggle);
+    alphabetizeMenu(menu);
     return menu;
 }
 
@@ -581,6 +608,7 @@ function buildEnvironmentalAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu(app.text(Rez.Strings.TextEnvironmentalAlerts));
     addMenuEntry(menu, app.text(Rez.Strings.TextImmersionAlerts), immersionAlertsLabel(app), :immersionAlertsToggle);
     addMenuEntry(menu, app.text(Rez.Strings.TextAtmPressureAlerts), null, :atmPressureAlerts);
+    alphabetizeMenu(menu);
     return menu;
 }
 
@@ -599,6 +627,7 @@ function buildPhysiologicalAlertsMenu(app as StandaloneApp) as WatchUi.Menu2 {
     addMenuEntry(menu, app.text(Rez.Strings.TextPhysiologicalAlerts), physiologicalAlertsLabel(app), :physiologicalAlertsToggle);
     addMenuEntry(menu, app.text(Rez.Strings.TextRestingHeartRateAlerts), null, :restingHeartRateAlerts);
     addMenuEntry(menu, app.text(Rez.Strings.TextExertionAlerts), null, :exertionAlerts);
+    alphabetizeMenu(menu);
     return menu;
 }
 
