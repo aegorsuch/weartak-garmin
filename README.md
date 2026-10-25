@@ -701,12 +701,17 @@ features currently available:
 	With monitoring on, missing physiological data shows **Unavailable**. Coordinates
 	still work with monitoring off. Hiding Steps does not stop the watch's daily
 	activity collector.
-	The same list starts with independent **Physiological Monitoring** and
-	**Physiological Alerts** rows, followed by **Alert thresholds >** and the six
+	The same list starts with **Environmental Alerts >**, a navigation-only action
+	to its existing configuration, then independent **Physiological Alerts** and
+	**Physiological Monitoring** rows, followed by **Alert thresholds >** and the six
 	metric choices. Controls use native whole-row actions with buttons and touch
 	(the thresholds row is separate because Menu2 has no split toggle).
-	The physiological-alerts menu also starts with these same monitoring/alerting
-	controls, and Reporting Strategy puts monitoring first. They use
+	Full localized physiological labels are retained even when the native menu
+	wraps them on a narrow watch; Menu2 exposes no per-row font-fitting control.
+	Alerting Preferences, Environmental Alerts and Physiological Alerts menus are
+	alphabetized by their visible localized labels, preserving their existing
+	switches and configuration actions. No environmental master toggle is added.
+	Reporting Strategy still puts monitoring first. They use
 	the existing physiological alert/heart-rate runtime; merely opening the screen,
 	selecting a metric or opening thresholds never enables either setting.
 	Thresholds remain editable while alerts are off; disabling clears pending
