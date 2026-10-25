@@ -32,8 +32,12 @@ class DynamicReporting {
     }
 
     function currentInterval(app as StandaloneApp, now as Number, enabled as Boolean) as Number {
-        return selectInterval(app, valid(speed, sampledAt, now, enabled)
-            && validUntil != null && now <= validUntil ? speed : null);
+        var current = valid(speed, sampledAt, now, enabled) && validUntil != null && now <= validUntil ? speed : null;
+        if (app.isDynamicReportingEnabled() && !app.getTakClient().isAlerting()) {
+            Diagnostics.record(current == null ? Diagnostics.SPEED_UNKNOWN
+                : current < 0.44704d ? Diagnostics.SPEED_STATIONARY : Diagnostics.SPEED_MOVING);
+        }
+        return selectInterval(app, current);
     }
 
     function observationInterval(app as StandaloneApp, value) as Number {
