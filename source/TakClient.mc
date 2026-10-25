@@ -115,7 +115,6 @@ class TakClient {
     var bloodhoundSync as BloodhoundSync;
     var routeNavigationSync as RouteNavigationSync;
     var selfStatus as SelfStatusSync;
-    var verboseLoggingEnabled as Boolean = false;
     var lastRelayMessageType as String? = null;
     var lastRelayMessageTime as Time.Moment? = null;
     var pointReplies as OfflineRelayQueue;
@@ -313,6 +312,7 @@ class TakClient {
         if (status == :idle) {
             return;
         }
+        Diagnostics.record(Diagnostics.RELAY_ERROR);
         selfStatus.reset();
         relayStatusAccepted = false;
         relayReadyNotified = false;
@@ -608,8 +608,10 @@ class TakClient {
             Application.Storage.setValue(key, value);
             return true;
         } catch (error instanceof Lang.StorageFullException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             System.println("TAK offline storage full: " + error.getErrorMessage());
         } catch (error instanceof Application.ObjectStoreAccessException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             System.println("TAK offline storage unavailable: " + error.getErrorMessage());
         }
         WatchUi.showToast(WatchUi.loadResource(Rez.Strings.OfflineStorageFailed), null);
@@ -695,6 +697,7 @@ class TakClient {
     }
 
     function transmitEnvelope(envelope as Dictionary, listener as Communications.ConnectionListener) as Void {
+        Diagnostics.record(Diagnostics.RELAY_TRANSMITTED);
         Communications.transmit(envelope, null, listener);
     }
 
@@ -707,6 +710,7 @@ class TakClient {
     }
 
     function retryPointReply(detail as String) as Void {
+        Diagnostics.record(Diagnostics.RELAY_ERROR);
         pointReplyInFlight = null;
         pointReplyAttempt++;
         pointReplyRetryAt = relayNow() + pointReplyRetryDelay;
@@ -762,9 +766,6 @@ class TakClient {
     function transmit(msgType as String, payload as Dictionary) as Void {
         lastRelayMessageType = "-> " + msgType;
         lastRelayMessageTime = Time.now();
-        if (verboseLoggingEnabled) {
-            System.println("TAK relay out: " + msgType);
-        }
         transmitEnvelope({"msgType" => msgType, "payload" => payload}, new PhoneRelayListener(self));
     }
 
@@ -779,14 +780,13 @@ class TakClient {
         var msgType = envelope.get("msgType");
         var payload = envelope.get("payload");
         if (!(msgType instanceof String) || !(payload instanceof Dictionary)) {
+            Diagnostics.record(Diagnostics.RELAY_ERROR);
             System.println("TAK relay ingress absent: invalid envelope");
             return;
         }
         lastRelayMessageType = "<- " + msgType.toString();
         lastRelayMessageTime = Time.now();
-        if (verboseLoggingEnabled) {
-            System.println("TAK relay in: " + msgType.toString());
-        }
+        Diagnostics.record(Diagnostics.RELAY_RECEIVED);
         if (msgType.equals("route") || msgType.equals("route_remove") || msgType.equals("routes_reset")
                 || msgType.equals("routes_error")) {
             if (incomingRouteCallback != null) { incomingRouteCallback.invoke(msgType, payload); }
@@ -1159,13 +1159,10 @@ class TakClient {
     }
 
     function notifyStatusChanged() as Void {
+        Diagnostics.record(isConnected() ? Diagnostics.RELAY_CONNECTED : Diagnostics.RELAY_DISCONNECTED);
         if (statusCallback != null) {
             statusCallback.invoke();
         }
-    }
-
-    function setVerboseLogging(enabled as Boolean) as Void {
-        verboseLoggingEnabled = enabled;
     }
 
     function getLastRelayMessageSummary() as String {

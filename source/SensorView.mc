@@ -142,7 +142,7 @@ class DiagnosticsView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         var screenWidth = System.getDeviceSettings().screenWidth;
         var centerX = screenWidth / 2;
-        dc.drawText(centerX, 8, Graphics.FONT_MEDIUM, "Diagnostics", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(centerX, 8, Graphics.FONT_MEDIUM, "Device Status", Graphics.TEXT_JUSTIFY_CENTER);
         var stats = System.getSystemStats();
         drawReading(dc, screenWidth, 44, "Version", app.getAppVersion());
         drawReading(dc, screenWidth, 68, "Device", System.getDeviceSettings().partNumber);

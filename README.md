@@ -788,7 +788,34 @@ features currently available:
 	do nothing until developer mode is unlocked by tapping the version row eight
 	times within 1.5 seconds. Admin Preferences holds the Network Preferences
 	Lock; when locked, Network Preferences cannot be opened from Settings.
-	Developer Preferences holds Verbose Logging and Diagnostics.
+	Developer Preferences is alphabetized by visible labels with the native
+	fenix6-compatible sorting helper: Device Status, Diagnostic Events, Diagnostics.
+	**Diagnostics** is one opt-in, default-off toggle, replacing Verbose Logging.
+	An old Verbose Logging preference is not treated as diagnostics consent.
+	The toggle and the shared developer/admin UI unlock persist in native app
+	storage across normal restarts, reboots and same-app updates until explicitly
+	disabled. This is a UI unlock, not authentication or extra OS privileges;
+	network locks and phone-managed settings remain authoritative.
+	Native storage failure is surfaced, not reported as a successful saved setting.
+	If saving an explicit Diagnostics opt-out fails, capture stops immediately
+	for this run, but retry the setting before restart.
+	Diagnostics keeps only the newest 32 allowlisted timestamp/event-code pairs:
+	lifecycle, location/sample usability, reporting due/offline/send-attempt and speed
+	state, HR sample presence (not values, gated by monitoring/BATDOK), monitoring, relay connectivity/activity/
+	errors, and coarse low/normal battery state. No coordinates, identities, chat,
+	credentials, server addresses, raw payloads or free-form exception text enter
+	this journal. It records existing callbacks only: no new GPS/sensor subscriptions,
+	timers, network activity or PLI. Battery inspection and repeated event codes
+	are limited to once per 60 seconds; journal writes occur at most once per
+	60 seconds on existing events, plus explicit toggle and normal-stop saves.
+	Developer Preferences > **Diagnostic Events** provides manual native on-watch
+	retrieval, newest first, using full native menu labels and UTC timestamps.
+	**Device Status** retains the previous read-only status screen.
+	There is no automatic upload, ADB equivalent, arbitrary-file export or OS-wide
+	log collector. No continuous background/crash capture is promised; an abnormal
+	exit can lose the latest buffered events. Retained evidence remains viewable
+	when capture is off. App uninstall/data clearing removes settings and evidence,
+	and the device-dependent shared object-store capacity can prevent persistence.
 - The paired phone can manage watch identity and reporting. A `set_settings`
 	message applies `callsign`, `team`, `role`, and `reportIntSecs`, and the watch
 	replies with `settings_set_ack` followed by a `watch_settings` echo of the

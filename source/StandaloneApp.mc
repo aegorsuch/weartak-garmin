@@ -31,7 +31,6 @@ class StandaloneApp extends Application.AppBase {
     private var sitxClient;
     private var versionTapCount as Number = 0;
     private var devModeEnabled as Boolean = false;
-    private var verboseLoggingEnabled as Boolean = false;
     private var networkPreferencesLocked as Boolean = false;
     private var phoneManagedSettings as Boolean = false;
     private var distanceUnitPreference as String = "Metric";
@@ -134,6 +133,7 @@ class StandaloneApp extends Application.AppBase {
 
     function initialize() {
         Application.AppBase.initialize();
+        Diagnostics.journal.restore(Time.now().value());
         takClient = new TakClient();
         sitxClient = new SitxClient();
         takClient.incomingCotCallback = method(:onIncomingCot);
@@ -151,7 +151,6 @@ class StandaloneApp extends Application.AppBase {
             locationServices = storedLocationServices as Boolean;
         }
         loadAlertSettings();
-        takClient.setVerboseLogging(verboseLoggingEnabled);
         applyLocationServices();
         applyPhysiologicalMonitoring();
         Sensor.enableSensorEvents(method(:onSensor));
@@ -186,10 +185,12 @@ class StandaloneApp extends Application.AppBase {
         try {
             Application.Storage.setValue("moppLevel", {"level" => level, "savedAt" => savedAt.value()});
         } catch (error instanceof Lang.StorageFullException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             System.println("MOPP storage full: " + error.getErrorMessage());
             WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
             return false;
         } catch (error instanceof Application.ObjectStoreAccessException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             System.println("MOPP storage unavailable: " + error.getErrorMessage());
             WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
             return false;
@@ -213,10 +214,12 @@ class StandaloneApp extends Application.AppBase {
         try {
             Application.Storage.setValue("dashboardMetric", value);
         } catch (error instanceof Lang.StorageFullException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             System.println("TAK top metric storage full: " + error.getErrorMessage());
             WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
             return;
         } catch (error instanceof Application.ObjectStoreAccessException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             System.println("TAK top metric storage unavailable: " + error.getErrorMessage());
             WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
             return;
@@ -575,8 +578,10 @@ class StandaloneApp extends Application.AppBase {
             Application.Storage.setValue(key, value);
             return null;
         } catch (error instanceof Lang.StorageFullException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             return "storage full";
         } catch (error instanceof Application.ObjectStoreAccessException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             return "storage unavailable";
         }
     }
@@ -645,6 +650,7 @@ class StandaloneApp extends Application.AppBase {
 
     function setPhysiologicalMonitoringEnabled(enabled as Boolean) as Void {
         physiologicalMonitoringEnabled = enabled;
+        Diagnostics.record(enabled ? Diagnostics.MONITORING_ON : Diagnostics.MONITORING_OFF);
         Application.Storage.setValue("physiologicalMonitoringEnabled", enabled);
         lastHeartRateSampleTime = null;
         takClient.selfStatus.clearPhysio();
@@ -716,8 +722,21 @@ class StandaloneApp extends Application.AppBase {
         }
         versionTapCount = 0;
         lastVersionTapTime = null;
-        devModeEnabled = !devModeEnabled;
-        Application.Storage.setValue("devModeEnabled", devModeEnabled);
+        var enabled = !devModeEnabled;
+        try {
+            Application.Storage.setValue("devModeEnabled", enabled);
+        } catch (error instanceof Lang.StorageFullException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
+            System.println("Developer mode preference storage full");
+            WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
+            return false;
+        } catch (error instanceof Application.ObjectStoreAccessException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
+            System.println("Developer mode preference storage unavailable");
+            WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
+            return false;
+        }
+        devModeEnabled = enabled;
         return true;
     }
 
@@ -730,18 +749,9 @@ class StandaloneApp extends Application.AppBase {
         return devModeEnabled;
     }
 
-    function isVerboseLoggingEnabled() as Boolean {
-        return verboseLoggingEnabled;
-    }
-
-    function setVerboseLoggingEnabled(enabled as Boolean) as Void {
-        verboseLoggingEnabled = enabled;
-        Application.Storage.setValue("verboseLoggingEnabled", enabled);
-        takClient.setVerboseLogging(enabled);
-    }
-
     function setLocationServices(enabled as Boolean) as Void {
         locationServices = enabled;
+        Diagnostics.record(enabled ? Diagnostics.LOCATION_ON : Diagnostics.LOCATION_OFF);
         if (!enabled) {
             locationRefreshPending = false;
             reportingSpeed.clear();
@@ -790,10 +800,12 @@ class StandaloneApp extends Application.AppBase {
         try {
             Application.Storage.setValue("distanceUnitPreference", units);
         } catch (error instanceof Lang.StorageFullException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             System.println("TAK display preference storage full: " + error.getErrorMessage());
             WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
             return false;
         } catch (error instanceof Application.ObjectStoreAccessException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             System.println("TAK display preference storage unavailable: " + error.getErrorMessage());
             WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
             return false;
@@ -910,8 +922,10 @@ class StandaloneApp extends Application.AppBase {
             Application.Storage.setValue("customChatQuickReplies", replies);
             return true;
         } catch (error instanceof Lang.StorageFullException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             System.println("TAK custom chat quick reply storage full: " + error.getErrorMessage());
         } catch (error instanceof Application.ObjectStoreAccessException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             System.println("TAK custom chat quick reply storage unavailable: " + error.getErrorMessage());
         }
         WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
@@ -935,8 +949,10 @@ class StandaloneApp extends Application.AppBase {
             Application.Storage.setValue("customManualAlerts", alerts);
             return true;
         } catch (error instanceof Lang.StorageFullException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             System.println("TAK custom alert storage full: " + error.getErrorMessage());
         } catch (error instanceof Application.ObjectStoreAccessException) {
+            Diagnostics.record(Diagnostics.STORAGE_ERROR);
             System.println("TAK custom alert storage unavailable: " + error.getErrorMessage());
         }
         WatchUi.showToast(text(Rez.Strings.OfflineStorageFailed), null);
@@ -1014,7 +1030,6 @@ class StandaloneApp extends Application.AppBase {
         uniformPantsLength = storedNumber("uniformPantsLength", uniformPantsLength);
         loadoutWeight = storedNumber("loadoutWeight", loadoutWeight);
         devModeEnabled = storedBoolean("devModeEnabled", devModeEnabled);
-        verboseLoggingEnabled = storedBoolean("verboseLoggingEnabled", verboseLoggingEnabled);
         ensureValidAlertRange();
         ensureValidUserMetrics();
     }
@@ -1390,6 +1405,12 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function onStart(params) {
+        Diagnostics.record(Diagnostics.START);
+    }
+
+    function onStop(state) {
+        Diagnostics.record(Diagnostics.STOP);
+        if (Diagnostics.journal.enabled) { Diagnostics.journal.persist(true, Time.now().value()); }
     }
 
     function onPosition(info as Toybox.Position.Info) as Void {
@@ -1397,6 +1418,9 @@ class StandaloneApp extends Application.AppBase {
             return;
         }
         takClient.updatePosition(info);
+        Diagnostics.record(info.position != null
+            && (info.accuracy == Position.QUALITY_GOOD || info.accuracy == Position.QUALITY_USABLE)
+            ? Diagnostics.FIX_USABLE : Diagnostics.FIX_UNUSABLE);
         reportingSpeed.observe(self, info.speed, info.when == null ? null : info.when.value(),
             info.accuracy, info.position != null, Time.now().value(), locationServices);
         if (info.position != null) {
@@ -1426,6 +1450,9 @@ class StandaloneApp extends Application.AppBase {
 
     function onSensor(info as Sensor.Info) as Void {
         sensorInfo = info;
+        Diagnostics.record(isSelfStatusPhysioEnabled() && info.heartRate != null
+            ? Diagnostics.SENSOR_PRESENT : Diagnostics.SENSOR_ABSENT);
+        Diagnostics.journal.samplePower();
         takClient.selfStatus.sample(info.heartRate, isSelfStatusPhysioEnabled());
         var now = Time.now().value();
         sendPliIfDue();
@@ -1469,10 +1496,13 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function sendPliIfDue() as Void {
-        if (!takClient.isConnected()) { return; }
+        if (!takClient.isConnected()) { Diagnostics.record(Diagnostics.REPORT_OFFLINE); return; }
         var interval = getActiveReportingInterval();
         var now = Time.now().value();
-        if (lastPliSentTime != null && now - lastPliSentTime < interval) { return; }
+        if (lastPliSentTime != null && now - lastPliSentTime < interval) {
+            Diagnostics.record(Diagnostics.REPORT_WAIT);
+            return;
+        }
         sendPliNow();
     }
 
@@ -1491,6 +1521,7 @@ class StandaloneApp extends Application.AppBase {
         takClient.sendPli(interval, callsign, myRole, myTeamColor,
             pliHeartRateFromSample(getHeartRate(), lastHeartRateSampleTime, now,
                 isSelfStatusPhysioEnabled()), age, batdokCotEnabled);
+        Diagnostics.record(Diagnostics.REPORT_SENT);
         lastPliSentTime = now;
         lastActionPliSentTime = now;
         return true;
