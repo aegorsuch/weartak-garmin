@@ -156,9 +156,9 @@ module Diagnostics {
     }
 
     function buildEventsMenu(journal as DiagnosticJournal) as WatchUi.Menu2 {
-        var menu = createMenu("Diagnostic Events");
+        var menu = createMenu("Log Events");
         if (journal.storageFailed) { addMenuEntry(menu, "Storage unavailable", "Recent events may be unsaved", :storage); }
-        if (journal.entries.size() == 0) { addMenuEntry(menu, "No events yet", "Diagnostics is opt-in", :empty); }
+        if (journal.entries.size() == 0) { addMenuEntry(menu, "No events yet", "Logging is opt-in", :empty); }
         for (var i = journal.entries.size() - 1; i >= 0; i--) {
             var entry = journal.entries[i];
             addMenuEntry(menu, journal.label(entry[1]), journal.timestamp(entry[0]), i);

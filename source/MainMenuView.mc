@@ -360,8 +360,8 @@ function buildAdminPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
 
 function buildDeveloperPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu("Developer Preferences");
-    addMenuEntry(menu, "Diagnostics", toolToggleLabel(Diagnostics.journal.enabled), :diagnosticsToggle);
-    addMenuEntry(menu, "Diagnostic Events", null, :diagnosticEvents);
+    addMenuEntry(menu, "Logging", toolToggleLabel(Diagnostics.journal.enabled), :diagnosticsToggle);
+    addMenuEntry(menu, "Log Events", null, :diagnosticEvents);
     addMenuEntry(menu, "Device Status", null, :diagnostics);
     alphabetizeMenu(menu);
     return menu;
@@ -1128,7 +1128,7 @@ class DeveloperOptionsDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.switchToView(buildSettingsMenu(app), new SettingsMenuDelegate(app), WatchUi.SLIDE_RIGHT);
         } else if (id == :diagnosticsToggle) {
             if (!Diagnostics.journal.setEnabled(!Diagnostics.journal.enabled, Time.now().value())) {
-                WatchUi.showToast("Diagnostics setting not saved; retry before restart", null);
+                WatchUi.showToast("Logging setting not saved; retry before restart", null);
             }
             item.setSubLabel(toolToggleLabel(Diagnostics.journal.enabled));
             WatchUi.requestUpdate();
