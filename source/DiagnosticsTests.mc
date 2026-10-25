@@ -109,9 +109,13 @@ function diagnosticsNativeMenusSortedAndHooksNeverRecordPayloads(logger) as Bool
     for (var i = 1; i < 3; i++) {
         Test.assert(compareMenuLabels(menu.getItem(i - 1).getLabel(), menu.getItem(i).getLabel()) <= 0);
     }
-    Test.assertEqual(menu.getItem(menu.findItemById(:diagnosticsToggle)).getLabel(), "Diagnostics");
-    Test.assertEqual(menu.getItem(menu.findItemById(:diagnosticEvents)).getLabel(), "Diagnostic Events");
+    Test.assertEqual(menu.getItem(menu.findItemById(:diagnosticsToggle)).getLabel(), "Logging");
+    Test.assertEqual(menu.getItem(menu.findItemById(:diagnosticEvents)).getLabel(), "Log Events");
     Test.assertEqual(menu.getItem(menu.findItemById(:diagnostics)).getLabel(), "Device Status");
+    Test.assertEqual(menu.getItem(menu.findItemById(:diagnosticsToggle)).getSubLabel(),
+        toolToggleLabel(Diagnostics.journal.enabled));
+    Test.assertEqual(Diagnostics.buildEventsMenu(new DiagnosticJournalFixture()).getItem(0).getSubLabel(),
+        "Logging is opt-in");
     var previous = Diagnostics.journal;
     var journal = new DiagnosticJournalFixture();
     Diagnostics.journal = journal;
