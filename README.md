@@ -520,8 +520,9 @@ relaunch do not clear persisted ownership. Existing manual settings controls
 remain available.
 
 Unpairing outside Companion cannot itself unlock settings: use Companion's
-acknowledged release before unpairing or the explicit watch relay stop while
-active. The watch cannot distinguish two senders with access to the same GCM
+acknowledged release before unpairing. Watch-side disable also uses the release
+helper, but cannot bypass current network or phone-management UI locks.
+The watch cannot distinguish two senders with access to the same GCM
 route and current session. The phone must validate its intended association
 before sending and keep the route open until the ACK arrives. Hardware
 association/replay behavior still needs paired-device acceptance testing.
@@ -530,10 +531,29 @@ The watch can also use the iPhone WearTAK Companion's Garmin route without an
 ATAK plugin or an Apple Watch. That route owns TAK connections and phone GPS;
 it does not implement Bloodhound coordination. Authorize the watch through
 Garmin Connect Mobile, select it in Companion, then enable **WearTAK Companion**
-under the watch's **TAK Relay** submenu. **Companion Setup** provides an iPhone
-setup hint. **ATAK Relay** remains available for Android users; both toggles
-control and display the same underlying phone relay, not separate simultaneous
-connections. The phone's authorized companion determines the destination.
+at the top of the watch's **Network Preferences**. **Companion Setup** in
+**TAK Relay** provides an iPhone setup hint. The same single **WearTAK Companion**
+switch also controls Android's ATAK companion path; the phone's authorized
+companion determines the destination, not a second transport switch.
+
+The native switch shows **enabled intent**, separately from its connection-status
+subtitle. It defaults off on first use and persists across app restarts, watch
+reboots, and updates until explicitly disabled (uninstalling or clearing app data
+removes it). An enabled relay resumes negotiation when the app starts; this does
+not promise an OS background service or delivery while the app is stopped.
+Disabling unregisters phone ingress, stops the existing outbox timer, fences old
+callbacks, and prevents new relay sends/processing. A final existing SELF_STATUS
+clear may be handed off during successful disable; messages already handed to
+Garmin Connect Mobile cannot be recalled.
+
+Unexpired queued events are retained, not purged on disable; existing expiry,
+identity, deduplication, and acknowledgement rules still apply when re-enabled.
+Configuration and credentials are unchanged. Preference-save or phone-management
+release failures abort a disable and leave its live intent/session unchanged;
+a failed preference rollback explicitly warns that saved state is uncertain
+and must be retried before restart. Connection errors do not turn off saved
+intent. Current network locks and phone management also guard already-open
+configuration menus and text entry.
 
 For queued marker, delete, emergency, and chat events, `relay_hello` carries a
 `relaySession`. A matching `relay_status` advertising `reliableDelivery: true`
@@ -664,10 +684,11 @@ features currently available:
 - Bloodhound is always first in the main menu unless explicitly requested
 	otherwise. The remaining items, including new additions, stay alphabetized:
 	Chat, Clear 2525D, Drop 2525D, Manual Alert, Map, and Settings.
-- Open TAK Relay inside Network Preferences. ATAK Relay is the currently
-	integrated option; iTAK and TAK Aware are marked Teaming, and WearTAK
-	Companion is marked Developing. BLE relay status means a phone message was
-	written; it does not acknowledge TAK-server delivery.
+- Enable **WearTAK Companion** at the top of **Network Preferences** for the
+	single phone relay. **TAK Relay** retains separate connection status,
+	**Companion Setup**, and iTAK/TAK Aware Teaming hints. A connected status does
+	not acknowledge TAK-server delivery. Sit(x) remains separate authorization
+	and group configuration, not an additional enabled tactical transport.
 - Open the TAK Channels menu from the map's top-right Channels control. Channel
 	requests require a compatible companion relay; the phone must keep any P12
 	certificate material and send only channel names, directions, bit positions,
@@ -919,8 +940,8 @@ this build:
 ## Using the app
 
 1. In the ATAK companion, enable **Garmin Connect IQ**. On the watch main menu,
-	open **Settings** > **Network Preferences** > **TAK Relay** and toggle
-	**ATAK Relay** on. Toggle it off there to stop the watch-side relay. Garmin
+	open **Settings** > **Network Preferences** and enable
+	**WearTAK Companion**. Disable that switch to stop the watch-side relay. Garmin
 	Connect Mobile must be paired with the watch; ATAK manages the TAK server
 	connection.
 2. To view or edit server channels, open **Map** and tap **Channels** beside

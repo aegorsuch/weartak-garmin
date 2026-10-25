@@ -13,11 +13,13 @@ class TestSettingsProtocolClient extends TakClient {
 
     function initialize() {
         TakClient.initialize();
+        relayEnabled = true;
         phoneSettingsCallback = method(:applySettings);
         watchSettingsCallback = method(:settingsSnapshot);
     }
 
     function startRelayRuntime() as Void {}
+    function stopRelayRuntime() as Void { relayRuntimeRunning = false; }
     function loadOfflineValue(key as String) { return null; }
     function saveOfflineValue(key as String, value) as Boolean { return true; }
 
@@ -41,7 +43,7 @@ class TestSettingsProtocolClient extends TakClient {
         };
     }
 
-    function transmitEnvelope(envelope as Dictionary,
+    function deliverEnvelope(envelope as Dictionary,
             listener as Communications.ConnectionListener) as Void {
         envelopes.add(envelope);
     }

@@ -19,6 +19,7 @@ class TakServerMenuDelegate extends WatchUi.Menu2InputDelegate {
         Menu2InputDelegate.initialize();
         app = application;
         menu = takMenu;
+        updateStatusItem();
     }
 
     function onSelect(item as WatchUi.MenuItem) as Void {
@@ -31,8 +32,13 @@ class TakServerMenuDelegate extends WatchUi.Menu2InputDelegate {
     }
 
     function toggleConnect() as Void {
+        if (app.isNetworkPreferencesLocked() || app.isPhoneManagedSettings()) {
+            WatchUi.showToast(app.getTakClient().relayLabel("locked"), null);
+            updateStatusItem();
+            return;
+        }
         var client = app.getTakClient();
-        if (client.isConnected()) {
+        if (client.relayEnabled) {
             client.disconnect();
         } else {
             client.connect();
@@ -51,9 +57,9 @@ class TakServerMenuDelegate extends WatchUi.Menu2InputDelegate {
         if (item == null) {
             return;
         }
-        var label = client.isConnected() ? WatchUi.loadResource(Rez.Strings.LabelDisconnect) : WatchUi.loadResource(Rez.Strings.LabelConnect);
+        var label = client.relayEnabled ? WatchUi.loadResource(Rez.Strings.LabelDisconnect) : WatchUi.loadResource(Rez.Strings.LabelConnect);
         item.setLabel(label);
-        item.setSubLabel(client.statusText());
+        item.setSubLabel(client.relayStateLabel());
         WatchUi.requestUpdate();
     }
 
@@ -61,4 +67,3 @@ class TakServerMenuDelegate extends WatchUi.Menu2InputDelegate {
         return menu;
     }
 }
-

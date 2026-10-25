@@ -6,17 +6,20 @@ import Toybox.WatchUi;
 class DataSyncListener extends Communications.ConnectionListener {
     var client as DataSyncClient;
     var id as String;
+    var generation as Number;
 
     function initialize(owner as DataSyncClient, requestId as String) {
         ConnectionListener.initialize();
         client = owner;
         id = requestId;
+        generation = owner.relay.relayGeneration;
     }
 
     function onComplete() as Void {}
 
     function onError() as Void {
-        if (client.requestId != null && client.requestId.equals(id)) {
+        if (client.relay.relayEnabled && generation == client.relay.relayGeneration
+                && client.requestId != null && client.requestId.equals(id)) {
             client.fail(Rez.Strings.DataSyncHandoffFailed);
         }
     }
@@ -77,7 +80,8 @@ class DataSyncClient {
     }
 
     function sendRequest(kind as String, payload as Dictionary, id as String) as Void {
-        Communications.transmit({"msgType" => kind, "payload" => payload}, null, new DataSyncListener(self, id));
+        if (!relay.relayEnabled) { return; }
+        relay.transmitEnvelope({"msgType" => kind, "payload" => payload}, new DataSyncListener(self, id));
     }
 
     function fail(value as ResourceId or String) as Void {
@@ -88,6 +92,7 @@ class DataSyncClient {
     }
 
     function receive(kind as String, payload as Dictionary) as Void {
+        if (!relay.relayEnabled) { return; }
         var id = payload.get("requestId");
         if (requestId == null || !(id instanceof String) || !requestId.equals(id)) { return; }
         if (kind.equals("missions_error")) {

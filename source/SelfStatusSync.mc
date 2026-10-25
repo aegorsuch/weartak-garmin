@@ -4,9 +4,19 @@ import Toybox.System;
 import Toybox.Time;
 
 class SelfStatusListener extends Communications.ConnectionListener {
-    function initialize() { ConnectionListener.initialize(); }
+    var client;
+    var generation as Number;
+    function initialize(relay) {
+        ConnectionListener.initialize();
+        client = relay;
+        generation = relay.relayGeneration;
+    }
     function onComplete() as Void {}
-    function onError() as Void { System.println("Wearable self status transport failed; snapshot is not queued"); }
+    function onError() as Void {
+        if (client.relayEnabled && generation == client.relayGeneration) {
+            System.println("Wearable self status transport failed; snapshot is not queued");
+        }
+    }
 }
 
 class SelfStatusSync {
@@ -77,11 +87,12 @@ class SelfStatusSync {
     }
 
     function send(savedPpe as Dictionary?, physio as Dictionary?) as Void {
+        if (!client.relayEnabled) { return; }
         client.transmitEnvelope({"msgType" => "self_status", "payload" => {
             "version" => 1, "session" => client.relaySession, "seq" => sequence,
             "deviceUid" => client.getWatchDeviceUid(), "model" => "GARMIN",
             "ppe" => savedPpe, "physio" => physio
-        }}, new SelfStatusListener());
+        }}, new SelfStatusListener(client));
         sequence++;
         lastSentAt = client.relayNow();
         pendingSample = false;

@@ -8,6 +8,7 @@ class TestUserMapRelay extends TakClient {
     var map;
     function initialize(target) {
         TakClient.initialize();
+        relayEnabled = true;
         map = target;
         incomingCotCallback = method(:receiveEntity);
         incomingUserLifecycleCallback = method(:receiveLifecycle);
@@ -15,9 +16,10 @@ class TestUserMapRelay extends TakClient {
         relaySession = "current";
     }
     function startRelayRuntime() as Void {}
+    function stopRelayRuntime() as Void { relayRuntimeRunning = false; }
     function loadOfflineValue(key as String) { return null; }
     function saveOfflineValue(key as String, value) as Boolean { return true; }
-    function transmitEnvelope(envelope as Dictionary, listener as Communications.ConnectionListener) as Void {}
+    function deliverEnvelope(envelope as Dictionary, listener as Communications.ConnectionListener) as Void {}
     function receiveEntity(uid, lat, lon, type, callsign, team, role, metadata) as Void {
         map.updateIncomingCot(uid, lat, lon, type, callsign, team, role, metadata);
     }
