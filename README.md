@@ -536,8 +536,9 @@ at the top of the watch's **Network Preferences**. **Companion Setup** in
 switch also controls Android's ATAK companion path; the phone's authorized
 companion determines the destination, not a second transport switch.
 
-The native switch shows **enabled intent**, separately from its connection-status
-subtitle. It defaults off on first use and persists across app restarts, watch
+The native switch shows **enabled intent**, with no status subtitle. Connection
+status remains in **TAK Relay > Relay Status**. It defaults off on first use and
+persists across app restarts, watch
 reboots, and updates until explicitly disabled (uninstalling or clearing app data
 removes it). An enabled relay resumes negotiation when the app starts; this does
 not promise an OS background service or delivery while the app is stopped.
