@@ -536,8 +536,9 @@ at the top of the watch's **Network Preferences**. **Companion Setup** in
 switch also controls Android's ATAK companion path; the phone's authorized
 companion determines the destination, not a second transport switch.
 
-The native switch shows **enabled intent**, separately from its connection-status
-subtitle. It defaults off on first use and persists across app restarts, watch
+The native switch shows **enabled intent**, with no status subtitle. Connection
+status remains in **TAK Relay > Relay Status**. It defaults off on first use and
+persists across app restarts, watch
 reboots, and updates until explicitly disabled (uninstalling or clearing app data
 removes it). An enabled relay resumes negotiation when the app starts; this does
 not promise an OS background service or delivery while the app is stopped.
@@ -791,9 +792,11 @@ features currently available:
 	configurable observation interval or app acquisition timeout here, so this budget
 	is a send-selection validity bound, not a guaranteed GPS delivery schedule.
 	Expiry only changes the send selector; it never requests a fix, reschedules a
-	pending acquisition, redraws coordinates or sends an extra PLI. No subscription,
-	timer, power/dock policy or action-triggered fresh-location path is added or
-	changed, and no battery improvement is claimed.
+	pending acquisition, redraws coordinates or sends an extra PLI. A one-shot PLI
+	fallback follows the effective send interval and is rescheduled when that
+	interval changes; it does not acquire a location. No subscription, power/dock
+	policy or action-triggered fresh-location path is added or changed, and no
+	battery improvement is claimed.
 	Wi-Fi preferences are stored only because
 	active SSID detection is not implemented on Garmin. The adjacent BATDOK toggle
 	adds an `includeBatdok` flag to Garmin PLI messages. The companion must consume
@@ -853,14 +856,16 @@ features currently available:
 - View point details as native scrollable rows for marker type/drop time,
 	distance, bearing, latitude/longitude, and MGRS, followed by Bloodhound,
 	title, remark, marker-type, move, delete, and back actions.
-- View self coordinates in latitude/longitude and MGRS.
+- View self coordinates under **Self-Location** in latitude/longitude and MGRS;
+	the map marker is labeled with the callsign and **(you)**.
 - Tap the self marker to view separate latitude and longitude rows and MGRS.
 - Tap a remote map user to open Range, **Chat**, **Bloodhound** / **Stop
 	Bloodhound**, Remove locally, and Cancel. Chat opens that user's direct
 	conversation; Bloodhound, directly below it, starts tracking the user with the
 	existing range/bearing display and proximity alerts.
 - Tap overlapping or closely spaced map markers to open a native text-only
-	Select Map Item list with their titles/callsigns and details. Choose a row to
+	Select Map Item list with their titles/callsigns and details in alphabetical
+	order. Choose a row to
 	open its usual actions, or Cancel/back to return to the map. Self is included
 	when it overlaps; a single hit still opens directly. Only drawn, visible
 	markers within the existing 14-pixel tap radius are listed.

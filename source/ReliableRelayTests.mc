@@ -426,7 +426,7 @@ function reliableRelayCompanionMenuToggle(logger) as Boolean {
     Test.assert(menu.findItemById(:atakRelayToggle) < 0);
     Test.assert(buildTakRelayMenu(app).findItemById(:wearTakCompanionSetup) >= 0);
     delegate.onClientStatusChanged();
-    Test.assertEqual(companion.getSubLabel(), WatchUi.loadResource(Rez.Strings.LabelDisabled));
+    Test.assert(companion.getSubLabel() == null);
     Test.assert(!(companion as WatchUi.ToggleMenuItem).isEnabled());
     delegate.onSelect(companion);
     Test.assertEqual(relay.status, :connecting);
@@ -434,15 +434,15 @@ function reliableRelayCompanionMenuToggle(logger) as Boolean {
     var hello = relay.envelopes[0].get("payload") as Dictionary;
     Test.assertEqual(hello.get("unitPrefsVersion"), 1);
     Test.assertEqual(hello.get("relaySession"), relay.relaySession);
-    Test.assertEqual(companion.getSubLabel(), WatchUi.loadResource(Rez.Strings.StatusConnecting));
+    Test.assert(companion.getSubLabel() == null);
     Test.assert((companion as WatchUi.ToggleMenuItem).isEnabled());
     relay.onRelayTransmitError();
     delegate.onClientStatusChanged();
     Test.assert((companion as WatchUi.ToggleMenuItem).isEnabled());
-    Test.assertEqual(companion.getSubLabel(), WatchUi.loadResource(Rez.Strings.StatusFailed));
+    Test.assert(companion.getSubLabel() == null);
     delegate.onSelect(companion);
     Test.assertEqual(relay.status, :idle);
-    Test.assertEqual(companion.getSubLabel(), WatchUi.loadResource(Rez.Strings.LabelDisabled));
+    Test.assert(companion.getSubLabel() == null);
     Test.assert(!(companion as WatchUi.ToggleMenuItem).isEnabled());
     delegate.onSelect(companion);
     Test.assertEqual(relay.status, :connecting);
@@ -450,5 +450,6 @@ function reliableRelayCompanionMenuToggle(logger) as Boolean {
     Test.assertEqual(relay.status, :idle);
     Test.assertEqual(relay.pointReplies.replies.size(), 1);
     Test.assert(!(companion as WatchUi.ToggleMenuItem).isEnabled());
+    Test.assert(companion.getSubLabel() == null);
     return true;
 }

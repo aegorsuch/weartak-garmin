@@ -206,18 +206,19 @@ function overlappingMapSelection(logger) as Boolean {
     map.showMapItemsAtScreen(100, 100);
     Test.assert(map.openedId == null);
     var menu = map.selectionMenu;
-    Test.assertEqual(menu.getItem(0).getLabel(), "Local marker");
-    Test.assertEqual(menu.getItem(0).getSubLabel(), map.getPointTypeLabel("local"));
-    Test.assertEqual(menu.getItem(1).getLabel(), "Alpha");
-    Test.assertEqual(menu.getItem(1).getId(), "cot-near");
-    Test.assertEqual(menu.getItem(2).getId(), "cot-edge");
+    Test.assertEqual(menu.getItem(0).getLabel(), "Alpha");
+    Test.assertEqual(menu.getItem(0).getId(), "cot-near");
+    Test.assertEqual(menu.getItem(1).getLabel(), "Bravo");
+    Test.assertEqual(menu.getItem(1).getId(), "cot-edge");
+    Test.assertEqual(menu.getItem(2).getLabel(), "Local marker");
+    Test.assertEqual(menu.getItem(2).getSubLabel(), map.getPointTypeLabel("local"));
     Test.assertEqual(menu.getItem(3).getId(), :self);
     Test.assertEqual(menu.getItem(4).getId(), :cancel);
     Test.assert(menu.getItem(5) == null);
     var delegate = new MapSelectionMenuDelegate(map);
-    delegate.onSelect(menu.getItem(1));
-    Test.assertEqual(map.openedId, "cot-near");
     delegate.onSelect(menu.getItem(0));
+    Test.assertEqual(map.openedId, "cot-near");
+    delegate.onSelect(menu.getItem(2));
     Test.assertEqual(map.openedId, "local");
     delegate.onSelect(menu.getItem(3));
     Test.assertEqual(map.openedId, :self);
@@ -235,6 +236,8 @@ function overlappingMapSelection(logger) as Boolean {
     map.mapTopLeft = new Position.Location({:latitude => 1.0, :longitude => -1.0, :format => :degrees});
     var offscreen = new Position.Location({:latitude => 0.0, :longitude => 1.01, :format => :degrees});
     Test.assert(!map.isLocationAtScreen(offscreen, 199, 100));
+    var callsign = map.application.getCallsign();
+    Test.assertEqual(map.selfMarkerLabel(), callsign.length() == 0 ? "You" : callsign + " (you)");
     return true;
 }
 
