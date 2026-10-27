@@ -55,7 +55,6 @@ class StandaloneApp extends Application.AppBase {
     private var lastGpsMovementTime as Number? = null;
     private var lastGpsFixTime as Number? = null;
     private var reportingSpeed as DynamicReporting = new DynamicReporting();
-    private var reportingControl as ReportingControl;
     private var lastHeartRateSampleTime as Number? = null;
     private var lastPliSentTime as Number? = null;
     private var lastActionPliSentTime as Number? = null;
@@ -135,7 +134,6 @@ class StandaloneApp extends Application.AppBase {
     function initialize() {
         Application.AppBase.initialize();
         Diagnostics.journal.restore(Time.now().value());
-        reportingControl = new ReportingControl();
         takClient = new TakClient();
         sitxClient = new SitxClient();
         takClient.incomingCotCallback = method(:onIncomingCot);
@@ -760,7 +758,7 @@ class StandaloneApp extends Application.AppBase {
         if (!enabled) {
             locationRefreshPending = false;
             reportingSpeed.clear();
-            reportingControl.stopPliTimer();
+            reportingSpeed.stopPliTimer();
         }
         Application.Storage.setValue("locationServices", enabled);
         applyLocationServices();
@@ -1416,7 +1414,7 @@ class StandaloneApp extends Application.AppBase {
     }
 
     function onStop(state) {
-        reportingControl.stopPliTimer();
+        reportingSpeed.stopPliTimer();
         if (takClient != null) {
             takClient.relayGeneration++;
             takClient.pointReplyAttempt++;
@@ -1513,14 +1511,14 @@ class StandaloneApp extends Application.AppBase {
     function sendPliIfDue() as Void {
         if (!takClient.isConnected()) {
             Diagnostics.record(Diagnostics.REPORT_OFFLINE);
-            reportingControl.stopPliTimer();
+            reportingSpeed.stopPliTimer();
             return;
         }
         var interval = getActiveReportingInterval();
         var now = Time.now().value();
         if (lastPliSentTime != null && now - lastPliSentTime < interval) {
             Diagnostics.record(Diagnostics.REPORT_WAIT);
-            reportingControl.schedulePliFallback(interval, now, lastPliSentTime,
+            reportingSpeed.schedulePliFallback(interval, now, lastPliSentTime,
                 locationServices, takClient.isConnected(), method(:sendPliIfDue));
             return;
         }
@@ -1545,7 +1543,7 @@ class StandaloneApp extends Application.AppBase {
         Diagnostics.record(Diagnostics.REPORT_SENT);
         lastPliSentTime = now;
         lastActionPliSentTime = now;
-        reportingControl.schedulePliFallback(interval, now, lastPliSentTime,
+        reportingSpeed.schedulePliFallback(interval, now, lastPliSentTime,
             locationServices, takClient.isConnected(), method(:sendPliIfDue));
         return true;
     }

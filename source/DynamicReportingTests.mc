@@ -22,7 +22,7 @@ class DynamicReportingAppFixture extends StandaloneApp {
 }
 
 (:test)
-class ReportingFallbackFixture extends ReportingControl {
+class ReportingFallbackFixture extends DynamicReporting {
     var delay as Number? = null;
     var stops as Number = 0;
     function initialize() {}
