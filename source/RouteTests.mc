@@ -508,9 +508,10 @@ function routeLineSelectionVerticesAndDateline(logger) as Boolean {
     Test.assertEqual(map.routesAtScreen(175, 100).size(), 1);
     map.showMapItemsAtScreen(175, 100);
     var menu = map.selectionMenu;
-    Test.assertEqual(menu.getItem(0).getLabel(), "Test route #2");
-    Test.assertEqual(menu.getItem(1).getLabel(), "Test route #3");
-    Test.assertEqual(menu.getItem(2).getId(), map.routeStore.routeId(map.routeStore.find("s", "r")));
+    var route = map.routeStore.find("s", "r");
+    Test.assertEqual(menu.getItem(0).getId(), map.routeStore.routeId(route));
+    Test.assertEqual(menu.getItem(1).getId(), map.routeStore.pointId(route, 1));
+    Test.assertEqual(menu.getItem(2).getId(), map.routeStore.pointId(route, 2));
     Test.assertEqual(menu.getItem(3).getId(), :cancel);
     Test.assert(routeSegmentAtScreen([100.0, 100.0, 100.0, 100.0], 100, 114));
     Test.assert(!routeSegmentAtScreen([100.0, 100.0, 100.0, 100.0], 100, 115));
@@ -519,6 +520,21 @@ function routeLineSelectionVerticesAndDateline(logger) as Boolean {
     points[2].put("lon", 2.0);
     map.receiveRoute("route", payload);
     Test.assertEqual(map.routesAtScreen(100, 100).size(), 0);
+    return true;
+}
+
+(:test)
+function closeZoomKeepsMapGeometryNonzero(logger) as Boolean {
+    var map = new TestMapSelectionView();
+    for (var i = 0; i < 24; i++) { map.zoom(0.5); }
+    var topLeft = map.mapTopLeft.toDegrees();
+    var bottomRight = map.mapBottomRight.toDegrees();
+    Test.assert(topLeft[0] - bottomRight[0] > 0.00005);
+    Test.assert(bottomRight[1] - topLeft[1] > 0.00005);
+    Test.assert(map.routeScreenPoint({"lat" => 0.0, "lon" => 0.0}) != null);
+    map.zoom(2.0);
+    var widened = map.mapTopLeft.toDegrees();
+    Test.assert(widened[0] - map.mapBottomRight.toDegrees()[0] > 0.0001);
     return true;
 }
 

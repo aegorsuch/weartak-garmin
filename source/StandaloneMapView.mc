@@ -584,7 +584,7 @@ class StandaloneMapView extends WatchUi.MapView {
 
     function showSelfMenu() as Void {
         if (currentPosition != null) {
-            showCoordinateMenu(application.text(Rez.Strings.TextSelf), currentPosition);
+            showCoordinateMenu("Self-Location", currentPosition);
         }
     }
 
@@ -1866,6 +1866,7 @@ class StandaloneMapView extends WatchUi.MapView {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
         dc.drawCircle(markerX, markerY, 8);
         drawTeamDot(dc, markerX, markerY, teamColor);
+        drawSelfMarkerLabel(dc, markerX, markerY);
 
         if (isBloodhoundActive()) {
             var bearing = Math.toRadians(bearingDegrees(currentPosition, pointLocations.get(bloodhoundPointId)));
@@ -1889,6 +1890,30 @@ class StandaloneMapView extends WatchUi.MapView {
         dc.fillCircle(x, y, 5);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawCircle(x, y, 5);
+    }
+
+    function selfMarkerLabel() as String {
+        var callsign = application.getCallsign();
+        return callsign.length() == 0 ? "You" : callsign + " (you)";
+    }
+
+    function drawSelfMarkerLabel(dc as Graphics.Dc, markerX as Number, markerY as Number) as Void {
+        var callsign = application.getCallsign();
+        var label = callsign.length() == 0 ? "You" : callsign + " (you)";
+        var availableWidth = screenWidth - 8;
+        while (label.length() > 3 && dc.getTextWidthInPixels(label, Graphics.FONT_XTINY) > availableWidth) {
+            if (callsign.length() == 0) { break; }
+            callsign = callsign.substring(0, callsign.length() - 1);
+            label = callsign.length() == 0 ? "You" : callsign + " (you)";
+        }
+        var width = dc.getTextWidthInPixels(label, Graphics.FONT_XTINY);
+        var height = dc.getFontHeight(Graphics.FONT_XTINY);
+        var x = clamp(markerX - width / 2, 2, screenWidth - width - 2).toNumber();
+        var y = clamp(markerY - height - 10, 2, screenHeight - height - 2).toNumber();
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(x - 2, y - 1, width + 4, height + 2);
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(x, y, Graphics.FONT_XTINY, label, Graphics.TEXT_JUSTIFY_LEFT);
     }
 
     function drawBloodhound(dc) as Void {
@@ -2875,6 +2900,11 @@ class StandaloneMapView extends WatchUi.MapView {
         var centerLon = (topLeft[1] + bottomRight[1]) / 2;
         var halfLat = (topLeft[0] - bottomRight[0]) * scale / 2;
         var halfLon = (bottomRight[1] - topLeft[1]) * scale / 2;
+        if (halfLat < 0) { halfLat = -halfLat; }
+        if (halfLon < 0) { halfLon = -halfLon; }
+        if (halfLat < 0.00005) { halfLat = 0.00005; }
+        if (halfLon < 0.00005) { halfLon = 0.00005; }
+        centerLat = clamp(centerLat, -90 + halfLat, 90 - halfLat);
         mapTopLeft = new Position.Location({:latitude => centerLat + halfLat, :longitude => centerLon - halfLon, :format => :degrees});
         mapBottomRight = new Position.Location({:latitude => centerLat - halfLat, :longitude => centerLon + halfLon, :format => :degrees});
         applyMapVisibleArea();
@@ -3004,24 +3034,57 @@ class MapLayersMenuDelegate extends WatchUi.Menu2InputDelegate {
 
 function buildMapSelectionMenu(map as StandaloneMapView, ids as Array<String>, includeSelf as Boolean) as WatchUi.Menu2 {
     var menu = createMenu("Select Map Item");
+    var entries = [];
     for (var index = 0; index < ids.size(); index++) {
         var id = ids[index];
         var route = map.routeStore.route(id);
         var routePoint = map.routeStore.point(id);
+        var label;
+        var subtitle;
         if (route != null) {
-            addMenuEntry(menu, route.get("name") as String,
-                WatchUi.loadResource(Rez.Strings.RoutesWhole) + " | " + route.get("serverId"), id);
+            label = route.get("name") as String;
+            subtitle = WatchUi.loadResource(Rez.Strings.RoutesWhole) + " | " + route.get("serverId");
         } else if (routePoint != null) {
-            addMenuEntry(menu, map.routeStore.title(routePoint),
-                (routePoint.get("route") as Dictionary).get("name"), id);
+            label = map.routeStore.title(routePoint);
+            subtitle = (routePoint.get("route") as Dictionary).get("name");
         } else if (map.incomingDetails.hasKey(id)) {
-            addMenuEntry(menu, map.incomingPointTitle(id), map.incomingPointDetailLabel(id), id);
+            label = map.incomingPointTitle(id);
+            subtitle = map.incomingPointDetailLabel(id);
         } else {
-            addMenuEntry(menu, map.getPointText(id, "title"), map.getPointTypeLabel(id), id);
+            label = map.getPointText(id, "title");
+            subtitle = map.getPointTypeLabel(id);
         }
+        var entry = {"label" => label, "subtitle" => subtitle, "id" => id};
+        var position = entries.size();
+        while (position > 0
+                && (entries[position - 1].get("label") as String).toLower()
+                    .compareTo((label as String).toLower()) > 0) {
+            position--;
+        }
+        entries.add(entry);
+        for (var move = entries.size() - 1; move > position; move--) {
+            entries[move] = entries[move - 1];
+        }
+        entries[position] = entry;
     }
     if (includeSelf) {
-        addMenuEntry(menu, map.application.text(Rez.Strings.TextSelf), null, :self);
+        var label = map.application.text(Rez.Strings.TextSelf);
+        var entry = {"label" => label, "subtitle" => null, "id" => :self};
+        var position = entries.size();
+        while (position > 0
+                && (entries[position - 1].get("label") as String).toLower()
+                    .compareTo(label.toLower()) > 0) {
+            position--;
+        }
+        entries.add(entry);
+        for (var move = entries.size() - 1; move > position; move--) {
+            entries[move] = entries[move - 1];
+        }
+        entries[position] = entry;
+    }
+    for (var index = 0; index < entries.size(); index++) {
+        var entry = entries[index] as Dictionary;
+        addMenuEntry(menu, entry.get("label") as String, entry.get("subtitle"), entry.get("id"));
     }
     addMenuEntry(menu, WatchUi.loadResource(Rez.Strings.LabelCancel), null, :cancel);
     return menu;

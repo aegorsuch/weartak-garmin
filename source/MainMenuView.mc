@@ -517,7 +517,7 @@ function buildMyRoleOptionsMenu(app as StandaloneApp, category as String) as Wat
 
 function buildNetworkPreferencesMenu(app as StandaloneApp) as WatchUi.Menu2 {
     var menu = createMenu(app.text(Rez.Strings.TextNetworkPreferences));
-    menu.addItem(new WatchUi.ToggleMenuItem(app.getTakClient().relayLabel("title"), app.getTakClient().relayStateLabel(),
+    menu.addItem(new WatchUi.ToggleMenuItem(app.getTakClient().relayLabel("title"), null,
         :wearTakCompanionRelay, app.getTakClient().relayEnabled, null));
     var entries = [
         {"label" => app.getTakClient().relayLabel("configuration"), "id" => :takRelayMenu, "sub" => null},
@@ -1496,7 +1496,6 @@ class NetworkPreferencesDelegate extends WatchUi.Menu2InputDelegate {
         if (index >= 0) {
             var item = menu.getItem(index);
             if (item instanceof WatchUi.ToggleMenuItem) { item.setEnabled(client.relayEnabled); }
-            item.setSubLabel(client.relayStateLabel());
         }
         var statusIndex = menu.findItemById(:relayState);
         if (statusIndex >= 0) {

@@ -103,7 +103,7 @@ try {
     Get-Content $testLog | Write-Host
     $result = Get-Content -Raw $testLog
     $summary = [regex]::Match($result, '(?m)^PASSED \(passed=([1-9][0-9]*), failed=0, errors=0\)\s*\z')
-    $ran = [regex]::Match($result, '(?m)^Ran ([1-9][0-9]*) tests\s*$')
+    $ran = [regex]::Match($result, '(?m)^Ran ([1-9][0-9]*) tests?\s*$')
     # SDK 9.2's Java launcher misparses its simulator's passing summary and exits 1.
     # Require an exact, complete zero-failure summary instead of trusting that exit code alone.
     if ($testProcess.ExitCode -notin @(0, 1) -or -not $summary.Success -or -not $ran.Success -or

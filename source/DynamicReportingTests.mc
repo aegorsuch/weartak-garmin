@@ -22,6 +22,39 @@ class DynamicReportingAppFixture extends StandaloneApp {
 }
 
 (:test)
+class ReportingFallbackFixture extends ReportingControl {
+    var delay as Number? = null;
+    var stops as Number = 0;
+    function initialize() {}
+    function stopPliTimer() as Void { delay = null; stops++; }
+    function startPliTimer(seconds as Number, callback as Method) as Void { delay = seconds; }
+    function onFallback() as Void {}
+}
+
+(:test)
+function dynamicReportingFallbackReschedulesWithCurrentSelector(logger) as Boolean {
+    var app = new DynamicReportingAppFixture();
+    var control = new ReportingFallbackFixture();
+    var callback = control.method(:onFallback);
+    var interval = app.reportingIntervalFromSpeed(0, 100, 100, true);
+    control.schedulePliFallback(interval, 100, 100, true, true, callback);
+    Test.assertEqual(control.delay, 3600);
+    interval = app.reportingIntervalFromSpeed(13.4112d, 105, 105, true);
+    control.schedulePliFallback(interval, 105, 100, true, true, callback);
+    Test.assertEqual(control.delay, 5);
+    Test.assertEqual(control.stops, 2);
+    control.schedulePliFallback(interval, 111, 100, true, true, callback);
+    Test.assertEqual(control.delay, 1);
+    control.schedulePliFallback(interval, 111, null, true, true, callback);
+    Test.assertEqual(control.delay, 1);
+    control.schedulePliFallback(interval, 111, 100, false, true, callback);
+    Test.assert(control.delay == null);
+    control.schedulePliFallback(interval, 111, 100, true, false, callback);
+    Test.assert(control.delay == null);
+    return true;
+}
+
+(:test)
 function dynamicReportingInterpolatesClampsAndPreservesRates(logger) as Boolean {
     var app = new DynamicReportingAppFixture();
     Test.assertEqual(app.reportingIntervalFromSpeed(0.0d, 100, 100, true), 3600);

@@ -239,7 +239,10 @@ function relayGateNativeChecklistUsesIntentAndLiveManagementGuards(logger) as Bo
     Test.assert(relay.relayEnabled && item.isEnabled());
     relay.onRelayTransmitError();
     Test.assert(item.isEnabled());
-    Test.assertEqual(item.getSubLabel(), WatchUi.loadResource(Rez.Strings.StatusFailed));
+    Test.assert(item.getSubLabel() == null);
+    var status = buildTakRelayMenu(app);
+    Test.assertEqual(status.getItem(status.findItemById(:relayState)).getSubLabel(),
+        WatchUi.loadResource(Rez.Strings.StatusFailed));
     delegate.onSelect(item);
     Test.assert(!relay.relayEnabled && !item.isEnabled());
     var sitx = buildSitxDeviceApiMenu(app);
