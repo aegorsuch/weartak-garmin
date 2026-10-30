@@ -128,7 +128,7 @@ class GarminCiTests(unittest.TestCase):
 
     def build_environment(self):
         (self.root / "source").mkdir(exist_ok=True)
-        (self.root / "source" / "StandaloneApp.mc").write_text('const APP_VERSION = "5.8.3";')
+        (self.root / "source" / "StandaloneApp.mc").write_text('const APP_VERSION = "5.8.4";')
         return {
             "GITLAB_CI": "true", "CI_PROJECT_ID": "6783",
             "CI_PROJECT_URL": "https://git.tak.gov/core/weartak-core/weartak-garmin",
@@ -174,7 +174,8 @@ class GarminCiTests(unittest.TestCase):
         self.assertEqual(record["pipeline_id"], "1234")
         self.assertEqual(record["tests"], "not-run-headless-linux")
         self.assertEqual(record["hardware_variants"], 2)
-        self.assertEqual(record["artifacts"][0]["name"], "WearTAK-Garmin-5.8.3-p42.iq")
+        self.assertEqual(record["version"], "5.8.4")
+        self.assertEqual(record["artifacts"][0]["name"], "WearTAK-Garmin-5.8.4-p42.iq")
 
     def test_unprotected_build_never_reads_key(self):
         with patch.dict(os.environ, {"GITLAB_CI": "false"}):

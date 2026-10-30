@@ -1734,9 +1734,9 @@ assets. Notes match the shared release-page structure: an intro, exactly five
 bullets (IQ version, pipeline IDs, canonical pipeline URL, source SHA and SHA-256),
 and a fixed Garmin-specific distribution/source sentence. Simulator-not-run
 evidence and device coverage remain in `release-build.json` and CI logs, not
-additional release-page sections. The version is the literal `APP_VERSION`;
-its intentional historical `-9f1ec78` suffix is not the current build's source
-identity. The full source SHA in provenance and release notes is authoritative.
+additional release-page sections. The base version is the literal `APP_VERSION`
+(`5.8.4`); the `-p<IID>` artifact suffix retains pipeline build numbering.
+The full source SHA in provenance and release notes is authoritative.
 
 The publisher rejects mismatched provenance, unknown notes/assets, pre-existing
 unmanaged anchors/drafts, replayed or newer pipelines, and concurrent changes.
