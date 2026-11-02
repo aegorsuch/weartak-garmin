@@ -52,6 +52,7 @@ main_release:
     expire_in: 30 days
     paths:
       - bin/ci/WearTAK-Garmin-*.iq
+      - bin/ci/WearTAK-Garmin-*.prg
       - bin/ci/SHA256SUMS.txt
       - bin/ci/release-build.json
       - bin/ci/build.log
@@ -65,6 +66,7 @@ official_release:
     expire_in: never
     paths:
       - bin/ci/WearTAK-Garmin-*.iq
+      - bin/ci/WearTAK-Garmin-*.prg
       - bin/ci/SHA256SUMS.txt
       - bin/ci/release-build.json
       - bin/ci/build.log

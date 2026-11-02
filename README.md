@@ -1,11 +1,18 @@
 # WearTAK-Garmin
 
+## Purpose and Capabilities
+
 WearTAK-Garmin is a standalone Garmin Connect IQ watch application for basic
 Team Awareness Kit (TAK) operational awareness. It is designed for Garmin
 watches with maps and GPS, currently supporting the fenix 6 Pro family (6 Pro, 6S Pro, 6X Pro), fenix 7X,
-and fenix 8 (47 mm and 51 mm variants).
+fenix 8 (47 mm and 51 mm variants), and tactix 8 (AMOLED 47/51 mm and Solar 51 mm).
+Tactix 8 compatibility uses Garmin SDK hardware mappings in the existing Fenix 8
+targets: `fenix847mm` includes part number `006-B4775-00` (AMOLED), and
+`fenix8solar51mm` includes `006-B4776-00` (Solar). Re-export with the current
+SDK device definitions to include these part numbers in the Connect IQ package.
+Tactix 8 support remains experimental until validated on physical watches.
 
-## Purpose and Capabilities
+### Current capabilities
 
 The app opens to a native, scrollable Connect IQ menu. The Garmin-to-ATAK phone
 relay depends on the companion's Garmin Connect IQ receiver. These are the watch
@@ -270,6 +277,8 @@ this build:
 - end-to-end acknowledgement, delivery retries, and validation of automated
 	alert/cancellation behavior on physical devices
 - Sit(x) Device API integration for missions, GeoChat, SOS, and other resources
+
+### Using the app
 
 1. In the ATAK companion, enable **Garmin Connect IQ**. On the watch main menu,
 	open **Settings** > **Network Preferences** and enable
@@ -652,6 +661,8 @@ alongside point workflow/outbox checks.
 
 ## Status
 
+### Implementation roadmap
+
 This project is intentionally scoped to the currently working features above.
 Everything else is planned work and should be considered future capability,
 not a present guarantee.
@@ -681,13 +692,20 @@ not a present guarantee.
 
 ## Point of Contacts
 
+### Project links
+
 - Personal GitHub: https://github.com/aegorsuch/weartak-garmin
 - Government repo: https://git.tak.gov/core/weartak-core/weartak-garmin
 
-#### Point of contact
+### Rights and contacts
+
+Rights and licensing terms are documented under [License](#license).
+
+### Point of contact
+
 Alex Gorsuch on chat.tak.gov or Signal.
 
-#### Repositories
+### Repositories
 
 The TAK Forge repository is canonical. GitHub is a secondary repository.
 
@@ -698,6 +716,10 @@ The Garmin watch application opens no network ports. Connect IQ has no raw socke
 
 
 ## Equipment Required
+
+For phone-relay features, use a supported Garmin watch, a paired phone running Garmin Connect Mobile, and a compatible WearTAK ATAK or iPhone companion. Direct USB installation also requires a computer and the watch USB cable.
+
+### Installation
 
 1. Download the `.prg` matching your watch from the latest GitHub release.
 2. Connect the watch to your computer with its USB cable and wait for it to
@@ -713,6 +735,8 @@ Do not copy the `.prg.debug.xml`, other device builds, or the `.iq` package to
 the watch. The `.iq` package is the release bundle for Garmin's supported
 distribution workflow; direct USB sideloading uses the device-specific `.prg`.
 Garmin uses the watch's system language for localized app text.
+
+### Phone relay requirements and protocol
 
 The app uses Garmin Connect IQ phone messages (`Communications.transmit`/
 `registerForPhoneAppMessages`) to relay watch input to the WearTAK ATAK
@@ -971,12 +995,24 @@ deduplication, retention bounds, and capability-gated queue transmission.
 
 ## Equipment Supported
 
-#### Supported devices
-The manifest currently targets Fenix 6 Pro, 7X, and 8 products and requires Connect
-IQ 3.3.0; Fenix 3 HD is not supported by this build.
+### Device and hardware-part mapping
+
+The manifest targets Fenix 6 Pro, Fenix 6S Pro, Fenix 6X Pro, Fenix 7X, Fenix 8 AMOLED 47 mm, Fenix 8 Solar 47 mm, and Fenix 8 Solar 51 mm. Tactix 8 AMOLED (47/51 mm) and Solar (51 mm) map to the Fenix 8 targets shown below; Tactix 8 support remains experimental pending physical-watch validation.
+
+| Connect IQ target | Device family | Hardware part numbers |
+| --- | --- | --- |
+| `fenix6pro` | Fenix 6 Pro | `006-B3290-00`, `006-B3515-00`, `006-B3782-00`, `006-B3767-00`, `006-B3771-00` |
+| `fenix6spro` | Fenix 6S Pro | `006-B3288-00`, `006-B3513-00`, `006-B3765-00`, `006-B3769-00` |
+| `fenix6xpro` | Fenix 6X Pro | `006-B3291-00`, `006-B3516-00`, `006-B3783-00` |
+| `fenix7x` | Fenix 7X | `006-B3907-00`, `006-B3910-00`, `006-B4135-00`, `006-B4341-00` |
+| `fenix847mm` | Fenix 8 AMOLED; Tactix 8 AMOLED alias | `006-B4536-00` (Fenix 8), `006-B4775-00` (Tactix 8 AMOLED, 47/51 mm) |
+| `fenix8solar47mm` | Fenix 8 Solar 47 mm | `006-B4532-00` |
+| `fenix8solar51mm` | Fenix 8 Solar 51 mm; Tactix 8 Solar alias | `006-B4533-00` (Fenix 8), `006-B4776-00` (Tactix 8 Solar, 51 mm) |
 
 
 ## Compilation
+
+### Development
 
 Build the project with the Garmin Connect IQ SDK for the configured product.
 Use the simulator for UI and payload checks, then validate relay behavior on a
@@ -999,6 +1035,8 @@ IDs directly rather than an eagerly initialized symbol-to-resource dictionary.
 These optimizations preserve the same features and translations for every target.
 The non-Pro Fenix 6 and 6S are not supported: they exceed the 128 KiB watch-app
 memory limit, and Garmin's native `WatchUi.MapView` is unavailable on both.
+
+### Continuous integration and signed builds
 
 The automation follows the Tracker split:
 
@@ -1102,7 +1140,11 @@ Configure these **protected** GitLab CI/CD variables, without committing keys:
 No production key is needed by GitHub. Keys are written to a private temporary
 directory and deleted in `finally`; they are never included in artifacts.
 Disposable runners are still required to handle externally cancelled jobs.
-Both pipelines emit `SHA256SUMS.txt` for their distribution packages.
+Both pipelines emit `SHA256SUMS.txt` for their distribution packages. Protected
+TAK.gov builds also extract every hardware-specific signed `.prg` from the
+validated `.iq` export; these preserve the exact per-part program bytes rather
+than recompiling a second set of binaries. Names use
+`WearTAK-Garmin-{VERSION}-p{PIPELINE_IID}-{TARGET}-{PART_NUMBER}.prg`.
 
 #### Running the same checks locally
 
@@ -1124,14 +1166,17 @@ matches `Ran N tests`, with empty stderr, rather than trusting that exit code.
 Runner registration and GitLab signing variables must be
 configured before remote build jobs can run.
 
-The signed job intentionally enforces each device's memory limit; exporting an
-`.iq` alone does not prove every device-specific `.prg` fits. The non-Pro
+The signed job intentionally enforces each device's memory limit and validates
+the `.iq` manifest against every selected SDK hardware part before extracting
+the `.prg` files. The non-Pro
 `fenix6` and `fenix6s` were removed from the manifest on 2026-10-20: their
 128 KiB watch-app limit was already exceeded by the current release (`main`
 needs 187,380 bytes; whole-route Bloodhound needs 199,900 versus 131,072), and
 neither model supports Garmin's native map API. Optimized device builds pass for
 all seven remaining manifest devices. The full fenix7x simulator suite passes
 **120/120** tests; these are not hardware results.
+
+### Git workflow
 
 The government repository (`origin`) is the canonical repository. New work starts
 on a `feature` branch, is validated there, and is merged into government
@@ -1165,15 +1210,22 @@ repository as a synchronized mirror. Keep branch names consistent across both
 repos and avoid maintaining separate histories for the same work. Never commit
 the private `developer_key.der` file.
 
-Official release publication remains manual. The opt-in automated development
-channel below is separate. Build device-specific `.prg` files for every product
-declared in the manifest for a manual release.
-The maintainer's `fenix7x` direct-install build is also written to the Desktop,
-replacing the superseded Fenix 7X release. Publish the device-specific PRGs;
-do not publish debug files or the `.iq` bundle.
+### Releasing
 
-Version `5.8.3-9f1ec78` publishes seven device builds: Fenix 6 Pro,
-6S Pro, 6X Pro, 7X, 8 (47 mm), 8 Solar (47 mm), and 8 Solar (51 mm).
+Official release publication remains manual. The opt-in automated development
+channel below is separate. Every published Garmin release must include both
+the Connect IQ `.iq` distribution bundle and the individual direct-install
+`.prg` for every hardware part declared by the manifest. Use the complete
+validated artifact set from the protected official-release pipeline; do not
+publish an IQ-only or partial-device release.
+The maintainer's `fenix7x` direct-install build is also written to the Desktop,
+replacing the superseded Fenix 7X release. Do not publish debug files.
+
+The current manifest covers 21 hardware parts across seven Connect IQ targets:
+Fenix 6 Pro, 6S Pro, 6X Pro, 7X, 8 AMOLED (47 mm), 8 Solar (47 mm), and 8
+Solar (51 mm). The Tactix 8 AMOLED and Solar parts are included through their
+documented Fenix 8 target aliases. Each release needs one correctly mapped
+`.prg` per hardware part, plus the matching `.iq` bundle.
 The non-Pro Fenix 6 and Fenix 6S are not included: although the optimized app
 compiles, loading still exceeds runtime memory on Fenix 6, and neither model
 supports Garmin's native map API.
@@ -1182,26 +1234,26 @@ supports Garmin's native map API.
 	the short source commit hash (for example, `5.8.0.3-0c54201`), and
    commit it (consistent with the government repo being canonical, merge this
    into `main` first as described above).
-2. Build every supported product with the Garmin Connect IQ SDK and name each
-	output `WearTAK-Garmin-{DEVICE}-{APP_VERSION}.prg`. Save the `fenix7x`
-	release build on the Desktop; remove superseded Garmin release binaries.
-3. Tag the release commit `v{APP_VERSION}`, matching `APP_VERSION` exactly.
-4. Push the tag and create a release from it on `origin`
-	(git.tak.gov/core/weartak-core/weartak-garmin), attaching the device-specific
-	`.prg` files.
-5. Mirror the same release to `github`
-	(https://github.com/aegorsuch/weartak-garmin): push the tag there and
-	create a release attaching the same device-specific `.prg` files.
+2. Tag the release commit `v{APP_VERSION}`, matching `APP_VERSION` exactly,
+	then push the tag to `origin` (git.tak.gov/core/weartak-core/weartak-garmin).
+3. Wait for the protected official-release pipeline to finish. It must validate
+	the signed `.iq`, extract every hardware-specific `.prg`, and produce
+	`release-build.json` and `SHA256SUMS.txt`. Do not publish if any target,
+	part, artifact, checksum, or provenance entry is missing or mismatched.
+4. Publish the exact validated pipeline outputs: the `.iq` bundle and all 21
+	uniquely named `.prg` files, with matching version and pipeline IID. Save the
+	`fenix7x` `.prg` on the Desktop; remove superseded Garmin release binaries.
+5. Mirror the same tag and complete, verified artifact set to `github`
+	(https://github.com/aegorsuch/weartak-garmin).
 
-#### Release presentation
+##### Release presentation
 
 Use the title **WearTAK Garmin {APP_VERSION}**. Begin the description with a short
 statement identifying the channel (official release or CI test build), Garmin
-Connect IQ artifacts, and their intended use. Device-specific `.prg` files are
-direct-install applications; an `.iq` is a distribution bundle, not a file to
-copy to a watch. Do not describe Garmin artifacts as APKs or give them Android
-`versionCode` values. The manual publication procedure above remains PRG-only;
-this presentation standard does not authorize publishing additional artifacts.
+Connect IQ artifacts, and their intended use. Include the `.iq` distribution
+bundle and every device-specific `.prg` direct-install application in each
+published release. Do not describe Garmin artifacts as APKs or give them
+Android `versionCode` values.
 
 Include the exact full source commit SHA recorded at build time, linked to that
 commit in the canonical repository. A short hash in `APP_VERSION` or an asset
@@ -1216,28 +1268,32 @@ manual build, say **Built manually; no CI run** rather than inventing a pipeline
 ID. If historical build provenance cannot be verified, mark it **Unverified**
 and retain the existing release assets and manual notes.
 
-List available artifacts with readable labels, for example **Fenix 7X
-direct-install app (.prg)**, linking to each existing exact download URL. Keep
-checksums separate from the artifact list: link `SHA256SUMS.txt` when it was
-generated from those exact release bytes, or provide a clearly labeled SHA-256
-section only after verifying the bytes. CI's checksum file covers its own
-artifacts, not independently built historical release files.
+List the `.iq` distribution bundle and every `.prg` with readable labels
+(target and hardware part), linking to each exact download URL. Keep checksums
+separate from the artifact list: link `SHA256SUMS.txt` only when generated from
+those exact release bytes, or provide a clearly labeled SHA-256 section only
+after verifying the bytes. CI's checksum file covers its own artifacts, not
+independently built historical release files.
 
 Presentation-only maintenance must preserve tags, download URLs, artifact
 filenames/bytes, maintainer notes, publisher ownership and existing cleanup
 gates. Do not create a publisher, replace assets, or infer missing source/build
 metadata merely to make an older release match this format.
 
-#### Automated rolling GitHub release (activation required)
+##### Automated rolling GitHub release (activation required)
 
 The canonical GitLab `main_release` job verifies the decoded production key's
 SHA-256 fingerprint and exports with `monkeyc -e -r -O 3z`. It validates the
 actual 7z IQ container, generated manifest, signing material and all hardware
 variants from the selected devices' compiler definitions (currently 21 variants
-across seven devices), not just the filename extension. It does **not** run
-simulator tests. Only after these gates succeed does it emit schema-2
+across seven Connect IQ targets), not just the filename extension. Each
+exported per-hardware `.prg` is extracted byte-for-byte from that validated
+signed `.iq`; no second compilation or production key is used for extraction.
+The inventory contains the IQ plus 21 uniquely named direct-install PRGs. It
+does **not** run simulator tests. Only after these gates succeed does it emit schema-3
 `release-build.json`, binding the exact full source SHA, version, project,
-pipeline ID, pipeline IID and build job ID to the IQ and `SHA256SUMS.txt`.
+pipeline ID, pipeline IID and build job ID to every PRG, the IQ and
+`SHA256SUMS.txt`.
 The record explicitly says `tests: not-run-headless-linux`; schema-1 Windows
 records claiming full-suite success are not accepted by the Linux publisher.
 Disposable-key GitHub CI artifacts never emit that production record and are
@@ -1258,35 +1314,35 @@ GitLab Release or Package Registry. One rolling release uses the fixed tag
 `TAK.gov Forge CI/CD Pipeline Release (<version>-p<IID>)`.
 The anchor is created at the first published source SHA and never moved; GitHub
 source archives therefore describe that anchor, not subsequent builds.
-Initial publication creates a draft, uploads and verifies the IQ, then exposes
-a stable release. Later builds update that same release. The final inventory
-has exactly **one** current asset, whose filename and
-label both equal `WearTAK-Garmin-<version>-p<IID>.iq`.
-It downloads that asset and verifies SHA-256 before publishing without marking
-it latest. Checksums remain in the notes and CI artifacts, not extra GitHub
-assets. Notes match the shared release-page structure: an intro, exactly five
-bullets (IQ version, pipeline IDs, canonical pipeline URL, source SHA and SHA-256),
-and a fixed Garmin-specific distribution/source sentence. Simulator-not-run
-evidence and device coverage remain in `release-build.json` and CI logs, not
-additional release-page sections. The base version is the literal `APP_VERSION`
-(`5.8.4`); the `-p<IID>` artifact suffix retains pipeline build numbering.
-The full source SHA in provenance and release notes is authoritative.
+Initial publication creates a draft, uploads and downloads every asset for
+size/SHA-256 verification, then exposes a stable release. Later builds update
+that same release. Final inventory contains exactly 22 assets: the IQ bundle
+and 21 PRGs. Each filename is its asset label; PRGs include Connect IQ target
+and Garmin hardware part number. The release notes list target, part, model
+mapping, download link and hash. The fixed version is literal `APP_VERSION`;
+`-p<IID>` preserves pipeline build numbering. Checksums remain in the notes and
+CI artifacts, not extra GitHub assets. The release notes identify the IQ as a
+distribution bundle and each matching PRG as the direct-install file. The full
+source SHA in provenance and release notes is authoritative.
+
+
 
 The publisher rejects mismatched provenance, unknown notes/assets, pre-existing
 unmanaged anchors/drafts, replayed or newer pipelines, and concurrent changes.
 Before any mutation it saves release/tag metadata and downloads and hash-verifies
-the previous owned asset into `bin/ci/publication-backup/`, retained as a
-non-expiring publisher artifact even on failure. The managed marker binds the
-previous asset ID, filename, SHA-256 and pipeline to the exact expected full body.
-Unknown or manually edited content is never claimed or overwritten.
+all previous owned assets into `bin/ci/publication-backup/`, retained as a
+non-expiring publisher artifact even on failure. The managed marker binds each
+previous asset ID, filename, SHA-256, hardware mapping and pipeline to the exact
+expected full body. Unknown or manually edited content is never claimed or
+overwritten.
 
-For rolling updates, the prior download remains available while the new IQ is
-uploaded and verified. Only after the new title/body is published and its bytes
-are verified again may the exact previous managed, backed-up, hash-verified
-asset ID be deleted. The final inventory must contain only the new IQ. A partial
-attempt fails closed (possibly leaving a draft or both assets); a maintainer
-must inspect the backup and live state before recovery. No automatic retry
-claims a partial inventory.
+For rolling updates, every prior download remains available while the new IQ and
+all 21 PRGs are uploaded and verified. Only after the new title/body is published
+and every new asset is verified again may the exact previous managed, backed-up,
+hash-verified asset IDs be deleted. The final inventory contains the new IQ and
+21 PRGs. A partial attempt fails closed (possibly leaving a draft or both
+inventories); a maintainer must inspect the backup and live state before recovery.
+No automatic retry claims a partial inventory.
 
 Canonical and mirror heads, exact release notes/title and asset inventories are
 rechecked before mutations. The GitLab resource group serializes CI publishers;
@@ -1333,6 +1389,8 @@ also runs them without credentials or release permissions.
 
 
 ## Developer Notes
+
+### Generic CoT and field-report hardening (WEARTAK-280)
 
 Garmin's companion entity ingress already accepts arbitrary CoT point types.
 Other `a-*` entities (including ADS-B aircraft and `a-f-Z` phones), spot markers
@@ -1419,6 +1477,8 @@ active and restored when tracking stops. Active guidance and stop controls remai
 available on the map's Bloodhound panel; the dedicated compass retains its
 route/hound target icon. The own-package-name managed-configuration issue does not apply to
 this Monkey C application.
+
+### Routes (phone companion route protocol v1)
 
 Updated iPhone and ATAK companions can send route geometry to the watch. Open
 **Map > Layers > Routes** to browse routes and their nonblank named points.
@@ -1699,7 +1759,8 @@ for GPS Bloodhound, cancel then confirm watch-only removal, and verify that the
 phone/server route and other watch routes remain unchanged. Confirm label
 wrapping, button navigation and memory use on supported devices.
 
-#### Platform limits
+### Platform limits
+
 Connect IQ is not Wear OS. This application cannot use Android foreground
 services, Compose, Tiles, MDM managed configuration, Android plugins, Samsung
 Health APIs, or APK tooling. The ATAK companion relay still uses dictionary
@@ -1721,6 +1782,10 @@ fields or provide an end-to-end delivery acknowledgement.
 Connect IQ storage is not an OS Keychain; credentials persisted by this app are
 not protected by an equivalent secure-token store.
 
+The manifest targets Fenix 6 Pro, 7X, and 8 Connect IQ products and requires
+Connect IQ 3.3.0. The current SDK's Fenix 8 device definitions also include the
+Tactix 8 AMOLED and Solar hardware part numbers described above; Fenix 3 HD is
+not supported by this build.
 
 Garmin localized resources are selected automatically by the watch's system
 locale via Connect IQ's built-in `Rez.Strings` mechanism; there is no in-app
@@ -1784,10 +1849,11 @@ an app restart so delayed packets cannot reveal or resurrect an older alert.
 
 ## License
 
-#### Rights
+### Rights
+
 Unlimited rights granted to TAK Product Center.
 
-##### ATAK artwork attribution
+### ATAK artwork attribution
 
 The resized/composited hound and crosshair artwork in
 `resources/images/picker-hound*.png` and `picker-crosshair.png` comes from

@@ -144,10 +144,21 @@ def provision(destination):
 
 
 def validate_iq(path, device_ids, cache):
-    expected_parts = set()
+    programs = validated_iq_programs(path, device_ids, cache)
+    return len(programs)
+
+
+def validated_iq_programs(path, device_ids, cache):
+    part_targets = {}
     for device in device_ids:
         definition = json.loads((cache / "Devices" / device / "compiler.json").read_text("utf-8"))
-        expected_parts.update(part["number"] for part in definition["partNumbers"])
+        for part in definition["partNumbers"]:
+            number = part["number"]
+            if not re.fullmatch(r"006-B[0-9]{4}-[0-9]{2}", number):
+                raise ValueError(f"Invalid hardware part number: {number}")
+            if number in part_targets:
+                raise ValueError(f"Hardware part belongs to multiple targets: {number}")
+            part_targets[number] = device
     with py7zr.SevenZipFile(path, "r") as archive:
         names = archive.getnames()
         prgs = [name for name in names if name.endswith(".prg")]
@@ -176,23 +187,60 @@ def validate_iq(path, device_ids, cache):
         entries = exported.findall(".//iq:product", NS)
         parts = [entry.attrib["partNumber"] for entry in entries]
         filenames = [entry.attrib["filename"] for entry in entries]
-        if (len(parts) != len(set(parts)) or set(parts) != expected_parts
+        if (len(parts) != len(set(parts)) or set(parts) != set(part_targets)
                 or len(prgs) != len(parts) or sorted(prgs) != sorted(filenames)):
             raise ValueError("IQ export does not cover exactly the manifest hardware variants")
         wanted = {"manifest.xml", "manifest.sig2", "dev_key.pub"} | set(filenames)
         wanted.update(f"{part}/debug.xml" for part in parts)
         if set(names) != wanted:
             raise ValueError("Unexpected IQ export files")
+        programs = []
         for entry in entries:
+            part = entry.attrib["partNumber"]
             filename = entry.attrib["filename"]
             if (PurePosixPath(filename).parent.as_posix() != entry.attrib["partNumber"]
                     or len(content(filename)) < 16
                     or entry.attrib.get("sigFormat") != "rsa-4096"
                     or not re.fullmatch("[0-9A-Fa-f]{1024}", entry.attrib.get("sig2", ""))):
                 raise ValueError("Missing signed IQ program")
+            product = part_targets[part]
+            model = {
+                "006-B4775-00": "Tactix 8 AMOLED (47/51 mm)",
+                "006-B4776-00": "Tactix 8 Solar (51 mm)",
+            }.get(part, product)
+            programs.append({
+                "product": product,
+                "part_number": part,
+                "model": model,
+                "filename": filename,
+                "data": content(filename),
+            })
         if any(not content(name) for name in ("manifest.sig2", "dev_key.pub")):
             raise ValueError("Missing IQ signing material")
-    return len(expected_parts)
+    return programs
+
+
+def extract_iq_programs(path, device_ids, cache, output, version, pipeline_iid):
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:-[0-9a-f]+)?", version):
+        raise ValueError("Invalid version for device artifact names")
+    if not re.fullmatch(r"[1-9][0-9]*", pipeline_iid):
+        raise ValueError("Invalid pipeline IID for device artifact names")
+    programs = validated_iq_programs(path, device_ids, cache)
+    results = []
+    for program in programs:
+        name = (f"WearTAK-Garmin-{version}-p{pipeline_iid}-"
+                f"{program['product']}-{program['part_number']}.prg")
+        destination = output / name
+        with destination.open("xb") as stream:
+            stream.write(program["data"])
+        results.append({
+            "product": program["product"],
+            "part_number": program["part_number"],
+            "model": program["model"],
+            "artifact": name,
+            "sha256": digest(destination),
+        })
+    return results
 
 
 def validate_localization():
@@ -246,15 +294,22 @@ def build(sdk, home, output):
                 log.flush()
                 print((output / "build.log").read_text("utf-8"))
                 raise
-    variants = validate_iq(output / name, products(), home / ".Garmin" / "ConnectIQ")
-    (output / "SHA256SUMS.txt").write_text(f"{digest(output / name)}  {name}\n", encoding="ascii")
-    record = dict(schema=2, signing="production-key-fingerprint-verified",
+    variants = extract_iq_programs(output / name, products(),
+                                   home / ".Garmin" / "ConnectIQ", output,
+                                   version, env["CI_PIPELINE_IID"])
+    distributables = [name] + [variant["artifact"] for variant in variants]
+    checksum_lines = [f"{digest(output / artifact)}  {artifact}"
+                      for artifact in distributables]
+    (output / "SHA256SUMS.txt").write_text(
+        "\n".join(checksum_lines) + "\n", encoding="ascii")
+    record = dict(schema=3, signing="production-key-fingerprint-verified",
                   tests="not-run-headless-linux", sdk="9.2.0", export="monkeyc-e",
-                  products=products(), hardware_variants=variants, source_sha=sha, project_id=env["CI_PROJECT_ID"],
+                  products=products(), hardware_variants=len(variants), devices=variants,
+                  source_sha=sha, project_id=env["CI_PROJECT_ID"],
                   pipeline_id=env["CI_PIPELINE_ID"], pipeline_iid=env["CI_PIPELINE_IID"],
                   build_job_id=env["CI_JOB_ID"], version=version,
                   artifacts=[dict(name=n, sha256=digest(output / n))
-                             for n in (name, "SHA256SUMS.txt")])
+                             for n in distributables + ["SHA256SUMS.txt"]])
     (output / "release-build.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     print(f"Exported {name}; simulator tests NOT RUN (interactive desktop required).")
 
