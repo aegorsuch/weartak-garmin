@@ -1849,6 +1849,12 @@ an app restart so delayed packets cannot reveal or resurrect an older alert.
 
 ## License
 
+The repository owner's original WearTAK-Garmin source code is licensed under
+GNU General Public License version 3 only; see [`LICENSE`](LICENSE). This
+license applies only to original source code owned by the repository owner. It
+excludes third-party materials, including the ATAK artwork attributed below,
+and does not limit TAK Product Center's Unlimited Rights.
+
 ### Rights
 
 Unlimited rights granted to TAK Product Center.
