@@ -5,678 +5,7 @@ Team Awareness Kit (TAK) operational awareness. It is designed for Garmin
 watches with maps and GPS, currently supporting the fenix 6 Pro family (6 Pro, 6S Pro, 6X Pro), fenix 7X,
 and fenix 8 (47 mm and 51 mm variants).
 
-## Project links
-
-- Personal GitHub: https://github.com/aegorsuch/weartak-garmin
-- Government repo: https://git.tak.gov/core/weartak-core/weartak-garmin
-
-## Generic CoT and field-report hardening (WEARTAK-280)
-
-Garmin's companion entity ingress already accepts arbitrary CoT point types.
-Other `a-*` entities (including ADS-B aircraft and `a-f-Z` phones), spot markers
-`b-m-p-s-m`, and shape centers now use a generic dot and label. Dots use blue
-for friendly/assumed-friendly, red for hostile/suspect/joker/faker, green for
-neutral, and yellow for unknown or non-affiliated types. Existing recognized
-users retain team colors, and recognized explicit ground markers retain their
-existing icons.
-
-Known type families instead receive compact, affiliation-colored symbols:
-fixed-wing aircraft (`a-*-A-C-F`), helicopters (`a-*-A-C-H`), military
-air/UAS (`a-*-A-M`, including UAV `A-M-F-Q`), surface vessels (`a-*-S`),
-and ground vehicles (`a-*-G-U-C-I-I`). Subtypes retain the family symbol.
-SPI (`b-m-p-s-p-i`) uses a yellow crosshair. Unknown types retain the generic
-dot; contacts retain their team dots and emergencies retain their alert icons.
-Vehicle types are not treated as chat-capable team members merely because
-their type contains `G-U-C`. Symbols are bounded vector strokes, not additional
-retained images or entities.
-The existing limits remain **999 retained entities** and **99 nearest drawn
-items**, with alert priority. Ordinary points expire at the sender's `stale` /
-`tStale` deadline or after five minutes without an update, whichever comes first.
-Emergencies retain their separate explicit-cancellation behavior.
-
-Coordinate-free `t-x-d-d` events remove the target (`link.uid` with `p-p`
-relation, or the event UID), stop its Bloodhound target, and suppress older
-replays for five minutes. Ordered deletes older than the displayed revision are
-ignored. `u-d-c-c` circles support a numeric `radius` in meters or
-`shape.ellipse` with equal numeric `major` and `minor` radii: greater than zero
-and at most 100 km. Outlines are clipped, 32 segments each, with at most 16
-drawn per frame. Other shapes, missing geometry, and near-polar circles use the
-labeled center fallback; arbitrary polygon/ellipse geometry is not implemented.
-The companion must relay these fields; the watch does not parse raw CoT XML.
-
-Generic points never acquire a user-chat action. RGR/nPos sender replies are
-offered only when a sender UID exists, and queued replies still reject a
-missing destination. Repeated activation of the same active manual alert is
-idempotent; changing its category or canceling and reactivating still creates a
-new event. Transport retries retain their original `messageId`, including across
-restart. The companion must deduplicate that ID before TAK writes; Garmin has
-one phone transport, not multi-server fan-out.
-
-The WearOS PPG concurrent-buffer bug has no equivalent here: Garmin's bounded
-pressure buffer is updated and read in the same synchronous sensor callback.
-Emergency/PLI location selection and CoT `ce` belong to the paired phone:
-Garmin sends neither emergency nor PLI coordinates and cannot fix that phone
-fallback by changing watch GPS state. No physical-device validation is implied.
-
-### Fresh location on user actions
-
-Opening the map, recentering on self, starting point/route navigation, changing
-callsign/team/role, dropping/moving a self marker, and action-triggered PLI/chat
-refreshes actively request a fix without waiting for GPS. With watch Location
-Services enabled, the watch requests a one-shot local GPS fix and resumes
-continuous updates afterward. The action uses its current best position
-immediately; a returned fix updates the local map/navigation and PLI.
-This does not override a disabled Location Services setting.
-
-The phone also receives an immediate `location_request` control envelope:
-`payload` contains `action` (`map`, `navigation`, `identity`, `self_marker`,
-or `pli`), unique `requestId` / `messageId`, `createdAt`, and `relaySession`.
-These hints are best-effort, like PLI, and never occupy the durable outbox or
-block emergency writes on an older companion. Compatible companions actively
-acquire a phone fix and republish PLI; they do not create another marker from
-the hint. After the companion advertises `phoneLocation: true` in `relay_status`,
-self marker events separately carry `locationSource: "phone"`, so
-the companion publishes its best fix immediately and updates the **same UID**
-when a fresh fix arrives. Explicit map-tap coordinates remain intentional.
-Self markers without a watch fix can be handed off immediately; up to 20 local
-pending records survive an acknowledgement/restart for up to 24 hours.
-
-The companion returns resolved/fresh self-marker positions using ordinary
-`entity` envelopes with the original `garmin-marker-...` UID, `lat`, `lon`,
-`type`, `callSign`, `isPoint: true`, `time`, and `stale`. Garmin reconciles them
-into the saved local marker without an incoming duplicate or outbound echo.
-The `relay_result` acknowledgement contract is unchanged. Phone GPS never
-becomes a synthetic contact or replaces the watch's own navigation fix.
-
-### Route-start and compass parity (WEARTAK-252/253)
-
-Starting a whole route closes the route/picker screens and returns to the main
-menu, retaining active navigation. Garmin's main screen is a native menu rather
-than a compass dashboard: its Bloodhound entry is hidden while any target is
-active and restored when tracking stops. Active guidance and stop controls remain
-available on the map's Bloodhound panel; the dedicated compass retains its
-route/hound target icon. The own-package-name managed-configuration issue does not apply to
-this Monkey C application.
-
-## Routes (phone companion route protocol v1)
-
-Updated iPhone and ATAK companions can send route geometry to the watch. Open
-**Map > Layers > Routes** to browse routes and their nonblank named points.
-Selecting a route opens whole-route details (named/total point counts,
-source server, mission and sender), with **Select named point** and **Remove from this
-watch**. Tapping a visible route line also selects the whole route. Tapping a
-point offers both that point and its whole route in **Select Map Item**;
-overlapping routes remain separate by source server. Point details include a
-**Whole route** action. Details show the route, source server,
-mission, sender UID and coordinates, with **Bloodhound** / **Stop Bloodhound** and
-sender **Chat** when available. Bloodhound uses the existing GPS range/bearing
-display and proximity alerts; this is not turn-by-turn navigation.
-
-### Bloodhound picker (Garmin button-first layout)
-
-The picker uses one native row per route, received point, visible contact, or
-locally placed marker. Rows have a type glyph, name and a localized subtitle
-(`Route / point count / nearest distance`, or `Marker`, `Point`, `Contact` and
-distance). Distances use meters below 1 km and kilometers above it. Active route
-subtitles show **Point X of N / remaining distance left**, and the active type
-glyph is amber. Native rows are used on every supported Garmin: two independent in-row touch buttons and a custom amber
-row background/border are **not** implemented on Garmin's Menu2. Native focus and
-row colors remain device-specific; the amber glyph identifies the active row.
-
-Actual video/camera entries use a compact video-camera glyph. Classification
-requires the exact CoT type `b-i-v` or a phone-normalized `__video` dictionary
-(presence-only `{}`; no stream URL or credentials). The map record retains only
-a derived camera flag; later updates without video evidence clear it. Names,
-distance subtitles, tracking and removal actions are unchanged, and emergencies
-retain their alert priority. Names containing "camera", generic sensors, UAVs and
-SPI alone are not camera evidence. Older companions that omit video metadata
-cannot identify video-bearing ordinary tracks; a compatible bridge must forward
-the agreed signal. This adds no player, stream connection or KLV ingestion.
-
-Selecting a row opens the approved Garmin action-menu fallback:
-
-- **Show on map** (grey crosshair): centers tightly on a point without changing
-  Bloodhound. For routes it enables the route layer and fits the entire received
-  geometry with padding, including routes crossing the date line.
-- **Bloodhound** (green ATAK hound): starts a point/marker/contact immediately.
-  For a route it opens **Start nearest**, **Start from beginning**, **Cancel**.
-  Nearest has a grey hound and **Location required** when no position is known;
-  choosing it cannot change the active target. Nearest's available icon is green.
-- **Stop Bloodhound** (red circle, white stop square): replaces the hound action
-  for the sole active target, including whole routes.
-- **Details** retains the existing route/point/contact details, point RGR/nPos,
-  chat and removal flows.
-- **Remove** provides direct deletion from the picker action menu (24 px trash
-  glyph). Received items are dismissed locally, dropped markers use their existing
-  delete workflow, and whole routes open the existing watch-only confirmation.
-  **Cancel** returns without changing the target.
-
-This menu fallback deliberately avoids touch-only controls and large image
-assets. Action icons are 24 x 24 px. The picker refreshes on route delivery,
-GPS updates, target changes and when shown again. **Remove All** now clears every
-received route as well as received points/alerts, including when there are no
-received points. It stops navigation of a removed route. Contacts and dropped
-markers retain their existing separate removal controls. Native picker layout,
-icon legibility and translations still
-need physical-watch/native-speaker acceptance.
-
-#### ATAK artwork attribution
-
-The resized/composited hound and crosshair artwork in
-`resources/images/picker-hound*.png` and `picker-crosshair.png` comes from
-[deptofdefense/AndroidTacticalAssaultKit-CIV](https://github.com/deptofdefense/AndroidTacticalAssaultKit-CIV),
-**GPLv3**: [`nav_bloodhound.png`](https://github.com/deptofdefense/AndroidTacticalAssaultKit-CIV/blob/main/atak/ATAK/app/src/main/res/drawable-xxxhdpi/nav_bloodhound.png)
-and [`ic_crosshair.png`](https://github.com/deptofdefense/AndroidTacticalAssaultKit-CIV/blob/main/atak/ATAK/app/src/main/res/drawable-hdpi/ic_crosshair.png).
-The source copies were provided by the user. The user approved their use and
-will review licensing/distribution obligations before release; this attribution
-is not a completed licensing review. The stop square and type glyphs are drawn
-for this app rather than copied from ATAK.
-
-### Follow a whole route with Bloodhound
-
-The **Bloodhound** picker lists each received route once, with its name, total
-vertex count and distance to its nearest vertex when GPS is available. Select a
-route, choose **Bloodhound**, then **Start nearest** or **Start from beginning**. Nearest requires a
-known position (otherwise the menu explains **Location required**, with no silent
-fallback). It projects the position onto the closest route segment and selects
-the next checkpoint at or ahead of that along-route position; equal projections
-use the earliest segment. Beginning targets the first checkpoint. Explicit
-`b-m-p-w` points are checkpoints; controls (`b-m-p-c`) and missing types remain
-geometry rather than objectives. The final original vertex is always the
-destination fallback, including routes containing only controls.
-Both modes preserve original vertex indices and unnamed geometry, not the
-filtered named-point list. Whole-route details also provide a **Bloodhound**
-action; individual point Bloodhound remains available and does not auto-advance.
-
-The existing map/compass shows the route name, **Point X of N** (one-based), and
-remaining distance: current position to the target plus every remaining route
-segment. The arrow continues to point at the current checkpoint. Arrival radii
-are **10 m walking/swimming**, **20 m driving**, **100 m watercraft** and
-**1000 m flying**, inclusive; absent/unrecognized methods use 10 m.
-Entering a checkpoint's bubble remembers arrival, but advancement waits until
-the closest-segment projection reaches/passes that checkpoint's along-route
-position. Projection alone cannot skip an unvisited checkpoint. Dense/duplicate
-checkpoints advance in order without discarding control-point geometry.
-Entering the final destination bubble completes the route even if earlier
-checkpoints were missed: **Route complete** clears the target.
-Missing, unavailable or poor-quality GPS never advances the route; beginning can
-wait for a usable fix.
-
-Standalone guidance approximates ATAK's checkpoint/projection rules, not its
-native spatial index, cue engine, road routing, turn instructions or off-route
-recalculation. Connect IQ `Position.Info.accuracy` provides only a quality enum,
-not horizontal circular error in meters: Garmin gates advancement on usable/good
-quality but does **not** invent a CE value or inflate the method radius. Paired
-ATAK navigation uses the phone's real GNSS uncertainty.
-
-Select the active route again for **Stop Bloodhound**, open its Bloodhound
-chooser/details for progress and **Stop route**, or tap the map's
-Bloodhound panel. Starting a different route or selecting any other Bloodhound
-target stops the previous route. Removing/resetting its route also stops it.
-Geometry updates retain the original target index (or stop if that index no
-longer exists), reset remembered arrivals, and move a standalone control target
-to the next checkpoint/destination. Changed vertex order changes the target at
-that index.
-Standalone follow state is in memory. Switching away from a synchronized ordinary
-point still stops its previous phone Bloodhound session, as with individual
-route-point tracking.
-
-### Two-way Android Companion route navigation (v1)
-
-Compatible Android Companions advertise `routeNavigationVersion: 1` in
-`relay_status`, in response to the watch's `relay_hello` capability. While that
-capability is present, starting a whole route on either device starts navigation
-on both. **ATAK owns advancement and completion**, so watch GPS cannot race the
-phone or consume checkpoints. ATAK's method-dependent arrival radii are 10 m for
-walking/swimming, 20 m for driving, 100 m for watercraft, and 1000 m for flying
-(subject to ATAK preferences and GPS uncertainty). This is ATAK route guidance,
-not a new Garmin turn-by-turn engine. Unpaired watches and older/iPhone companions
-without this capability use the standalone checkpoint guidance above.
-
-Garmin uses Connect IQ dictionary envelopes, never raw route CoT XML:
-
-- Phone geometry arrives first through the existing bounded `route` protocol.
-  `phone_route_navigation` then carries `version: 1`, the current `relaySession`,
-  UUID `sessionId`, increasing integer `sequence`, `action` (`start`, `progress`,
-  `stop`), `serverId`, `routeUid`, and zero-based original `targetPointIndex` for
-  start/progress. Stop requires Boolean `completed`. Unknown or oversized routes,
-  invalid indices, stale sessions and older sequences cannot change the target.
-- Watch controls use `watch_route_navigation` with `version: 1`, `relaySession`,
-  distinct UUID `requestId`, watch-proposed UUID `sessionId`, `serverId`,
-  `routeUid`, `action` (`start` or `stop`), and `targetPointIndex` for start.
-  `route_navigation_ack` must echo `relaySession`, `requestId`, `sessionId` and
-  Boolean `ok` (with `error` when false). A successful start also requires its
-  authoritative phone snapshot within eight seconds. No watch progress command
-  is sent.
-
-Stops, replacement targets, route removal and Remove All send session-scoped stop
-controls. Phone-originated progress/stops do not echo. Rejected/timed-out starts
-and transport failures display an error rather than silently claiming sync.
-Disconnect clears phone-owned guidance rather than silently switching arrival
-rules; standalone guidance can then be started explicitly. Snapshots follow the
-existing 8-route / 64-vertices-per-route / 128-total-vertices watch limits, and
-source-server identity remains part of every route selection/removal.
-
-[RouteNavigation.mc](source/RouteNavigation.mc) contains pure nearest-index,
-arrival advancement and remaining-distance logic. The simulator suite in
-[RouteNavigationTests.mc](source/RouteNavigationTests.mc) covers missing GPS,
-nearest-segment ties, dense checkpoints, method thresholds, projection/departure,
-control-point/final fallback, poor-quality fixes, completion, original vertex
-order, dateline distance, switching targets, route removal/reset/update, picker
-summaries, GPS-dependent chooser refresh and standalone tracking.
-[RouteNavigationSyncTests.mc](source/RouteNavigationSyncTests.mc) covers
-two-way starts/stops, authoritative progress/completion, capability negotiation,
-session/sequence rejection, acknowledgement failures/timeouts, disconnect,
-removal/reset and replacement targets.
-[BloodhoundPickerTests.mc](source/BloodhoundPickerTests.mc) covers icon resources,
-point/route map focus (including date-line and polar coordinates), immediate
-point/marker/contact tracking, active summaries, stop actions and stale/no-fix
-rejection. New labels have resource entries in every
-supported locale; physical watch acceptance and native-speaker review remain
-required. The non-Pro fenix 6/6S are no longer supported (128 KiB memory limit).
-
-The route-point list hides missing, empty and whitespace-only names, with a
-localized **No named points** empty state when needed. It retains original vertex
-numbers and coordinates so repeated point names remain distinguishable; selecting
-a filtered row still targets that original vertex, not its position in the list.
-All geometry and unnamed map-point/Bloodhound access remain unchanged.
-Chat actions recheck the current sender before
-opening a conversation when route metadata changes.
-
-**Remove from this watch** requires a second confirmation, initially focused on
-**Cancel**, and names the route and server. It removes only the current in-memory
-watch copy and stops Bloodhound only if tracking one of that route's vertices.
-It sends no route-delete command to the phone or TAK server, does not affect
-another server's route with the same UID, and does not delete individual vertices.
-The confirmation warns that subsequent phone updates or refresh/reconnect replay
-may restore the route; this is not a permanent source-route dismissal.
-
-**Show Routes** controls route lines and point hit-testing without stopping an
-active Bloodhound target. Point selection and tracking identities include the
-source server and route UID, so identical UIDs on different servers stay separate.
-All vertices are selectable; the watch does not simplify the route. Geometry
-updates move the active target at its vertex index. Removal of that route stops
-tracking. A changed vertex order therefore changes the target at that index.
-Geometry updates immediately reevaluate proximity; invalid or not-yet-available
-map bounds temporarily skip route drawing and hit-testing until bounds recover.
-
-**Routes > Refresh** requests an authoritative reset/replay from the current phone
-companion. Route snapshots and phone-relay disable clear routes and stop route
-tracking; routes are held in memory, not saved across watch restarts. Refresh after
-a failed handoff repairs the watch display. Route delivery uses SDK handoff rather
-than end-to-end acknowledgements; physical phone/watch acceptance is still needed.
-Route-point range/bearing and proximity alerts run locally with either companion.
-Synthetic route-point IDs are not sent as native ATAK Bloodhound targets because
-intermediate vertices need not exist as ATAK point map items. Switching from a
-synchronized ordinary point to a route vertex stops the previous phone track.
-Existing ordinary-point Bloodhound synchronization is unchanged; the iPhone
-companion does not provide phone Bloodhound coordination.
-
-The watch advertises numeric `routeVersion: 1` in `relay_hello` and
-`entity_sync_request`. Companions gate route messages on that capability:
-
-| Message | Payload |
-| --- | --- |
-| `route` | `routeVersion`, `serverId`, `uid`, `name`, `points: [{lat, lon, name?, type?}]`, optional `missionName`, `senderUid`, `method` |
-| `route_remove` | `routeVersion`, `serverId`, `uid` |
-| `routes_reset` | `routeVersion` |
-| `routes_error` | `routeVersion`, `error` |
-
-Each route is replaced atomically after validation. Bounds are **8 routes**,
-**2–64 vertices per route**, **128 vertices total**, and **6,000 UTF-8 bytes per
-serialized envelope** on the companion. Text bounds in UTF-8 bytes are server ID
-64, UID 128, route/point name and point type 64, method 32, mission/sender UID 128,
-error 256. `method` is `Walking`, `Swimming`, `Driving`, `Watercraft` or `Flying`;
-older companions may omit it and point `type`. Latitude and
-longitude must be finite and within geographic ranges. Over-capacity/invalid
-updates produce an explicit error and retain the previous valid geometry, if any;
-tracking that older geometry continues until corrected, removed or refreshed.
-The ATAK companion automatically fills freed capacity after route removal or
-shrinking geometry. Existing published routes take priority; new candidates are
-selected in source-server/UID order. Immediately rejected SDK updates and removals
-remain pending for the next map/link reconciliation, without resetting local
-tracking. Invalid geometry is retained only for its originating ATAK map item,
-never for a different server's route with the same UID.
-No raw route CoT XML is logged by the adapters.
-
-Bloodhound route target IDs use
-`route-point:<server UTF-8 length>:<server><route UID UTF-8 length>:<UID>:<zero-based vertex index>`.
-This length-prefixed encoding avoids delimiter collisions.
-
-[RouteTests.mc](source/RouteTests.mc) covers atomic validation, capacity boundaries,
-same-UID/different-server selection, individual point coordinates, active target
-updates/removal, clipped-line hit thresholds, date-line/overlap selection,
-whole-route menus, confirmation/cancellation, watch-only removal and unchanged
-route envelope dispatch. Named-list tests cover blank names, duplicate names,
-original source/index identities, named/total counts, empty state, unchanged
-geometry and unnamed map/Bloodhound access.
-New route labels use English fallback resources pending translation.
-`monkey.jungle` limits compilation to `source` so nested Git worktrees are not
-compiled as duplicate application sources. Test-enabled builds can be run with
-`monkeydo ... fenix7x /t`; the full test-enabled fenix6pro build currently exceeds
-that device's global-member limit.
-
-### TAK-server Data Package delivery boundary
-
-This repository contains only the Connect IQ watch application. `TakClient`
-receives normalized route dictionaries over the existing phone relay; it does
-not parse raw `b-m-r` route CoT, handle `b-f-t-r` package advertisements, download
-`Marti/sync/content?hash=...`, or parse ZIP/XML. No new package capability is
-advertised by this change. A `routeVersion: 1` watch can display package routes
-**only after a compatible ATAK/iPhone companion imports and normalizes them**.
-Package import is not operational end-to-end from this watch-only change.
-
-The required companion implementation must:
-
-- Accept route-only TAK Data Package ZIPs, validate the advertised SHA-256 and
-  bounded download size, and fetch only from the configured TAK HTTPS origin
-  with TLS validation. Bind credentials to that origin; reject untrusted
-  redirects/URLs rather than forwarding credentials or permitting SSRF.
-- Bound ZIP entry count, compressed/uncompressed sizes, expansion ratio and XML
-  complexity; reject unsafe/duplicate archive paths without writing entries to
-  arbitrary filesystem locations. Disable DTDs/external entities.
-- Read `MissionPackageManifest` content entries, import only non-ignored route
-  CoT through the companion's existing `b-m-r` route parser, and ignore package
-  execution/import/delete instructions (`onReceiveImport`, `onReceiveDelete`).
-  Do not execute arbitrary package contents or delete source/server data.
-- Send validated routes through the existing route v1 envelopes and enforce
-  their capacity/text/envelope limits without silently simplifying geometry;
-  report failures through `routes_error`. No raw archives, URLs, credentials or
-  XML should be sent to the watch.
-
-Remaining physical-device acceptance: import a route-only TAK-server package on
-each companion, check Connect IQ delivery/replay/error reporting, tap lines and
-overlapping vertices (including across the date line), select an unnamed point
-for GPS Bloodhound, cancel then confirm watch-only removal, and verify that the
-phone/server route and other watch routes remain unchanged. Confirm label
-wrapping, button navigation and memory use on supported devices.
-
-## Rights and contacts
-
-### Rights
-
-Unlimited rights granted to TAK Product Center.
-
-### Point of contact
-
-Alex Gorsuch on chat.tak.gov or Signal.
-
-### Repositories
-
-The TAK Forge repository is canonical. GitHub is a secondary repository.
-
-## Installation
-
-1. Download the `.prg` matching your watch from the latest GitHub release.
-2. Connect the watch to your computer with its USB cable and wait for it to
-	appear as a removable drive.
-3. Open the watch drive and navigate to `GARMIN/Apps`.
-4. Drag only the matching `.prg` into the `GARMIN/Apps` folder. For a fēnix
-	7X running version `5.8.3-9f1ec78`, use
-	`WearTAK-Garmin-fenix7x-5.8.3-9f1ec78.prg`.
-5. Safely eject the watch, disconnect the USB cable, and launch WearTAK from
-	the watch's app list.
-
-Do not copy the `.prg.debug.xml`, other device builds, or the `.iq` package to
-the watch. The `.iq` package is the release bundle for Garmin's supported
-distribution workflow; direct USB sideloading uses the device-specific `.prg`.
-Garmin uses the watch's system language for localized app text.
-
-The app uses Garmin Connect IQ phone messages (`Communications.transmit`/
-`registerForPhoneAppMessages`) to relay watch input to the WearTAK ATAK
-companion. ATAK owns TAK server connectivity, mTLS credentials, identity, and
-the authoritative phone location for PLI; the watch provides a secondary
-display and input surface.
-
-This channel is routed through Garmin Connect Mobile and the Connect IQ Mobile
-SDK on the phone side; it is unrelated to the direct BLE GATT link the ATAK
-plugin already uses for Samsung/Wear OS watches. Garmin Connect Mobile is only
-a runtime requirement for users pairing a Garmin watch specifically — it has
-no effect on Samsung/Wear OS users of the same plugin. Connect IQ apps cannot
-act as a BLE peripheral/GATT server, so the watch cannot use the plugin's
-existing direct-BLE transport; the phone-side plugin needs a second,
-Garmin-specific transport using the Connect IQ Mobile SDK to receive these
-messages. The ATAK companion has a separate Garmin Connect IQ transport in its
-TAK Forge repository.
-
-Message envelopes are dictionaries of the form
-`{"msgType": <string>, "payload": <dictionary>}`. The Bloodhound and settings
-message families (`bloodhound_control`, `bloodhound_control_result`,
-`set_settings`, `settings_set_ack`, `request_settings`, `watch_settings`) use the
-same type names and payload field names as the WearOS WearTAK app's BLE
-protocol; a narrow companion adapter normalizes the envelope and adds
-session/correlation metadata for the Connect IQ link. Garmin payloads are
-Connect IQ dictionaries rather than newline-delimited JSON, and the watch never
-parses raw CoT XML — the companion must normalize ATAK markers, alerts, and chat
-into the `entity`, `entities`, and `chat` envelopes.
-
-### Phone-relayed remote users (WEARTAK-160)
-
-The watch advertises `entitySyncVersion: 2`, `watchUid`, and its current
-`relaySession` in `relay_hello`. Companion v2 `entity`, `entities`, and
-`entity_remove` messages carry that session on the top-level envelope. Missing
-or stale sessions cannot update or remove v2 phone-user records. Only one active
-Companion watch link may receive the v2 user stream; ambiguous routing clears
-phone-user copies until an exclusive route is available. The watch excludes
-phone/watch UIDs, not matching callsigns, and accepts supported remote contacts
-across ATAK contact types rather than only `a-*-G-U-C`.
-
-A replacement `entities` payload carries `entities`, `replaceUsers: true`,
-`scope: "phone-relay-users"`, `excludedUids`, `limit`, and `truncated`. It removes
-only absent phone-relay user sources; direct-network users with the same UID and
-dropped points survive. `entity_remove` uses `{uid, scope: "phone-relay-users"}`
-with the same source-only semantics. When one source expires or is removed,
-another source can supply its coordinates. Explicit relay stop/new session
-clears phone-user copies; transport loss retains them only until their stale
-deadline. Expiry is checked on ingress and the 60-second prune timer; legacy
-users without a deadline retain the five-minute fallback. V2 user updates are
-ignored until a current-session snapshot supplies distinct phone/watch UIDs,
-including the watch's own UID; missing identity data fails closed.
-
-Snapshots are limited to the nearest 50 entities and the watch bounds live
-phone-user state at 50, requesting a fresh snapshot on overflow. The companion
-reports truncation and the watch displays a warning. The existing 999-entity /
-nearest-99 drawing limits remain; the watch warns before replacing the oldest
-retained user at capacity. Pending phone changes coalesce by UID and cap at 512.
-SDK handoff is not watch receipt or TAK delivery, and entity sync has no
-delivery-ACK/retry guarantee; a new hello/sync rebuilds state and stale
-deadlines clean up lost removals. `PhoneAppMessage` exposes data, not an
-authenticated sender-phone/app identity, so session fencing relies on Garmin
-Connect Mobile's app routing rather than independent authentication. Simulator
-tests do not establish paired-hardware delivery behavior.
-
-Garmin settings use a bounded UUID `transactionId` in the request or set payload.
-The watch copies it to `watch_settings` and `settings_set_ack`; the companion only
-confirms a settings write after both the positive acknowledgement and the matching,
-exact supported-profile snapshot arrive, in either order. A negative save or
-storage error returns a correlated failure and no success snapshot. Garmin
-settings contain only callsign, team, role, reporting interval, and the explicit
-phone-management flag; TAK server credentials and P12 data remain on the phone.
-Legacy untagged settings requests still receive untagged responses for older
-clients, but the current Android companion never treats an untagged response as
-confirmation. Watch/phone link loss, a new settings attempt, and a changed profile
-fence out delayed replies; confirmation expires after 15 seconds.
-
-### Releasing phone-managed settings (WEARTAK-161)
-
-Intentional phone Disconnect, disassociation, or unpair sends
-`release_phone_management` with payload `{"requestId": "<UUID>"}` before stopping
-the route. Its envelope must also carry the current `relaySession` from
-`relay_hello`. The watch replies `phone_management_release_ack` with
-`{"requestId": "<same UUID>", "ok": <Boolean>, "error": "<optional reason>"}`.
-The companion must wait for a positive, correlated acknowledgement; timeout or
-failure is not permission to claim the settings were unlocked. There is no
-untagged/legacy release fallback. Invalid request IDs receive a negative reply
-without a correlation ID.
-
-Only an active matching relay session may release ownership, including an
-idempotent repeat when already unmanaged. Missing/stale sessions and stopped
-relays fail without changing settings. The watch persists only the management
-flag before acknowledging; callsign, team, role, and reporting values remain.
-The watch's explicit relay Disconnect/stop control uses the same release helper.
-A storage failure retains the lock and reports failure (the local stop is
-aborted). GCM/BLE interruptions, transmit errors/retries, suspension, and app
-relaunch do not clear persisted ownership. Existing manual settings controls
-remain available.
-
-Unpairing outside Companion cannot itself unlock settings: use Companion's
-acknowledged release before unpairing. Watch-side disable also uses the release
-helper, but cannot bypass current network or phone-management UI locks.
-The watch cannot distinguish two senders with access to the same GCM
-route and current session. The phone must validate its intended association
-before sending and keep the route open until the ACK arrives. Hardware
-association/replay behavior still needs paired-device acceptance testing.
-
-The watch can also use the iPhone WearTAK Companion's Garmin route without an
-ATAK plugin or an Apple Watch. That route owns TAK connections and phone GPS;
-it does not implement Bloodhound coordination. Authorize the watch through
-Garmin Connect Mobile, select it in Companion, then enable **WearTAK Companion**
-at the top of the watch's **Network Preferences**. **Companion Setup** in
-**TAK Relay** provides an iPhone setup hint. The same single **WearTAK Companion**
-switch also controls Android's ATAK companion path; the phone's authorized
-companion determines the destination, not a second transport switch.
-
-The native switch shows **enabled intent**, with no status subtitle. Connection
-status remains in **TAK Relay > Relay Status**. It defaults off on first use and
-persists across app restarts, watch
-reboots, and updates until explicitly disabled (uninstalling or clearing app data
-removes it). An enabled relay resumes negotiation when the app starts; this does
-not promise an OS background service or delivery while the app is stopped.
-Disabling unregisters phone ingress, stops the existing outbox timer, fences old
-callbacks, and prevents new relay sends/processing. A final existing SELF_STATUS
-clear may be handed off during successful disable; messages already handed to
-Garmin Connect Mobile cannot be recalled.
-
-Unexpired queued events are retained, not purged on disable; existing expiry,
-identity, deduplication, and acknowledgement rules still apply when re-enabled.
-Configuration and credentials are unchanged. Preference-save or phone-management
-release failures abort a disable and leave its live intent/session unchanged;
-a failed preference rollback explicitly warns that saved state is uncertain
-and must be retried before restart. Connection errors do not turn off saved
-intent. Current network locks and phone management also guard already-open
-configuration menus and text entry.
-
-For queued marker, delete, emergency, and chat events, `relay_hello` carries a
-`relaySession`. A matching `relay_status` advertising `reliableDelivery: true`
-enables correlated `relay_result` acknowledgements. SDK handoff alone no longer
-removes these events: the phone acknowledges after at least one eligible server
-socket accepts the write, not after remote TAK receipt. Missing acknowledgements
-time out after 30 seconds; failed events remain queued with 5-to-60-second
-exponential retry delays. Old callbacks and unrelated/malformed results cannot
-complete a new attempt. Existing queue limits (20 events, 24-hour expiry) remain.
-The iPhone persists stable event IDs and original CoT to suppress accepted
-replays across restart; a crash between socket acceptance and ledger persistence
-can still cause a duplicate. Replies are not an exactly-once delivery guarantee.
-
-To preserve older companions, queue sending waits up to 15 seconds for capability
-negotiation, then falls back to SDK handoff if reliable delivery has not been
-negotiated in that watch process. A lost hello response never downgrades a process
-that already negotiated reliable delivery. The simulator tests in
-[ReliableRelayTests.mc](source/ReliableRelayTests.mc) exercise negotiation,
-exact timeout/retry boundaries, capped backoff and reset, transmitted payloads,
-stale callbacks, reconnects, malformed/duplicate results, storage failures,
-in-flight replacement/expiry, and legacy fallback. Their clock, storage, and
-transport are isolated; they never register live phone callbacks or start the
-production outbox timer. Storage-failure cases verify events remain queued until
-acknowledgement or handoff removal can be persisted.
-
-### Chat transport contract (WEARTAK-118)
-
-Garmin is the watch UI/transport, not the owner of ATAK group membership or
-server routing. A group-aware companion normalizes inbound `chat` or
-`chat_received` payloads as follows:
-
-| Field | Meaning |
-| --- | --- |
-| `uid` | Message/event ID; never the reply destination |
-| `senderUid`, `senderCallsign` | Individual sender identity |
-| `msg` | Message text |
-| `receivedAt` | Receive timestamp in epoch milliseconds |
-| `conversationUid`, `conversationTitle` | Authoritative conversation identity/title |
-| `isGroup` | Explicit Boolean identifying a group |
-
-Direct conversations use `senderUid` as their destination; groups use
-`conversationUid`. Legacy Garmin `chat` payloads containing only
-`uid` (sender identity), `sender`, and `text` remain accepted. Missing group
-destinations are rejected with an on-watch error rather than guessed from the
-event ID. Conversation history is in-memory, bounded to 20 rooms and 20 total
-received messages; it is not a synchronized phone history or a group directory.
-Malformed or empty canonical `senderUid` values are rejected, even if a legacy
-`uid` or `messageId` is present; event IDs must never become reply destinations.
-
-For backward compatibility only, an older iPhone envelope retains `uid` as sender identity,
-`sender`/`text` as display content, and `messageId` as event identity, with
-`conversationUid`, `title`, and Boolean `isGroup`. The watch also accepts this
-shape; `messageId` distinguishes it from ATAK's event-ID `uid` convention.
-Without `receivedAt`, local arrival time orders the conversation. New companion
-emitters must use the canonical fields above, including `conversationTitle`;
-`title` is accepted only as an ingress compatibility alias.
-
-Outbound `chat` payloads contain `roomUid`, `roomTitle`, `isGroup`, `msg`,
-`text`, and `cs`, plus the existing queue-assigned `messageId` and `createdAt`.
-All companions must consume these canonical outbound room fields; conversation
-fields are inbound metadata, not alternate outbound routing.
-Direct payloads also contain `recipientUid` and `replyTo`, both equal to the
-individual UID. Group payloads omit these direct aliases. The companion resolves
-the group UID to its authoritative membership and rejects unavailable or
-unwritable groups; watch-side participant lists are not routing authority.
-**All Chat Rooms** is one explicit broadcast destination, not iteration over
-saved rooms or direct contacts.
-
-The reviewed ATAK companion WEARTAK-118 branch implements the WearOS BLE route,
-not a Connect IQ ingress adapter. Its native contact/group routing alone does
-not establish Garmin support. The separate Garmin transport must map watch
-`messageId` to the BLE envelope's `msgUid` and payload `uid`, preserve
-`roomUid`/`roomTitle` (accepted aliases of BLE `rmUid`/`rmTitle`), `isGroup`,
-`msg`, and `cs`, and invoke the companion chat handler. `replyTo` is not an ATAK
-BLE chat destination field; the adapter must route using `roomUid`, including
-direct conversations. It must preserve stable message IDs and translate relay
-acknowledgements, rather than interpreting BLE handoff as TAK delivery.
-
-On receive, the adapter must translate `ChatRelayPayloadBuilder`'s
-`chat_received` envelope into a Connect IQ dictionary without changing the
-canonical payload fields. The companion remains responsible for confirming
-the phone's membership in named groups, suppressing self/watch echoes, resolving
-actual `GroupContact`/`IndividualContact` recipients, and rejecting unavailable
-contacts. `participantUids` may be retained as metadata but are not watch-side
-routing authority. No production Connect IQ-to-native-chat path was verified
-in that BLE-only branch; it must not advertise Garmin `chatGroups` based solely
-on its WearOS group tests.
-
-Non-broadcast group sending requires the current-session `relay_status` to
-advertise `chatGroups: true` alongside the existing Boolean `reliableDelivery`.
-Companions must advertise this only after both group receive normalization and
-explicit group reply routing are proven. ATAK named groups must resolve to real
-`GroupContact` destinations, not merely room-labelled server XML. Unavailable
-groups must never fall back to broadcast. Older iPhone relays ignore `roomUid`, so
-sending them a group without this gate could broadcast unintentionally.
-Unsupported group sends show an error before enqueue. Already queued groups are
-skipped when capability is absent; before admitting any new eligible event,
-unsupported queued groups are removed with an explicit notification so they
-cannot fill the outbox and block emergency alerts. In-flight events are protected.
-Removal and admission are persisted together; storage/admission failure restores
-the previous queue. Other pending events retain their existing relative order.
-Reconnect, relay stop, or relay failure resets the capability. This does not
-claim parity with companions that have not implemented this contract.
-
-The current iOS companion WEARTAK-118 implementation intentionally does not
-advertise `chatGroups`: its room-labelled CoT does not yet establish verified
-member-destination routing. Garmin can display its group messages, but named-group
-sends through that companion remain blocked. Explicit All Chat Rooms and direct
-messages do not require this capability. This is a support boundary, not verified
-end-to-end group parity; Android/ATAK group support likewise requires a proven
-group-aware Garmin adapter.
-
-`ChatConversationTests.mc` exercises pinned picker rows, selected direct rooms,
-mixed receive ordering, destination mapping, legacy input, malformed groups,
-deduplication, retention bounds, and capability-gated queue transmission.
-
-> Important: Garmin relay behavior requires both the watch application and the
-> ATAK companion's Garmin Connect IQ integration. A watch-side relay toggle alone
-> does not establish a TAK server connection. Hardware end-to-end settings
-> confirmation still needs acceptance testing on a paired watch.
-
-## Current capabilities
+## Purpose and Capabilities
 
 The app opens to a native, scrollable Connect IQ menu. The Garmin-to-ATAK phone
 relay depends on the companion's Garmin Connect IQ receiver. These are the watch
@@ -942,8 +271,6 @@ this build:
 	alert/cancellation behavior on physical devices
 - Sit(x) Device API integration for missions, GeoChat, SOS, and other resources
 
-## Using the app
-
 1. In the ATAK companion, enable **Garmin Connect IQ**. On the watch main menu,
 	open **Settings** > **Network Preferences** and enable
 	**WearTAK Companion**. Disable that switch to stop the watch-side relay. Garmin
@@ -1036,7 +363,7 @@ registered marker ownership, never a UID prefix alone. Its ownership records are
 bounded and process-local: a phone restart fails closed until marker creation is
 registered again. No remote delivery guarantee is made.
 
-### Incoming-point workflow and reply handoff
+#### Incoming-point workflow and reply handoff
 
 Remote alerts use the same `entity`/`entities` relay. CoT types beginning
 `b-a-`, `isAlert: true`, or an `emergency` dictionary identify alerts.
@@ -1094,7 +421,7 @@ end-to-end operational until that companion work and physical-device checks
 are complete. The new UI strings use English fallbacks in non-English locales
 pending translation.
 
-### Offline store and forward
+#### Offline store and forward
 
 The same durable queue now holds marker creates/edits/deletions, manual and
 automated alerts/cancellations, ordinary chat, and point replies. It survives
@@ -1119,7 +446,7 @@ Failed handoffs remain queued; a failed relay must reconnect before replay.
 The current phone handoff still does not confirm TAK-server or recipient
 delivery. No direct Garmin Sit(x) data transport is introduced by this change.
 
-### Plugins placeholders (WEARTAK-142 / WEARTAK-143 / WEARTAK-147 / WEARTAK-148)
+#### Plugins placeholders (WEARTAK-142 / WEARTAK-143 / WEARTAK-147 / WEARTAK-148)
 
 **Settings > Tool Preferences > Plugins** includes **Everywhere Comms** and
 **GoTenna**, **Sensor Manager**, and **Somewear Labs**, each with the exact
@@ -1153,7 +480,7 @@ fallbacks, not brand-logo reproductions. MOPP retains its mask and DataSync its
 separate sync glyph. Whole-row selection, off toggles and capability labels
 are unchanged; icons do not activate paused Commands or placeholder integrations.
 
-### Manual MOPP / PPE status
+#### Manual MOPP / PPE status
 
 Open **Settings > Tool Preferences > Plugins > MOPP**, identified by an original
 protective-mask glyph. **PPE Status** shows the saved manual value. Choose
@@ -1175,7 +502,7 @@ It retains its existing watch-side server/feed workflow and explicit unsupported
 states described below. There is no global DataSync enable control or newly
 claimed Companion support; subscriptions still require authoritative replies.
 
-### Saved PPE and fresh heart-rate phone enrichment
+#### Saved PPE and fresh heart-rate phone enrichment
 
 A connected phone bridge must advertise `relay_status.payload.selfStatus: 1`
 for Garmin to send `SELF_STATUS v1`. Unsupported/older bridges receive no new
@@ -1224,7 +551,7 @@ neither reads nor replays saved chats/alerts/history or adds entries to the
 durable queue; existing reliable-delivery behavior is unchanged. Commands and
 unavailable plugin placeholders remain inactive.
 
-### Commands and Ditto feasibility
+#### Commands and Ditto feasibility
 
 The Garmin application currently has no functional Commands plugin, Commands configuration
 schema, Ditto SDK, Community identity, or custom PDL setting. Bloodhound's
@@ -1273,7 +600,7 @@ All plugin rows must use the shared case-insensitive sorter; Everywhere Comms
 and Somewear Labs must remain inert, off, and labelled `Unfunded Request`.
 These are acceptance requirements for the bridge, not current capabilities.
 
-### DataSync watch-side preparation
+#### DataSync watch-side preparation
 
 Open **Settings > Tool Preferences > Plugins > DataSync**, choose a TAK server,
 then select a feed to subscribe or unsubscribe, matching the iOS preferences
@@ -1323,92 +650,7 @@ pending translation. Simulator checks are included in the existing test build
 alongside point workflow/outbox checks.
 
 
-## Platform limits
-
-Connect IQ is not Wear OS. This application cannot use Android foreground
-services, Compose, Tiles, MDM managed configuration, Android plugins, Samsung
-Health APIs, or APK tooling. The ATAK companion relay still uses dictionary
-messages through Garmin Connect. The Sit(x) Device API uses HTTPS requests through
-Connect IQ networking. Account authorization, group discovery, and group-token
-provisioning do not establish a TAK data connection: Connect IQ exposes no
-authenticated WebSocket or raw socket API, so this watch build cannot send or
-receive Sit(x) CoT. The current direct Sit(x) status is therefore explicitly
-not connected to a TAK data stream.
-
-Connect IQ exposes no UDP socket or multicast group membership. The Garmin app
-does not implement TAK SA Multicast. Map user filters can use `callSign`,
-`team`, and `role` only when those fields arrive in phone-relayed entity
-messages. The relay parser accepts direct `callSign`/`team`/`role` fields and
-nested `contact.callsign`/`__group.name`/`__group.role` dictionaries. The current
-Garmin Connect IQ companion integration does not guarantee forwarding those
-fields or provide an end-to-end delivery acknowledgement.
-
-Connect IQ storage is not an OS Keychain; credentials persisted by this app are
-not protected by an equivalent secure-token store.
-
-The manifest currently targets Fenix 6 Pro, 7X, and 8 products and requires Connect
-IQ 3.3.0; Fenix 3 HD is not supported by this build.
-
-Garmin localized resources are selected automatically by the watch's system
-locale via Connect IQ's built-in `Rez.Strings` mechanism; there is no in-app
-language override.
-
-### Supported languages
-
-The app text is localized into the languages declared in `manifest.xml`:
-
-Arabic, Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish,
-French, German, Greek, Hebrew, Hungarian, Indonesian, Italian, Japanese,
-Korean, Latvian, Lithuanian, Malay, Norwegian Bokmal, Polish, Portuguese,
-Romanian, Russian, Simplified Chinese, Slovak, Slovenian, Spanish, Swedish,
-Thai, Traditional Chinese, Turkish, Ukrainian, and Vietnamese.
-
-### Maintaining translations
-
-The English resource file at `resources/resources.xml` is the canonical string
-key set. Each `resources-*/resources.xml` file should contain the same string
-IDs. Run the localization check from the project root after adding or changing
-resource keys:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Validate-Localization.ps1
-```
-
-The check reports missing or unexpected IDs and returns a non-zero exit code
-until every locale has complete key coverage. A missing translation should be
-replaced in the locale file rather than removing the key from the English
-source. To add missing keys as temporary English fallbacks, run:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Sync-LocalizationFallbacks.ps1
-```
-
-Review and translate those fallback values before release.
-
-Treat location and saved waypoints as sensitive data. Configure ATAK's TAK
-connection according to the deployment's operational policy.
-
-### Remote emergency alerts
-
-Received ATAK and WearTAK emergencies share one alert list between the map and
-the Bloodhound picker. Alerts are deduplicated by their CoT UID while retaining
-the ingress sources that supplied them. A yellow warning triangle identifies an
-alert independently of ordinary contact and point visibility filters.
-
-The CoT `stale` deadline describes location freshness, not whether the emergency
-has ended. After that deadline the alert remains visible and its coordinates are
-identified as a stale, last-known location. An alert without usable coordinates
-remains readable but cannot be shown on the map or selected for navigation. A
-later location-less refresh may retain that source's previous valid location.
-
-Only an explicit, ordered sender cancellation ends an emergency. If a
-cancellation is missed, the last-known alert can remain visible indefinitely
-until it is dismissed locally or its source is removed. **Dismiss locally**
-hides an ongoing alert on this watch without sending a cancellation,
-acknowledgement, or chat message. Dismissals and cancellation ordering survive
-an app restart so delayed packets cannot reveal or resurrect an older alert.
-
-## Implementation roadmap
+## Status
 
 This project is intentionally scoped to the currently working features above.
 Everything else is planned work and should be considered future capability,
@@ -1436,7 +678,305 @@ not a present guarantee.
 	immersion requires available pressure readings. Physical watch-to-ATAK
 	validation, including cancellations and false-positive checks, is pending.
 
-## Development
+
+## Point of Contacts
+
+- Personal GitHub: https://github.com/aegorsuch/weartak-garmin
+- Government repo: https://git.tak.gov/core/weartak-core/weartak-garmin
+
+#### Point of contact
+Alex Gorsuch on chat.tak.gov or Signal.
+
+#### Repositories
+
+The TAK Forge repository is canonical. GitHub is a secondary repository.
+
+
+## Ports Required
+
+The Garmin watch application opens no network ports. Connect IQ has no raw socket API; Garmin Connect Mobile relays watch messages to the paired phone. The ATAK companion owns TAK server connectivity and its network ports, which are configured outside this watch application.
+
+
+## Equipment Required
+
+1. Download the `.prg` matching your watch from the latest GitHub release.
+2. Connect the watch to your computer with its USB cable and wait for it to
+	appear as a removable drive.
+3. Open the watch drive and navigate to `GARMIN/Apps`.
+4. Drag only the matching `.prg` into the `GARMIN/Apps` folder. For a fēnix
+	7X running version `5.8.3-9f1ec78`, use
+	`WearTAK-Garmin-fenix7x-5.8.3-9f1ec78.prg`.
+5. Safely eject the watch, disconnect the USB cable, and launch WearTAK from
+	the watch's app list.
+
+Do not copy the `.prg.debug.xml`, other device builds, or the `.iq` package to
+the watch. The `.iq` package is the release bundle for Garmin's supported
+distribution workflow; direct USB sideloading uses the device-specific `.prg`.
+Garmin uses the watch's system language for localized app text.
+
+The app uses Garmin Connect IQ phone messages (`Communications.transmit`/
+`registerForPhoneAppMessages`) to relay watch input to the WearTAK ATAK
+companion. ATAK owns TAK server connectivity, mTLS credentials, identity, and
+the authoritative phone location for PLI; the watch provides a secondary
+display and input surface.
+
+This channel is routed through Garmin Connect Mobile and the Connect IQ Mobile
+SDK on the phone side; it is unrelated to the direct BLE GATT link the ATAK
+plugin already uses for Samsung/Wear OS watches. Garmin Connect Mobile is only
+a runtime requirement for users pairing a Garmin watch specifically — it has
+no effect on Samsung/Wear OS users of the same plugin. Connect IQ apps cannot
+act as a BLE peripheral/GATT server, so the watch cannot use the plugin's
+existing direct-BLE transport; the phone-side plugin needs a second,
+Garmin-specific transport using the Connect IQ Mobile SDK to receive these
+messages. The ATAK companion has a separate Garmin Connect IQ transport in its
+TAK Forge repository.
+
+Message envelopes are dictionaries of the form
+`{"msgType": <string>, "payload": <dictionary>}`. The Bloodhound and settings
+message families (`bloodhound_control`, `bloodhound_control_result`,
+`set_settings`, `settings_set_ack`, `request_settings`, `watch_settings`) use the
+same type names and payload field names as the WearOS WearTAK app's BLE
+protocol; a narrow companion adapter normalizes the envelope and adds
+session/correlation metadata for the Connect IQ link. Garmin payloads are
+Connect IQ dictionaries rather than newline-delimited JSON, and the watch never
+parses raw CoT XML — the companion must normalize ATAK markers, alerts, and chat
+into the `entity`, `entities`, and `chat` envelopes.
+
+#### Phone-relayed remote users (WEARTAK-160)
+
+The watch advertises `entitySyncVersion: 2`, `watchUid`, and its current
+`relaySession` in `relay_hello`. Companion v2 `entity`, `entities`, and
+`entity_remove` messages carry that session on the top-level envelope. Missing
+or stale sessions cannot update or remove v2 phone-user records. Only one active
+Companion watch link may receive the v2 user stream; ambiguous routing clears
+phone-user copies until an exclusive route is available. The watch excludes
+phone/watch UIDs, not matching callsigns, and accepts supported remote contacts
+across ATAK contact types rather than only `a-*-G-U-C`.
+
+A replacement `entities` payload carries `entities`, `replaceUsers: true`,
+`scope: "phone-relay-users"`, `excludedUids`, `limit`, and `truncated`. It removes
+only absent phone-relay user sources; direct-network users with the same UID and
+dropped points survive. `entity_remove` uses `{uid, scope: "phone-relay-users"}`
+with the same source-only semantics. When one source expires or is removed,
+another source can supply its coordinates. Explicit relay stop/new session
+clears phone-user copies; transport loss retains them only until their stale
+deadline. Expiry is checked on ingress and the 60-second prune timer; legacy
+users without a deadline retain the five-minute fallback. V2 user updates are
+ignored until a current-session snapshot supplies distinct phone/watch UIDs,
+including the watch's own UID; missing identity data fails closed.
+
+Snapshots are limited to the nearest 50 entities and the watch bounds live
+phone-user state at 50, requesting a fresh snapshot on overflow. The companion
+reports truncation and the watch displays a warning. The existing 999-entity /
+nearest-99 drawing limits remain; the watch warns before replacing the oldest
+retained user at capacity. Pending phone changes coalesce by UID and cap at 512.
+SDK handoff is not watch receipt or TAK delivery, and entity sync has no
+delivery-ACK/retry guarantee; a new hello/sync rebuilds state and stale
+deadlines clean up lost removals. `PhoneAppMessage` exposes data, not an
+authenticated sender-phone/app identity, so session fencing relies on Garmin
+Connect Mobile's app routing rather than independent authentication. Simulator
+tests do not establish paired-hardware delivery behavior.
+
+Garmin settings use a bounded UUID `transactionId` in the request or set payload.
+The watch copies it to `watch_settings` and `settings_set_ack`; the companion only
+confirms a settings write after both the positive acknowledgement and the matching,
+exact supported-profile snapshot arrive, in either order. A negative save or
+storage error returns a correlated failure and no success snapshot. Garmin
+settings contain only callsign, team, role, reporting interval, and the explicit
+phone-management flag; TAK server credentials and P12 data remain on the phone.
+Legacy untagged settings requests still receive untagged responses for older
+clients, but the current Android companion never treats an untagged response as
+confirmation. Watch/phone link loss, a new settings attempt, and a changed profile
+fence out delayed replies; confirmation expires after 15 seconds.
+
+#### Releasing phone-managed settings (WEARTAK-161)
+
+Intentional phone Disconnect, disassociation, or unpair sends
+`release_phone_management` with payload `{"requestId": "<UUID>"}` before stopping
+the route. Its envelope must also carry the current `relaySession` from
+`relay_hello`. The watch replies `phone_management_release_ack` with
+`{"requestId": "<same UUID>", "ok": <Boolean>, "error": "<optional reason>"}`.
+The companion must wait for a positive, correlated acknowledgement; timeout or
+failure is not permission to claim the settings were unlocked. There is no
+untagged/legacy release fallback. Invalid request IDs receive a negative reply
+without a correlation ID.
+
+Only an active matching relay session may release ownership, including an
+idempotent repeat when already unmanaged. Missing/stale sessions and stopped
+relays fail without changing settings. The watch persists only the management
+flag before acknowledging; callsign, team, role, and reporting values remain.
+The watch's explicit relay Disconnect/stop control uses the same release helper.
+A storage failure retains the lock and reports failure (the local stop is
+aborted). GCM/BLE interruptions, transmit errors/retries, suspension, and app
+relaunch do not clear persisted ownership. Existing manual settings controls
+remain available.
+
+Unpairing outside Companion cannot itself unlock settings: use Companion's
+acknowledged release before unpairing. Watch-side disable also uses the release
+helper, but cannot bypass current network or phone-management UI locks.
+The watch cannot distinguish two senders with access to the same GCM
+route and current session. The phone must validate its intended association
+before sending and keep the route open until the ACK arrives. Hardware
+association/replay behavior still needs paired-device acceptance testing.
+
+The watch can also use the iPhone WearTAK Companion's Garmin route without an
+ATAK plugin or an Apple Watch. That route owns TAK connections and phone GPS;
+it does not implement Bloodhound coordination. Authorize the watch through
+Garmin Connect Mobile, select it in Companion, then enable **WearTAK Companion**
+at the top of the watch's **Network Preferences**. **Companion Setup** in
+**TAK Relay** provides an iPhone setup hint. The same single **WearTAK Companion**
+switch also controls Android's ATAK companion path; the phone's authorized
+companion determines the destination, not a second transport switch.
+
+The native switch shows **enabled intent**, with no status subtitle. Connection
+status remains in **TAK Relay > Relay Status**. It defaults off on first use and
+persists across app restarts, watch
+reboots, and updates until explicitly disabled (uninstalling or clearing app data
+removes it). An enabled relay resumes negotiation when the app starts; this does
+not promise an OS background service or delivery while the app is stopped.
+Disabling unregisters phone ingress, stops the existing outbox timer, fences old
+callbacks, and prevents new relay sends/processing. A final existing SELF_STATUS
+clear may be handed off during successful disable; messages already handed to
+Garmin Connect Mobile cannot be recalled.
+
+Unexpired queued events are retained, not purged on disable; existing expiry,
+identity, deduplication, and acknowledgement rules still apply when re-enabled.
+Configuration and credentials are unchanged. Preference-save or phone-management
+release failures abort a disable and leave its live intent/session unchanged;
+a failed preference rollback explicitly warns that saved state is uncertain
+and must be retried before restart. Connection errors do not turn off saved
+intent. Current network locks and phone management also guard already-open
+configuration menus and text entry.
+
+For queued marker, delete, emergency, and chat events, `relay_hello` carries a
+`relaySession`. A matching `relay_status` advertising `reliableDelivery: true`
+enables correlated `relay_result` acknowledgements. SDK handoff alone no longer
+removes these events: the phone acknowledges after at least one eligible server
+socket accepts the write, not after remote TAK receipt. Missing acknowledgements
+time out after 30 seconds; failed events remain queued with 5-to-60-second
+exponential retry delays. Old callbacks and unrelated/malformed results cannot
+complete a new attempt. Existing queue limits (20 events, 24-hour expiry) remain.
+The iPhone persists stable event IDs and original CoT to suppress accepted
+replays across restart; a crash between socket acceptance and ledger persistence
+can still cause a duplicate. Replies are not an exactly-once delivery guarantee.
+
+To preserve older companions, queue sending waits up to 15 seconds for capability
+negotiation, then falls back to SDK handoff if reliable delivery has not been
+negotiated in that watch process. A lost hello response never downgrades a process
+that already negotiated reliable delivery. The simulator tests in
+[ReliableRelayTests.mc](source/ReliableRelayTests.mc) exercise negotiation,
+exact timeout/retry boundaries, capped backoff and reset, transmitted payloads,
+stale callbacks, reconnects, malformed/duplicate results, storage failures,
+in-flight replacement/expiry, and legacy fallback. Their clock, storage, and
+transport are isolated; they never register live phone callbacks or start the
+production outbox timer. Storage-failure cases verify events remain queued until
+acknowledgement or handoff removal can be persisted.
+
+#### Chat transport contract (WEARTAK-118)
+
+Garmin is the watch UI/transport, not the owner of ATAK group membership or
+server routing. A group-aware companion normalizes inbound `chat` or
+`chat_received` payloads as follows:
+
+| Field | Meaning |
+| --- | --- |
+| `uid` | Message/event ID; never the reply destination |
+| `senderUid`, `senderCallsign` | Individual sender identity |
+| `msg` | Message text |
+| `receivedAt` | Receive timestamp in epoch milliseconds |
+| `conversationUid`, `conversationTitle` | Authoritative conversation identity/title |
+| `isGroup` | Explicit Boolean identifying a group |
+
+Direct conversations use `senderUid` as their destination; groups use
+`conversationUid`. Legacy Garmin `chat` payloads containing only
+`uid` (sender identity), `sender`, and `text` remain accepted. Missing group
+destinations are rejected with an on-watch error rather than guessed from the
+event ID. Conversation history is in-memory, bounded to 20 rooms and 20 total
+received messages; it is not a synchronized phone history or a group directory.
+Malformed or empty canonical `senderUid` values are rejected, even if a legacy
+`uid` or `messageId` is present; event IDs must never become reply destinations.
+
+For backward compatibility only, an older iPhone envelope retains `uid` as sender identity,
+`sender`/`text` as display content, and `messageId` as event identity, with
+`conversationUid`, `title`, and Boolean `isGroup`. The watch also accepts this
+shape; `messageId` distinguishes it from ATAK's event-ID `uid` convention.
+Without `receivedAt`, local arrival time orders the conversation. New companion
+emitters must use the canonical fields above, including `conversationTitle`;
+`title` is accepted only as an ingress compatibility alias.
+
+Outbound `chat` payloads contain `roomUid`, `roomTitle`, `isGroup`, `msg`,
+`text`, and `cs`, plus the existing queue-assigned `messageId` and `createdAt`.
+All companions must consume these canonical outbound room fields; conversation
+fields are inbound metadata, not alternate outbound routing.
+Direct payloads also contain `recipientUid` and `replyTo`, both equal to the
+individual UID. Group payloads omit these direct aliases. The companion resolves
+the group UID to its authoritative membership and rejects unavailable or
+unwritable groups; watch-side participant lists are not routing authority.
+**All Chat Rooms** is one explicit broadcast destination, not iteration over
+saved rooms or direct contacts.
+
+The reviewed ATAK companion WEARTAK-118 branch implements the WearOS BLE route,
+not a Connect IQ ingress adapter. Its native contact/group routing alone does
+not establish Garmin support. The separate Garmin transport must map watch
+`messageId` to the BLE envelope's `msgUid` and payload `uid`, preserve
+`roomUid`/`roomTitle` (accepted aliases of BLE `rmUid`/`rmTitle`), `isGroup`,
+`msg`, and `cs`, and invoke the companion chat handler. `replyTo` is not an ATAK
+BLE chat destination field; the adapter must route using `roomUid`, including
+direct conversations. It must preserve stable message IDs and translate relay
+acknowledgements, rather than interpreting BLE handoff as TAK delivery.
+
+On receive, the adapter must translate `ChatRelayPayloadBuilder`'s
+`chat_received` envelope into a Connect IQ dictionary without changing the
+canonical payload fields. The companion remains responsible for confirming
+the phone's membership in named groups, suppressing self/watch echoes, resolving
+actual `GroupContact`/`IndividualContact` recipients, and rejecting unavailable
+contacts. `participantUids` may be retained as metadata but are not watch-side
+routing authority. No production Connect IQ-to-native-chat path was verified
+in that BLE-only branch; it must not advertise Garmin `chatGroups` based solely
+on its WearOS group tests.
+
+Non-broadcast group sending requires the current-session `relay_status` to
+advertise `chatGroups: true` alongside the existing Boolean `reliableDelivery`.
+Companions must advertise this only after both group receive normalization and
+explicit group reply routing are proven. ATAK named groups must resolve to real
+`GroupContact` destinations, not merely room-labelled server XML. Unavailable
+groups must never fall back to broadcast. Older iPhone relays ignore `roomUid`, so
+sending them a group without this gate could broadcast unintentionally.
+Unsupported group sends show an error before enqueue. Already queued groups are
+skipped when capability is absent; before admitting any new eligible event,
+unsupported queued groups are removed with an explicit notification so they
+cannot fill the outbox and block emergency alerts. In-flight events are protected.
+Removal and admission are persisted together; storage/admission failure restores
+the previous queue. Other pending events retain their existing relative order.
+Reconnect, relay stop, or relay failure resets the capability. This does not
+claim parity with companions that have not implemented this contract.
+
+The current iOS companion WEARTAK-118 implementation intentionally does not
+advertise `chatGroups`: its room-labelled CoT does not yet establish verified
+member-destination routing. Garmin can display its group messages, but named-group
+sends through that companion remain blocked. Explicit All Chat Rooms and direct
+messages do not require this capability. This is a support boundary, not verified
+end-to-end group parity; Android/ATAK group support likewise requires a proven
+group-aware Garmin adapter.
+
+`ChatConversationTests.mc` exercises pinned picker rows, selected direct rooms,
+mixed receive ordering, destination mapping, legacy input, malformed groups,
+deduplication, retention bounds, and capability-gated queue transmission.
+
+> Important: Garmin relay behavior requires both the watch application and the
+> ATAK companion's Garmin Connect IQ integration. A watch-side relay toggle alone
+> does not establish a TAK server connection. Hardware end-to-end settings
+> confirmation still needs acceptance testing on a paired watch.
+
+
+## Equipment Supported
+
+#### Supported devices
+The manifest currently targets Fenix 6 Pro, 7X, and 8 products and requires Connect
+IQ 3.3.0; Fenix 3 HD is not supported by this build.
+
+
+## Compilation
 
 Build the project with the Garmin Connect IQ SDK for the configured product.
 Use the simulator for UI and payload checks, then validate relay behavior on a
@@ -1460,8 +1000,6 @@ These optimizations preserve the same features and translations for every target
 The non-Pro Fenix 6 and 6S are not supported: they exceed the 128 KiB watch-app
 memory limit, and Garmin's native `WatchUi.MapView` is unavailable on both.
 
-## Continuous integration and signed builds
-
 The automation follows the Tracker split:
 
 - [GitHub Actions](.github/workflows/garmin.yml) validates localization on pull
@@ -1483,7 +1021,7 @@ The automation follows the Tracker split:
   publisher below can publish verified production-key default-branch builds as
   the rolling GitHub main-channel release after explicit activation.
 
-### Shared Linux release runner
+#### Shared Linux release runner
 
 `main_release` and `official_release` are untagged container jobs using the
 same shared Linux pool as WearOS, with
@@ -1530,7 +1068,7 @@ SHA-256 pin together. Do not package the entire installed Fonts cache.
 Provisioning installs an isolated SDK and Linux cache under `.garmin/`; it
 does not modify an existing user's Garmin installation.
 
-### Optional Windows simulator runner
+#### Optional Windows simulator runner
 
 For local simulator checks or the optional manual job, provision:
 
@@ -1566,7 +1104,7 @@ directory and deleted in `finally`; they are never included in artifacts.
 Disposable runners are still required to handle externally cancelled jobs.
 Both pipelines emit `SHA256SUMS.txt` for their distribution packages.
 
-### Running the same checks locally
+#### Running the same checks locally
 
 Use [Invoke-CI.ps1](tools/Invoke-CI.ps1):
 
@@ -1594,8 +1132,6 @@ needs 187,380 bytes; whole-route Bloodhound needs 199,900 versus 131,072), and
 neither model supports Garmin's native map API. Optimized device builds pass for
 all seven remaining manifest devices. The full fenix7x simulator suite passes
 **120/120** tests; these are not hardware results.
-
-## Git workflow
 
 The government repository (`origin`) is the canonical repository. New work starts
 on a `feature` branch, is validated there, and is merged into government
@@ -1629,8 +1165,6 @@ repository as a synchronized mirror. Keep branch names consistent across both
 repos and avoid maintaining separate histories for the same work. Never commit
 the private `developer_key.der` file.
 
-## Releasing
-
 Official release publication remains manual. The opt-in automated development
 channel below is separate. Build device-specific `.prg` files for every product
 declared in the manifest for a manual release.
@@ -1659,7 +1193,7 @@ supports Garmin's native map API.
 	(https://github.com/aegorsuch/weartak-garmin): push the tag there and
 	create a release attaching the same device-specific `.prg` files.
 
-### Release presentation
+#### Release presentation
 
 Use the title **WearTAK Garmin {APP_VERSION}**. Begin the description with a short
 statement identifying the channel (official release or CI test build), Garmin
@@ -1694,7 +1228,7 @@ filenames/bytes, maintainer notes, publisher ownership and existing cleanup
 gates. Do not create a publisher, replace assets, or infer missing source/build
 metadata merely to make an older release match this format.
 
-### Automated rolling GitHub release (activation required)
+#### Automated rolling GitHub release (activation required)
 
 The canonical GitLab `main_release` job verifies the decoded production key's
 SHA-256 fingerprint and exports with `monkeyc -e -r -O 3z`. It validates the
@@ -1796,3 +1330,471 @@ python -m unittest discover -s tools -p "test_*.py"
 These tests use synthetic artifacts and mocked API calls; they do not sign
 production builds or contact GitHub/GitLab. GitHub's hosted localization job
 also runs them without credentials or release permissions.
+
+
+## Developer Notes
+
+Garmin's companion entity ingress already accepts arbitrary CoT point types.
+Other `a-*` entities (including ADS-B aircraft and `a-f-Z` phones), spot markers
+`b-m-p-s-m`, and shape centers now use a generic dot and label. Dots use blue
+for friendly/assumed-friendly, red for hostile/suspect/joker/faker, green for
+neutral, and yellow for unknown or non-affiliated types. Existing recognized
+users retain team colors, and recognized explicit ground markers retain their
+existing icons.
+
+Known type families instead receive compact, affiliation-colored symbols:
+fixed-wing aircraft (`a-*-A-C-F`), helicopters (`a-*-A-C-H`), military
+air/UAS (`a-*-A-M`, including UAV `A-M-F-Q`), surface vessels (`a-*-S`),
+and ground vehicles (`a-*-G-U-C-I-I`). Subtypes retain the family symbol.
+SPI (`b-m-p-s-p-i`) uses a yellow crosshair. Unknown types retain the generic
+dot; contacts retain their team dots and emergencies retain their alert icons.
+Vehicle types are not treated as chat-capable team members merely because
+their type contains `G-U-C`. Symbols are bounded vector strokes, not additional
+retained images or entities.
+The existing limits remain **999 retained entities** and **99 nearest drawn
+items**, with alert priority. Ordinary points expire at the sender's `stale` /
+`tStale` deadline or after five minutes without an update, whichever comes first.
+Emergencies retain their separate explicit-cancellation behavior.
+
+Coordinate-free `t-x-d-d` events remove the target (`link.uid` with `p-p`
+relation, or the event UID), stop its Bloodhound target, and suppress older
+replays for five minutes. Ordered deletes older than the displayed revision are
+ignored. `u-d-c-c` circles support a numeric `radius` in meters or
+`shape.ellipse` with equal numeric `major` and `minor` radii: greater than zero
+and at most 100 km. Outlines are clipped, 32 segments each, with at most 16
+drawn per frame. Other shapes, missing geometry, and near-polar circles use the
+labeled center fallback; arbitrary polygon/ellipse geometry is not implemented.
+The companion must relay these fields; the watch does not parse raw CoT XML.
+
+Generic points never acquire a user-chat action. RGR/nPos sender replies are
+offered only when a sender UID exists, and queued replies still reject a
+missing destination. Repeated activation of the same active manual alert is
+idempotent; changing its category or canceling and reactivating still creates a
+new event. Transport retries retain their original `messageId`, including across
+restart. The companion must deduplicate that ID before TAK writes; Garmin has
+one phone transport, not multi-server fan-out.
+
+The WearOS PPG concurrent-buffer bug has no equivalent here: Garmin's bounded
+pressure buffer is updated and read in the same synchronous sensor callback.
+Emergency/PLI location selection and CoT `ce` belong to the paired phone:
+Garmin sends neither emergency nor PLI coordinates and cannot fix that phone
+fallback by changing watch GPS state. No physical-device validation is implied.
+
+#### Fresh location on user actions
+
+Opening the map, recentering on self, starting point/route navigation, changing
+callsign/team/role, dropping/moving a self marker, and action-triggered PLI/chat
+refreshes actively request a fix without waiting for GPS. With watch Location
+Services enabled, the watch requests a one-shot local GPS fix and resumes
+continuous updates afterward. The action uses its current best position
+immediately; a returned fix updates the local map/navigation and PLI.
+This does not override a disabled Location Services setting.
+
+The phone also receives an immediate `location_request` control envelope:
+`payload` contains `action` (`map`, `navigation`, `identity`, `self_marker`,
+or `pli`), unique `requestId` / `messageId`, `createdAt`, and `relaySession`.
+These hints are best-effort, like PLI, and never occupy the durable outbox or
+block emergency writes on an older companion. Compatible companions actively
+acquire a phone fix and republish PLI; they do not create another marker from
+the hint. After the companion advertises `phoneLocation: true` in `relay_status`,
+self marker events separately carry `locationSource: "phone"`, so
+the companion publishes its best fix immediately and updates the **same UID**
+when a fresh fix arrives. Explicit map-tap coordinates remain intentional.
+Self markers without a watch fix can be handed off immediately; up to 20 local
+pending records survive an acknowledgement/restart for up to 24 hours.
+
+The companion returns resolved/fresh self-marker positions using ordinary
+`entity` envelopes with the original `garmin-marker-...` UID, `lat`, `lon`,
+`type`, `callSign`, `isPoint: true`, `time`, and `stale`. Garmin reconciles them
+into the saved local marker without an incoming duplicate or outbound echo.
+The `relay_result` acknowledgement contract is unchanged. Phone GPS never
+becomes a synthetic contact or replaces the watch's own navigation fix.
+
+#### Route-start and compass parity (WEARTAK-252/253)
+
+Starting a whole route closes the route/picker screens and returns to the main
+menu, retaining active navigation. Garmin's main screen is a native menu rather
+than a compass dashboard: its Bloodhound entry is hidden while any target is
+active and restored when tracking stops. Active guidance and stop controls remain
+available on the map's Bloodhound panel; the dedicated compass retains its
+route/hound target icon. The own-package-name managed-configuration issue does not apply to
+this Monkey C application.
+
+Updated iPhone and ATAK companions can send route geometry to the watch. Open
+**Map > Layers > Routes** to browse routes and their nonblank named points.
+Selecting a route opens whole-route details (named/total point counts,
+source server, mission and sender), with **Select named point** and **Remove from this
+watch**. Tapping a visible route line also selects the whole route. Tapping a
+point offers both that point and its whole route in **Select Map Item**;
+overlapping routes remain separate by source server. Point details include a
+**Whole route** action. Details show the route, source server,
+mission, sender UID and coordinates, with **Bloodhound** / **Stop Bloodhound** and
+sender **Chat** when available. Bloodhound uses the existing GPS range/bearing
+display and proximity alerts; this is not turn-by-turn navigation.
+
+#### Bloodhound picker (Garmin button-first layout)
+
+The picker uses one native row per route, received point, visible contact, or
+locally placed marker. Rows have a type glyph, name and a localized subtitle
+(`Route / point count / nearest distance`, or `Marker`, `Point`, `Contact` and
+distance). Distances use meters below 1 km and kilometers above it. Active route
+subtitles show **Point X of N / remaining distance left**, and the active type
+glyph is amber. Native rows are used on every supported Garmin: two independent in-row touch buttons and a custom amber
+row background/border are **not** implemented on Garmin's Menu2. Native focus and
+row colors remain device-specific; the amber glyph identifies the active row.
+
+Actual video/camera entries use a compact video-camera glyph. Classification
+requires the exact CoT type `b-i-v` or a phone-normalized `__video` dictionary
+(presence-only `{}`; no stream URL or credentials). The map record retains only
+a derived camera flag; later updates without video evidence clear it. Names,
+distance subtitles, tracking and removal actions are unchanged, and emergencies
+retain their alert priority. Names containing "camera", generic sensors, UAVs and
+SPI alone are not camera evidence. Older companions that omit video metadata
+cannot identify video-bearing ordinary tracks; a compatible bridge must forward
+the agreed signal. This adds no player, stream connection or KLV ingestion.
+
+Selecting a row opens the approved Garmin action-menu fallback:
+
+- **Show on map** (grey crosshair): centers tightly on a point without changing
+  Bloodhound. For routes it enables the route layer and fits the entire received
+  geometry with padding, including routes crossing the date line.
+- **Bloodhound** (green ATAK hound): starts a point/marker/contact immediately.
+  For a route it opens **Start nearest**, **Start from beginning**, **Cancel**.
+  Nearest has a grey hound and **Location required** when no position is known;
+  choosing it cannot change the active target. Nearest's available icon is green.
+- **Stop Bloodhound** (red circle, white stop square): replaces the hound action
+  for the sole active target, including whole routes.
+- **Details** retains the existing route/point/contact details, point RGR/nPos,
+  chat and removal flows.
+- **Remove** provides direct deletion from the picker action menu (24 px trash
+  glyph). Received items are dismissed locally, dropped markers use their existing
+  delete workflow, and whole routes open the existing watch-only confirmation.
+  **Cancel** returns without changing the target.
+
+This menu fallback deliberately avoids touch-only controls and large image
+assets. Action icons are 24 x 24 px. The picker refreshes on route delivery,
+GPS updates, target changes and when shown again. **Remove All** now clears every
+received route as well as received points/alerts, including when there are no
+received points. It stops navigation of a removed route. Contacts and dropped
+markers retain their existing separate removal controls. Native picker layout,
+icon legibility and translations still
+need physical-watch/native-speaker acceptance.
+
+#### Follow a whole route with Bloodhound
+
+The **Bloodhound** picker lists each received route once, with its name, total
+vertex count and distance to its nearest vertex when GPS is available. Select a
+route, choose **Bloodhound**, then **Start nearest** or **Start from beginning**. Nearest requires a
+known position (otherwise the menu explains **Location required**, with no silent
+fallback). It projects the position onto the closest route segment and selects
+the next checkpoint at or ahead of that along-route position; equal projections
+use the earliest segment. Beginning targets the first checkpoint. Explicit
+`b-m-p-w` points are checkpoints; controls (`b-m-p-c`) and missing types remain
+geometry rather than objectives. The final original vertex is always the
+destination fallback, including routes containing only controls.
+Both modes preserve original vertex indices and unnamed geometry, not the
+filtered named-point list. Whole-route details also provide a **Bloodhound**
+action; individual point Bloodhound remains available and does not auto-advance.
+
+The existing map/compass shows the route name, **Point X of N** (one-based), and
+remaining distance: current position to the target plus every remaining route
+segment. The arrow continues to point at the current checkpoint. Arrival radii
+are **10 m walking/swimming**, **20 m driving**, **100 m watercraft** and
+**1000 m flying**, inclusive; absent/unrecognized methods use 10 m.
+Entering a checkpoint's bubble remembers arrival, but advancement waits until
+the closest-segment projection reaches/passes that checkpoint's along-route
+position. Projection alone cannot skip an unvisited checkpoint. Dense/duplicate
+checkpoints advance in order without discarding control-point geometry.
+Entering the final destination bubble completes the route even if earlier
+checkpoints were missed: **Route complete** clears the target.
+Missing, unavailable or poor-quality GPS never advances the route; beginning can
+wait for a usable fix.
+
+Standalone guidance approximates ATAK's checkpoint/projection rules, not its
+native spatial index, cue engine, road routing, turn instructions or off-route
+recalculation. Connect IQ `Position.Info.accuracy` provides only a quality enum,
+not horizontal circular error in meters: Garmin gates advancement on usable/good
+quality but does **not** invent a CE value or inflate the method radius. Paired
+ATAK navigation uses the phone's real GNSS uncertainty.
+
+Select the active route again for **Stop Bloodhound**, open its Bloodhound
+chooser/details for progress and **Stop route**, or tap the map's
+Bloodhound panel. Starting a different route or selecting any other Bloodhound
+target stops the previous route. Removing/resetting its route also stops it.
+Geometry updates retain the original target index (or stop if that index no
+longer exists), reset remembered arrivals, and move a standalone control target
+to the next checkpoint/destination. Changed vertex order changes the target at
+that index.
+Standalone follow state is in memory. Switching away from a synchronized ordinary
+point still stops its previous phone Bloodhound session, as with individual
+route-point tracking.
+
+#### Two-way Android Companion route navigation (v1)
+
+Compatible Android Companions advertise `routeNavigationVersion: 1` in
+`relay_status`, in response to the watch's `relay_hello` capability. While that
+capability is present, starting a whole route on either device starts navigation
+on both. **ATAK owns advancement and completion**, so watch GPS cannot race the
+phone or consume checkpoints. ATAK's method-dependent arrival radii are 10 m for
+walking/swimming, 20 m for driving, 100 m for watercraft, and 1000 m for flying
+(subject to ATAK preferences and GPS uncertainty). This is ATAK route guidance,
+not a new Garmin turn-by-turn engine. Unpaired watches and older/iPhone companions
+without this capability use the standalone checkpoint guidance above.
+
+Garmin uses Connect IQ dictionary envelopes, never raw route CoT XML:
+
+- Phone geometry arrives first through the existing bounded `route` protocol.
+  `phone_route_navigation` then carries `version: 1`, the current `relaySession`,
+  UUID `sessionId`, increasing integer `sequence`, `action` (`start`, `progress`,
+  `stop`), `serverId`, `routeUid`, and zero-based original `targetPointIndex` for
+  start/progress. Stop requires Boolean `completed`. Unknown or oversized routes,
+  invalid indices, stale sessions and older sequences cannot change the target.
+- Watch controls use `watch_route_navigation` with `version: 1`, `relaySession`,
+  distinct UUID `requestId`, watch-proposed UUID `sessionId`, `serverId`,
+  `routeUid`, `action` (`start` or `stop`), and `targetPointIndex` for start.
+  `route_navigation_ack` must echo `relaySession`, `requestId`, `sessionId` and
+  Boolean `ok` (with `error` when false). A successful start also requires its
+  authoritative phone snapshot within eight seconds. No watch progress command
+  is sent.
+
+Stops, replacement targets, route removal and Remove All send session-scoped stop
+controls. Phone-originated progress/stops do not echo. Rejected/timed-out starts
+and transport failures display an error rather than silently claiming sync.
+Disconnect clears phone-owned guidance rather than silently switching arrival
+rules; standalone guidance can then be started explicitly. Snapshots follow the
+existing 8-route / 64-vertices-per-route / 128-total-vertices watch limits, and
+source-server identity remains part of every route selection/removal.
+
+[RouteNavigation.mc](source/RouteNavigation.mc) contains pure nearest-index,
+arrival advancement and remaining-distance logic. The simulator suite in
+[RouteNavigationTests.mc](source/RouteNavigationTests.mc) covers missing GPS,
+nearest-segment ties, dense checkpoints, method thresholds, projection/departure,
+control-point/final fallback, poor-quality fixes, completion, original vertex
+order, dateline distance, switching targets, route removal/reset/update, picker
+summaries, GPS-dependent chooser refresh and standalone tracking.
+[RouteNavigationSyncTests.mc](source/RouteNavigationSyncTests.mc) covers
+two-way starts/stops, authoritative progress/completion, capability negotiation,
+session/sequence rejection, acknowledgement failures/timeouts, disconnect,
+removal/reset and replacement targets.
+[BloodhoundPickerTests.mc](source/BloodhoundPickerTests.mc) covers icon resources,
+point/route map focus (including date-line and polar coordinates), immediate
+point/marker/contact tracking, active summaries, stop actions and stale/no-fix
+rejection. New labels have resource entries in every
+supported locale; physical watch acceptance and native-speaker review remain
+required. The non-Pro fenix 6/6S are no longer supported (128 KiB memory limit).
+
+The route-point list hides missing, empty and whitespace-only names, with a
+localized **No named points** empty state when needed. It retains original vertex
+numbers and coordinates so repeated point names remain distinguishable; selecting
+a filtered row still targets that original vertex, not its position in the list.
+All geometry and unnamed map-point/Bloodhound access remain unchanged.
+Chat actions recheck the current sender before
+opening a conversation when route metadata changes.
+
+**Remove from this watch** requires a second confirmation, initially focused on
+**Cancel**, and names the route and server. It removes only the current in-memory
+watch copy and stops Bloodhound only if tracking one of that route's vertices.
+It sends no route-delete command to the phone or TAK server, does not affect
+another server's route with the same UID, and does not delete individual vertices.
+The confirmation warns that subsequent phone updates or refresh/reconnect replay
+may restore the route; this is not a permanent source-route dismissal.
+
+**Show Routes** controls route lines and point hit-testing without stopping an
+active Bloodhound target. Point selection and tracking identities include the
+source server and route UID, so identical UIDs on different servers stay separate.
+All vertices are selectable; the watch does not simplify the route. Geometry
+updates move the active target at its vertex index. Removal of that route stops
+tracking. A changed vertex order therefore changes the target at that index.
+Geometry updates immediately reevaluate proximity; invalid or not-yet-available
+map bounds temporarily skip route drawing and hit-testing until bounds recover.
+
+**Routes > Refresh** requests an authoritative reset/replay from the current phone
+companion. Route snapshots and phone-relay disable clear routes and stop route
+tracking; routes are held in memory, not saved across watch restarts. Refresh after
+a failed handoff repairs the watch display. Route delivery uses SDK handoff rather
+than end-to-end acknowledgements; physical phone/watch acceptance is still needed.
+Route-point range/bearing and proximity alerts run locally with either companion.
+Synthetic route-point IDs are not sent as native ATAK Bloodhound targets because
+intermediate vertices need not exist as ATAK point map items. Switching from a
+synchronized ordinary point to a route vertex stops the previous phone track.
+Existing ordinary-point Bloodhound synchronization is unchanged; the iPhone
+companion does not provide phone Bloodhound coordination.
+
+The watch advertises numeric `routeVersion: 1` in `relay_hello` and
+`entity_sync_request`. Companions gate route messages on that capability:
+
+| Message | Payload |
+| --- | --- |
+| `route` | `routeVersion`, `serverId`, `uid`, `name`, `points: [{lat, lon, name?, type?}]`, optional `missionName`, `senderUid`, `method` |
+| `route_remove` | `routeVersion`, `serverId`, `uid` |
+| `routes_reset` | `routeVersion` |
+| `routes_error` | `routeVersion`, `error` |
+
+Each route is replaced atomically after validation. Bounds are **8 routes**,
+**2–64 vertices per route**, **128 vertices total**, and **6,000 UTF-8 bytes per
+serialized envelope** on the companion. Text bounds in UTF-8 bytes are server ID
+64, UID 128, route/point name and point type 64, method 32, mission/sender UID 128,
+error 256. `method` is `Walking`, `Swimming`, `Driving`, `Watercraft` or `Flying`;
+older companions may omit it and point `type`. Latitude and
+longitude must be finite and within geographic ranges. Over-capacity/invalid
+updates produce an explicit error and retain the previous valid geometry, if any;
+tracking that older geometry continues until corrected, removed or refreshed.
+The ATAK companion automatically fills freed capacity after route removal or
+shrinking geometry. Existing published routes take priority; new candidates are
+selected in source-server/UID order. Immediately rejected SDK updates and removals
+remain pending for the next map/link reconciliation, without resetting local
+tracking. Invalid geometry is retained only for its originating ATAK map item,
+never for a different server's route with the same UID.
+No raw route CoT XML is logged by the adapters.
+
+Bloodhound route target IDs use
+`route-point:<server UTF-8 length>:<server><route UID UTF-8 length>:<UID>:<zero-based vertex index>`.
+This length-prefixed encoding avoids delimiter collisions.
+
+[RouteTests.mc](source/RouteTests.mc) covers atomic validation, capacity boundaries,
+same-UID/different-server selection, individual point coordinates, active target
+updates/removal, clipped-line hit thresholds, date-line/overlap selection,
+whole-route menus, confirmation/cancellation, watch-only removal and unchanged
+route envelope dispatch. Named-list tests cover blank names, duplicate names,
+original source/index identities, named/total counts, empty state, unchanged
+geometry and unnamed map/Bloodhound access.
+New route labels use English fallback resources pending translation.
+`monkey.jungle` limits compilation to `source` so nested Git worktrees are not
+compiled as duplicate application sources. Test-enabled builds can be run with
+`monkeydo ... fenix7x /t`; the full test-enabled fenix6pro build currently exceeds
+that device's global-member limit.
+
+#### TAK-server Data Package delivery boundary
+
+This repository contains only the Connect IQ watch application. `TakClient`
+receives normalized route dictionaries over the existing phone relay; it does
+not parse raw `b-m-r` route CoT, handle `b-f-t-r` package advertisements, download
+`Marti/sync/content?hash=...`, or parse ZIP/XML. No new package capability is
+advertised by this change. A `routeVersion: 1` watch can display package routes
+**only after a compatible ATAK/iPhone companion imports and normalizes them**.
+Package import is not operational end-to-end from this watch-only change.
+
+The required companion implementation must:
+
+- Accept route-only TAK Data Package ZIPs, validate the advertised SHA-256 and
+  bounded download size, and fetch only from the configured TAK HTTPS origin
+  with TLS validation. Bind credentials to that origin; reject untrusted
+  redirects/URLs rather than forwarding credentials or permitting SSRF.
+- Bound ZIP entry count, compressed/uncompressed sizes, expansion ratio and XML
+  complexity; reject unsafe/duplicate archive paths without writing entries to
+  arbitrary filesystem locations. Disable DTDs/external entities.
+- Read `MissionPackageManifest` content entries, import only non-ignored route
+  CoT through the companion's existing `b-m-r` route parser, and ignore package
+  execution/import/delete instructions (`onReceiveImport`, `onReceiveDelete`).
+  Do not execute arbitrary package contents or delete source/server data.
+- Send validated routes through the existing route v1 envelopes and enforce
+  their capacity/text/envelope limits without silently simplifying geometry;
+  report failures through `routes_error`. No raw archives, URLs, credentials or
+  XML should be sent to the watch.
+
+Remaining physical-device acceptance: import a route-only TAK-server package on
+each companion, check Connect IQ delivery/replay/error reporting, tap lines and
+overlapping vertices (including across the date line), select an unnamed point
+for GPS Bloodhound, cancel then confirm watch-only removal, and verify that the
+phone/server route and other watch routes remain unchanged. Confirm label
+wrapping, button navigation and memory use on supported devices.
+
+#### Platform limits
+Connect IQ is not Wear OS. This application cannot use Android foreground
+services, Compose, Tiles, MDM managed configuration, Android plugins, Samsung
+Health APIs, or APK tooling. The ATAK companion relay still uses dictionary
+messages through Garmin Connect. The Sit(x) Device API uses HTTPS requests through
+Connect IQ networking. Account authorization, group discovery, and group-token
+provisioning do not establish a TAK data connection: Connect IQ exposes no
+authenticated WebSocket or raw socket API, so this watch build cannot send or
+receive Sit(x) CoT. The current direct Sit(x) status is therefore explicitly
+not connected to a TAK data stream.
+
+Connect IQ exposes no UDP socket or multicast group membership. The Garmin app
+does not implement TAK SA Multicast. Map user filters can use `callSign`,
+`team`, and `role` only when those fields arrive in phone-relayed entity
+messages. The relay parser accepts direct `callSign`/`team`/`role` fields and
+nested `contact.callsign`/`__group.name`/`__group.role` dictionaries. The current
+Garmin Connect IQ companion integration does not guarantee forwarding those
+fields or provide an end-to-end delivery acknowledgement.
+
+Connect IQ storage is not an OS Keychain; credentials persisted by this app are
+not protected by an equivalent secure-token store.
+
+
+Garmin localized resources are selected automatically by the watch's system
+locale via Connect IQ's built-in `Rez.Strings` mechanism; there is no in-app
+language override.
+
+#### Supported languages
+
+The app text is localized into the languages declared in `manifest.xml`:
+
+Arabic, Bulgarian, Croatian, Czech, Danish, Dutch, English, Estonian, Finnish,
+French, German, Greek, Hebrew, Hungarian, Indonesian, Italian, Japanese,
+Korean, Latvian, Lithuanian, Malay, Norwegian Bokmal, Polish, Portuguese,
+Romanian, Russian, Simplified Chinese, Slovak, Slovenian, Spanish, Swedish,
+Thai, Traditional Chinese, Turkish, Ukrainian, and Vietnamese.
+
+#### Maintaining translations
+
+The English resource file at `resources/resources.xml` is the canonical string
+key set. Each `resources-*/resources.xml` file should contain the same string
+IDs. Run the localization check from the project root after adding or changing
+resource keys:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Validate-Localization.ps1
+```
+
+The check reports missing or unexpected IDs and returns a non-zero exit code
+until every locale has complete key coverage. A missing translation should be
+replaced in the locale file rather than removing the key from the English
+source. To add missing keys as temporary English fallbacks, run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Sync-LocalizationFallbacks.ps1
+```
+
+Review and translate those fallback values before release.
+
+Treat location and saved waypoints as sensitive data. Configure ATAK's TAK
+connection according to the deployment's operational policy.
+
+#### Remote emergency alerts
+
+Received ATAK and WearTAK emergencies share one alert list between the map and
+the Bloodhound picker. Alerts are deduplicated by their CoT UID while retaining
+the ingress sources that supplied them. A yellow warning triangle identifies an
+alert independently of ordinary contact and point visibility filters.
+
+The CoT `stale` deadline describes location freshness, not whether the emergency
+has ended. After that deadline the alert remains visible and its coordinates are
+identified as a stale, last-known location. An alert without usable coordinates
+remains readable but cannot be shown on the map or selected for navigation. A
+later location-less refresh may retain that source's previous valid location.
+
+Only an explicit, ordered sender cancellation ends an emergency. If a
+cancellation is missed, the last-known alert can remain visible indefinitely
+until it is dismissed locally or its source is removed. **Dismiss locally**
+hides an ongoing alert on this watch without sending a cancellation,
+acknowledgement, or chat message. Dismissals and cancellation ordering survive
+an app restart so delayed packets cannot reveal or resurrect an older alert.
+
+
+## License
+
+#### Rights
+Unlimited rights granted to TAK Product Center.
+
+##### ATAK artwork attribution
+
+The resized/composited hound and crosshair artwork in
+`resources/images/picker-hound*.png` and `picker-crosshair.png` comes from
+[deptofdefense/AndroidTacticalAssaultKit-CIV](https://github.com/deptofdefense/AndroidTacticalAssaultKit-CIV),
+**GPLv3**: [`nav_bloodhound.png`](https://github.com/deptofdefense/AndroidTacticalAssaultKit-CIV/blob/main/atak/ATAK/app/src/main/res/drawable-xxxhdpi/nav_bloodhound.png)
+and [`ic_crosshair.png`](https://github.com/deptofdefense/AndroidTacticalAssaultKit-CIV/blob/main/atak/ATAK/app/src/main/res/drawable-hdpi/ic_crosshair.png).
+The source copies were provided by the user. The user approved their use and
+will review licensing/distribution obligations before release; this attribution
+is not a completed licensing review. The stop square and type glyphs are drawn
+for this app rather than copied from ATAK.
