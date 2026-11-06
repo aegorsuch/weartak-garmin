@@ -207,7 +207,8 @@ def validated_iq_programs(path, device_ids, cache):
             model = {
                 "006-B4775-00": "Tactix 8 AMOLED (47/51 mm)",
                 "006-B4776-00": "Tactix 8 Solar (51 mm)",
-            }.get(part, product)
+            }.get(part, "Fenix 7X / Tactix 7 (MIP/Solar)"
+                  if product == "fenix7x" else product)
             programs.append({
                 "product": product,
                 "part_number": part,
@@ -226,13 +227,20 @@ def extract_iq_programs(path, device_ids, cache, output, version, pipeline_iid):
     if not re.fullmatch(r"[1-9][0-9]*", pipeline_iid):
         raise ValueError("Invalid pipeline IID for device artifact names")
     programs = validated_iq_programs(path, device_ids, cache)
+    grouped = {}
+    for program in programs:
+        product = program["product"]
+        if product in grouped and grouped[product]["data"] != program["data"]:
+            raise ValueError(f"Divergent signed programs for target {product}; cannot publish one PRG")
+        grouped[product] = program
     results = []
     for program in programs:
         name = (f"WearTAK-Garmin-{version}-p{pipeline_iid}-"
-                f"{program['product']}-{program['part_number']}.prg")
+                f"{program['product']}.prg")
         destination = output / name
-        with destination.open("xb") as stream:
-            stream.write(program["data"])
+        if grouped.pop(program["product"], None) is not None:
+            with destination.open("xb") as stream:
+                stream.write(program["data"])
         results.append({
             "product": program["product"],
             "part_number": program["part_number"],
@@ -297,12 +305,12 @@ def build(sdk, home, output):
     variants = extract_iq_programs(output / name, products(),
                                    home / ".Garmin" / "ConnectIQ", output,
                                    version, env["CI_PIPELINE_IID"])
-    distributables = [name] + [variant["artifact"] for variant in variants]
+    distributables = [name] + list(dict.fromkeys(variant["artifact"] for variant in variants))
     checksum_lines = [f"{digest(output / artifact)}  {artifact}"
                       for artifact in distributables]
     (output / "SHA256SUMS.txt").write_text(
         "\n".join(checksum_lines) + "\n", encoding="ascii")
-    record = dict(schema=3, signing="production-key-fingerprint-verified",
+    record = dict(schema=4, signing="production-key-fingerprint-verified",
                   tests="not-run-headless-linux", sdk="9.2.0", export="monkeyc-e",
                   products=products(), hardware_variants=len(variants), devices=variants,
                   source_sha=sha, project_id=env["CI_PROJECT_ID"],
