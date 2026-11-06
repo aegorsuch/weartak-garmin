@@ -13,7 +13,11 @@ function Reject([scriptblock]$Action, [string]$Pattern) {
     try { & $Action | Out-Null } catch { $message = $_.Exception.Message }
     Assert ($null -ne $message -and $message -match $Pattern) "Expected '$Pattern'; got '$message'"
 }
-function Expected-Body($State) {
+function Expected-Body($State, [switch]$LegacyPresentation) {
+    if (($State -is [System.Collections.IDictionary] -and $State.Contains("hardware")) -or
+        $State.PSObject.Properties["hardware"]) {
+        return (& (Get-Module GarminRelease) { param($value) Get-GarminRollingBody $value } $State)
+    }
     $lines = @(
         "Automatically published stable Garmin main-channel build.",
         "",
@@ -32,6 +36,15 @@ function Expected-Body($State) {
         if (-not $asset.part_number) { $target = "IQ distribution" }
         $part = if ($asset.part_number) { [string]$asset.part_number } else { "N/A" }
         $lines += "| $target | $part | $($asset.model) | [Download]($url) | $($asset.hash) |"
+        if (-not $LegacyPresentation -and $asset.product -ceq "fenix7x" -and $asset.part_number) {
+            $lines += "| Tactix 7 (alias) | $part | Tactix 7 (MIP/Solar; fenix7x alias) | [Download]($url) | $($asset.hash) |"
+        }
+    }
+    if (-not $LegacyPresentation -and @($State.assets | Where-Object { $_.product -ceq "fenix7x" -and $_.part_number }).Count) {
+        $lines += @(
+            "",
+            'Tactix 7 alias entries link the same signed `fenix7x` programs, not separate builds. These are shared-target hardware parts, not Tactix-only assignments: match your watch''s hardware part number. Official model name is Tactix 7, not Tactix 7X. AMOLED Edition is excluded.'
+        )
     }
     $lines += @(
         "",
@@ -276,7 +289,75 @@ function No-Writes {
 function No-Deletes {
     Assert (@($script:calls | Where-Object { $_.Method -eq "DELETE" }).Count -eq 0) "Failure never deletes old assets"
 }
+function Group-Plan {
+    $script:metadata.schema = 4
+    foreach ($variant in $script:variantSpecs) {
+        $oldPath = Join-Path $script:directory $variant.artifact
+        $name = "WearTAK-Garmin-$($script:metadata.version)-p42-$($variant.product).prg"
+        $newPath = Join-Path $script:directory $name
+        if (-not (Test-Path $newPath)) { Copy-Item -LiteralPath $oldPath -Destination $newPath }
+        Remove-Item -LiteralPath $oldPath
+        $variant.artifact = $name
+    }
+    $script:checksumLines = @()
+    $script:artifactEntries = @()
+    foreach ($name in @($script:assetName) + @($script:variantSpecs.artifact | Select-Object -Unique)) {
+        $hash = (Get-FileHash (Join-Path $script:directory $name)).Hash.ToLowerInvariant()
+        $script:checksumLines += "$hash  $name"
+        $script:artifactEntries += @{name = $name; sha256 = $hash}
+    }
+    $script:checksumLines | Set-Content (Join-Path $script:directory "SHA256SUMS.txt") -Encoding ASCII
+    $script:metadata.artifacts = @($script:artifactEntries) + @(@{
+        name = "SHA256SUMS.txt"
+        sha256 = (Get-FileHash (Join-Path $script:directory "SHA256SUMS.txt")).Hash.ToLowerInvariant()
+    })
+    Save-Metadata
+    $script:plan = New-GarminReleasePlan $script:directory $script:context $script:products
+}
 try {
+    Setup
+    Group-Plan
+    Assert ($script:plan.Files.Count -eq 3) "One IQ plus one PRG per target"
+    Assert ($script:plan.State.hardware.Count -eq 4) "Every hardware part retained in metadata"
+    $rows = @($script:plan.Release.body -split "`n" | Where-Object { $_.Contains("[Download](") })
+    Assert ($rows.Count -eq 4) "IQ, two targets and one Tactix alias download row"
+    Assert ($script:plan.Release.body.Contains("| Fenix 7X | fenix7x |")) "Readable watch name"
+    Assert ($script:plan.Release.body.Contains("| Tactix 7 (MIP/Solar; alias) | fenix7x |")) "Explicit Tactix alias"
+    Assert (-not $script:plan.Release.body.Contains("| 006-B")) "Parts no longer duplicate download rows"
+    Invoke-GarminPublication $script:plan $request | Out-Null
+    Assert ($script:assets.Count -eq 3) "Only canonical target assets uploaded"
+    $script:variantSpecs[1].sha256 = "f" * 64
+    Save-Metadata
+    Reject { New-GarminReleasePlan $script:directory $script:context $script:products } "Divergent"
+
+    Setup-V2Existing
+    Group-Plan
+    $script:release.body = Expected-Body $script:oldState -LegacyPresentation
+    Invoke-GarminPublication $script:plan $request | Out-Null
+    Assert ($script:assets.Count -eq 3) "Per-part release migrates to canonical assets"
+    Assert (@($script:calls | Where-Object { $_.Method -eq "DELETE" }).Count -eq 5) "Migration deletes only verified prior inventory after publishing"
+
+    Setup-V2Existing
+    Group-Plan
+    $script:oldState.hardware = @($script:variantSpecs | ForEach-Object {
+        @{product = $_.product; part_number = $_.part_number}
+    })
+    $oldGrouped = @($script:oldState.assets | Group-Object { $_.product } | ForEach-Object { $_.Group[0] } | Sort-Object { [int]$_.id })
+    foreach ($asset in $oldGrouped) {
+        if ($asset.part_number) {
+            $asset.filename = "WearTAK-Garmin-$($script:oldState.version)-p41-$($asset.product).prg"
+        }
+    }
+    $script:oldState.assets = $oldGrouped
+    $script:assets = @($oldGrouped | ForEach-Object {
+        @{id = [int]$_.id; name = $_.filename; label = $_.filename; size = $script:remote[[string]$_.id].Length}
+    })
+    $script:oldAssetIds = @($oldGrouped.id)
+    $script:oldAssetNames = @($oldGrouped.filename)
+    $script:release.body = Expected-Body $script:oldState
+    Invoke-GarminPublication $script:plan $request | Out-Null
+    Assert ($script:assets.Count -eq 3) "Grouped schema-v3 release supports subsequent rolling updates"
+
     Setup
     Assert ($script:plan.Tag -ceq "TAK.gov-Forge-CI-CD-Pipeline-Release") "Fixed rolling anchor"
     Assert ($script:plan.Files.Count -eq 5) "IQ plus every hardware-specific PRG planned"
@@ -285,6 +366,12 @@ try {
     Assert (@($script:plan.Files | Where-Object { $_.Name -ceq $script:assetName -and $_.Label -ceq $script:assetName }).Count -eq 1) "Filename-equals-label IQ"
     Assert ($script:plan.Release.name -ceq "TAK.gov Forge CI/CD Pipeline Release (5.8.3-9f1ec78-p42)") "Exact title with project IID"
     Assert ($script:plan.Release.body -ceq (Expected-Body $script:plan.State)) "Exact full release body"
+    $aliasRows = @($script:plan.Release.body -split "`n" | Where-Object { $_.StartsWith("| Tactix 7 (alias) |") })
+    Assert ($aliasRows.Count -eq 2) "One presentation alias per shared Fenix 7X hardware part only"
+    foreach ($asset in @($script:plan.State.assets | Where-Object { $_.product -ceq "fenix7x" })) {
+        $row = @($aliasRows | Where-Object { $_.Contains("| $($asset.part_number) |") })
+        Assert ($row.Count -eq 1 -and $row[0].Contains("/$($asset.filename))") -and $row[0].Contains("| $($asset.hash) |")) "Alias preserves original asset URL, part and hash"
+    }
     Assert (@($script:plan.Release.body -split "`n" | Where-Object { $_ -like "- *" }).Count -eq 4) "Build provenance bullets retained"
     Assert ($script:plan.Release.draft -and -not $script:plan.Release.prerelease) "Draft first, stable published channel"
     foreach ($key in @("Enabled", "Protected", "Source", "Branch", "Sha", "PipelineId", "PipelineIid", "ProjectId")) {
@@ -334,6 +421,12 @@ try {
     Assert ($script:assets.Count -eq 5) "Schema-v2 rolling update replaces complete prior inventory"
     Assert (@($script:calls | Where-Object { $_.Method -eq "DELETE" }).Count -eq 5) "All prior managed assets removed after publish"
     Assert ((Get-ChildItem $script:plan.BackupDirectory -Filter "WearTAK-Garmin-*-p41*").Count -eq 5) "Every previous variant backed up"
+
+    Setup-V2Existing
+    $script:release.body = Expected-Body $script:oldState -LegacyPresentation
+    Invoke-GarminPublication $script:plan $request | Out-Null
+    Assert ($script:assets.Count -eq 5) "Pre-alias schema-v2 release migrates without duplicate assets"
+    Assert ($script:release.body -ceq (Expected-Body $script:plan.State)) "Legacy presentation gains aliases on next publication"
 
     Setup-V2Existing
     $wrongHardware = $script:oldState.assets | Where-Object { $_.part_number -eq $script:variantSpecs[0].part_number } | Select-Object -First 1

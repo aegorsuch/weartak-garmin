@@ -130,10 +130,8 @@ class GarminCiTests(unittest.TestCase):
             iq, ["testwatch"], self.cache, output, "5.8.4", "42")
         self.assertEqual(
             {item["artifact"] for item in variants},
-            {
-                "WearTAK-Garmin-5.8.4-p42-testwatch-006-B0001-00.prg",
-                "WearTAK-Garmin-5.8.4-p42-testwatch-006-B0002-00.prg",
-            })
+            {"WearTAK-Garmin-5.8.4-p42-testwatch.prg"})
+        self.assertEqual(len(list(output.iterdir())), 1)
         for index, item in enumerate(variants):
             with py7zr.SevenZipFile(iq, "r") as archive:
                 factory = py7zr.io.BytesIOFactory(limit=1024)
@@ -146,6 +144,48 @@ class GarminCiTests(unittest.TestCase):
     def test_unsigned_export_fails(self):
         with self.assertRaisesRegex(ValueError, "signed IQ"):
             ci.validate_iq(self.iq(signature=False), ["testwatch"], self.cache)
+
+    def test_tactix7_alias_preserves_shared_target_parts_and_binaries(self):
+        self.device.rename(self.device.parent / "fenix7x")
+        output = self.root / "artifacts"
+        output.mkdir()
+        variants = ci.extract_iq_programs(
+            self.iq(), ["fenix7x"], self.cache, output, "5.8.4", "42")
+        self.assertEqual(len(variants), 2)
+        self.assertEqual(len(list(output.iterdir())), 1)
+        for item in variants:
+            self.assertEqual(item["product"], "fenix7x")
+            self.assertEqual(item["model"], "Fenix 7X / Tactix 7 (MIP/Solar)")
+            self.assertEqual(item["artifact"],
+                             "WearTAK-Garmin-5.8.4-p42-fenix7x.prg")
+            self.assertEqual((output / item["artifact"]).read_bytes(), b"signed-program" * 3)
+
+    def test_divergent_target_programs_fail_before_writing(self):
+        output = self.root / "artifacts"
+        output.mkdir()
+        programs = [
+            {"product": "testwatch", "data": b"one"},
+            {"product": "testwatch", "data": b"two"},
+        ]
+        with patch.object(ci, "validated_iq_programs", return_value=programs):
+            with self.assertRaisesRegex(ValueError, "Divergent signed programs"):
+                ci.extract_iq_programs(None, ["testwatch"], self.cache, output, "5.8.4", "42")
+        self.assertEqual(list(output.iterdir()), [])
+
+    def test_equal_programs_on_different_targets_remain_separate(self):
+        output = self.root / "artifacts"
+        output.mkdir()
+        programs = [
+            {"product": product, "data": b"identical", "model": product,
+             "part_number": f"006-B000{index}-00"}
+            for index, product in enumerate(("firstwatch", "secondwatch"), 1)
+        ]
+        with patch.object(ci, "validated_iq_programs", return_value=programs):
+            variants = ci.extract_iq_programs(
+                None, ["firstwatch", "secondwatch"], self.cache, output, "5.8.4", "42")
+        self.assertEqual(len(list(output.iterdir())), 2)
+        self.assertNotEqual(variants[0]["artifact"], variants[1]["artifact"])
+        self.assertEqual(variants[0]["sha256"], variants[1]["sha256"])
 
     def test_extra_export_files_fail(self):
         with self.assertRaisesRegex(ValueError, "Unexpected IQ"):
@@ -201,7 +241,7 @@ class GarminCiTests(unittest.TestCase):
             def write_programs(_iq, _products, _cache, output, _version, _iid):
                 result = []
                 for part in ("006-B0001-00", "006-B0002-00"):
-                    name = f"WearTAK-Garmin-5.8.4-p42-testwatch-{part}.prg"
+                    name = "WearTAK-Garmin-5.8.4-p42-testwatch.prg"
                     path = output / name
                     path.write_bytes(b"signed program bytes")
                     result.append({"product": "testwatch", "part_number": part,
@@ -215,7 +255,7 @@ class GarminCiTests(unittest.TestCase):
         self.assertIn("-Djava.awt.headless=true", java)
         self.assertFalse(Path(java[java.index("-y") + 1]).exists())
         record = json.loads((output / "release-build.json").read_text())
-        self.assertEqual(record["schema"], 3)
+        self.assertEqual(record["schema"], 4)
         self.assertEqual(record["pipeline_iid"], "42")
         self.assertEqual(record["pipeline_id"], "1234")
         self.assertEqual(record["tests"], "not-run-headless-linux")
@@ -223,9 +263,9 @@ class GarminCiTests(unittest.TestCase):
         self.assertEqual(len(record["devices"]), 2)
         self.assertEqual(record["version"], "5.8.4")
         self.assertEqual(record["artifacts"][0]["name"], "WearTAK-Garmin-5.8.4-p42.iq")
-        self.assertEqual(len(record["artifacts"]), 4)
+        self.assertEqual(len(record["artifacts"]), 3)
         sums = (output / "SHA256SUMS.txt").read_text().splitlines()
-        self.assertEqual(len(sums), 3)
+        self.assertEqual(len(sums), 2)
 
     def test_unprotected_build_never_reads_key(self):
         with patch.dict(os.environ, {"GITLAB_CI": "false"}):

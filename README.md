@@ -4,13 +4,16 @@
 
 WearTAK-Garmin is a standalone Garmin Connect IQ watch application for basic
 Team Awareness Kit (TAK) operational awareness. It is designed for Garmin
-watches with maps and GPS, currently supporting the fenix 6 Pro family (6 Pro, 6S Pro, 6X Pro), fenix 7X,
+watches with maps and GPS, currently supporting the fenix 6 Pro family (6 Pro, 6S Pro, 6X Pro), fenix 7X, tactix 7 (MIP/Solar),
 fenix 8 (47 mm and 51 mm variants), and tactix 8 (AMOLED 47/51 mm and Solar 51 mm).
 Tactix 8 compatibility uses Garmin SDK hardware mappings in the existing Fenix 8
 targets: `fenix847mm` includes part number `006-B4775-00` (AMOLED), and
 `fenix8solar51mm` includes `006-B4776-00` (Solar). Re-export with the current
 SDK device definitions to include these part numbers in the Connect IQ package.
 Tactix 8 support remains experimental until validated on physical watches.
+Tactix 7 (MIP/Solar) uses the existing `fenix7x` target; its support also remains
+experimental pending physical-watch validation. Tactix 7 AMOLED Edition is not
+included in this manifest.
 
 ### Current capabilities
 
@@ -997,17 +1000,39 @@ deduplication, retention bounds, and capability-gated queue transmission.
 
 ### Device and hardware-part mapping
 
-The manifest targets Fenix 6 Pro, Fenix 6S Pro, Fenix 6X Pro, Fenix 7X, Fenix 8 AMOLED 47 mm, Fenix 8 Solar 47 mm, and Fenix 8 Solar 51 mm. Tactix 8 AMOLED (47/51 mm) and Solar (51 mm) map to the Fenix 8 targets shown below; Tactix 8 support remains experimental pending physical-watch validation.
+The manifest targets Fenix 6 Pro, Fenix 6S Pro, Fenix 6X Pro, Fenix 7X (including Tactix 7 MIP/Solar), Fenix 8 AMOLED 47 mm, Fenix 8 Solar 47 mm, and Fenix 8 Solar 51 mm. Tactix 8 AMOLED (47/51 mm) and Solar (51 mm) map to the Fenix 8 targets shown below; Tactix 7 and 8 support remains experimental pending physical-watch validation.
 
 | Connect IQ target | Device family | Hardware part numbers |
 | --- | --- | --- |
 | `fenix6pro` | Fenix 6 Pro | `006-B3290-00`, `006-B3515-00`, `006-B3782-00`, `006-B3767-00`, `006-B3771-00` |
 | `fenix6spro` | Fenix 6S Pro | `006-B3288-00`, `006-B3513-00`, `006-B3765-00`, `006-B3769-00` |
 | `fenix6xpro` | Fenix 6X Pro | `006-B3291-00`, `006-B3516-00`, `006-B3783-00` |
-| `fenix7x` | Fenix 7X | `006-B3907-00`, `006-B3910-00`, `006-B4135-00`, `006-B4341-00` |
+| `fenix7x` | Fenix 7X; Tactix 7 MIP/Solar alias | `006-B3907-00`, `006-B3910-00`, `006-B4135-00`, `006-B4341-00` |
 | `fenix847mm` | Fenix 8 AMOLED; Tactix 8 AMOLED alias | `006-B4536-00` (Fenix 8), `006-B4775-00` (Tactix 8 AMOLED, 47/51 mm) |
 | `fenix8solar47mm` | Fenix 8 Solar 47 mm | `006-B4532-00` |
 | `fenix8solar51mm` | Fenix 8 Solar 51 mm; Tactix 8 Solar alias | `006-B4533-00` (Fenix 8), `006-B4776-00` (Tactix 8 Solar, 51 mm) |
+
+Garmin's [compatible-device list](https://developer.garmin.com/connect-iq/compatible-devices/)
+and the SDK's `Devices/fenix7x/compiler.json` group Tactix 7 with Fenix 7X.
+Do not add a separate `tactix7` product ID. This target has a round 280 x 280
+MIP display and a 768 KiB watch-app memory limit. It uses the shared native-map,
+menu, GPS, and button-navigation implementation; no device-specific source or
+resource overrides are required. The table lists every hardware part belonging
+to the shared target, not a separate Tactix-only part assignment.
+
+For Tactix 7 MIP/Solar, compile and simulate with `-d fenix7x` and sideload the
+`fenix7x` `.prg` whose compatibility metadata includes the watch's hardware part number. The release tooling
+already exports and validates all parts from this target's SDK definition;
+the manifest product set and pinned CI device cache do not change.
+Tactix 7 **AMOLED Edition** instead maps to `epix2pro51mm` (454 x 454 AMOLED);
+that separate target is not currently supported.
+
+Pipeline provenance labels the shared target `Fenix 7X / Tactix 7 (MIP/Solar)`.
+Generated release tables also include one explicit `Tactix 7 (MIP/Solar; alias)` entry
+alongside `fenix7x`, linking the same signed target file and checksum.
+No duplicate SDK build, binary, or invented product ID is created. These aliases
+enumerate the shared target's parts; select only the part matching your watch.
+Garmin's official model name is Tactix 7, not Tactix 7X.
 
 
 ## Compilation
@@ -1141,10 +1166,13 @@ No production key is needed by GitHub. Keys are written to a private temporary
 directory and deleted in `finally`; they are never included in artifacts.
 Disposable runners are still required to handle externally cancelled jobs.
 Both pipelines emit `SHA256SUMS.txt` for their distribution packages. Protected
-TAK.gov builds also extract every hardware-specific signed `.prg` from the
-validated `.iq` export; these preserve the exact per-part program bytes rather
-than recompiling a second set of binaries. Names use
-`WearTAK-Garmin-{VERSION}-p{PIPELINE_IID}-{TARGET}-{PART_NUMBER}.prg`.
+TAK.gov builds extract signed programs from the validated `.iq` export and
+require all hardware parts within each SDK target to have identical program
+bytes before publishing one canonical `.prg` for that target. Divergence fails
+the build explicitly; different targets are never combined even if their bytes
+match. Names use `WearTAK-Garmin-{VERSION}-p{PIPELINE_IID}-{TARGET}.prg`.
+Every supported part ID remains in build provenance and release compatibility
+metadata, rather than producing duplicate files or download rows.
 
 #### Running the same checks locally
 
@@ -1289,8 +1317,9 @@ variants from the selected devices' compiler definitions (currently 21 variants
 across seven Connect IQ targets), not just the filename extension. Each
 exported per-hardware `.prg` is extracted byte-for-byte from that validated
 signed `.iq`; no second compilation or production key is used for extraction.
-The inventory contains the IQ plus 21 uniquely named direct-install PRGs. It
-does **not** run simulator tests. Only after these gates succeed does it emit schema-3
+The inventory contains the IQ plus seven target-specific direct-install PRGs,
+after byte-equality checks across each target's hardware parts. It
+does **not** run simulator tests. Only after these gates succeed does it emit schema-4
 `release-build.json`, binding the exact full source SHA, version, project,
 pipeline ID, pipeline IID and build job ID to every PRG, the IQ and
 `SHA256SUMS.txt`.
@@ -1316,10 +1345,13 @@ The anchor is created at the first published source SHA and never moved; GitHub
 source archives therefore describe that anchor, not subsequent builds.
 Initial publication creates a draft, uploads and downloads every asset for
 size/SHA-256 verification, then exposes a stable release. Later builds update
-that same release. Final inventory contains exactly 22 assets: the IQ bundle
-and 21 PRGs. Each filename is its asset label; PRGs include Connect IQ target
-and Garmin hardware part number. The release notes list target, part, model
-mapping, download link and hash. The fixed version is literal `APP_VERSION`;
+that same release. Final inventory contains exactly eight assets: the IQ bundle
+and seven PRGs. Each filename is its asset label; PRGs include Connect IQ target,
+not hardware part. The release notes list readable watch names, target, download
+link and hash, plus one Tactix 7 alias linking the Fenix 7X file. Full target/part
+compatibility stays in schema-v3 managed release metadata. Exact previous
+schema-v1/v2 notes remain recognized for safe migration: prior assets are backed
+up and verified, and replaced only after new publication succeeds. The fixed version is literal `APP_VERSION`;
 `-p<IID>` preserves pipeline build numbering. Checksums remain in the notes and
 CI artifacts, not extra GitHub assets. The release notes identify the IQ as a
 distribution bundle and each matching PRG as the direct-install file. The full

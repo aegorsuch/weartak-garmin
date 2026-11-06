@@ -18,7 +18,7 @@ function New-GarminReleasePlan {
         throw "Invalid canonical project or protected branch."
     }
     $metadata = Get-Content -Raw (Join-Path $Directory "release-build.json") | ConvertFrom-Json
-    if ($metadata.schema -ne 3 -or $metadata.signing -cne "production-key-fingerprint-verified" -or
+    if ($metadata.schema -notin 3, 4 -or $metadata.signing -cne "production-key-fingerprint-verified" -or
         $metadata.tests -cne "not-run-headless-linux" -or $metadata.sdk -cne "9.2.0" -or
         $metadata.export -cne "monkeyc-e" -or
         $metadata.source_sha -cne $Context.Sha -or
@@ -46,10 +46,14 @@ function New-GarminReleasePlan {
             throw "Invalid target or hardware mapping in build provenance."
         }
         $name = "WearTAK-Garmin-$($metadata.version)-p$($Context.PipelineIid)-$($device.product)-$($device.part_number).prg"
+        if ($metadata.schema -eq 4) {
+            $name = "WearTAK-Garmin-$($metadata.version)-p$($Context.PipelineIid)-$($device.product).prg"
+        }
         if ($device.artifact -cne $name -or $device.sha256 -cnotmatch '^[0-9a-f]{64}$') {
             throw "Invalid device artifact provenance: $name"
         }
-        if (@($deviceArtifacts | Where-Object { $_.Name -ceq $name -or $_.PartNumber -ceq $device.part_number }).Count) {
+        if (@($deviceArtifacts | Where-Object { $_.PartNumber -ceq $device.part_number }).Count -or
+            ($metadata.schema -eq 3 -and @($deviceArtifacts | Where-Object { $_.Name -ceq $name }).Count)) {
             throw "Duplicate hardware variant in build provenance: $name"
         }
         $deviceArtifacts += [pscustomobject]@{
@@ -61,7 +65,12 @@ function New-GarminReleasePlan {
     if (Compare-Object ($Products | Sort-Object -Unique) (@($deviceArtifacts | ForEach-Object { $_.Product } | Sort-Object -Unique))) {
         throw "Build provenance does not cover every manifest target."
     }
-    $expectedDistributables = @($assetName) + @($deviceArtifacts | ForEach-Object { $_.Name })
+    foreach ($group in @($deviceArtifacts | Group-Object Product)) {
+        if ($metadata.schema -eq 4 -and @($group.Group.Hash | Select-Object -Unique).Count -ne 1) {
+            throw "Divergent signed programs for target $($group.Name)."
+        }
+    }
+    $expectedDistributables = @($assetName) + @($deviceArtifacts | ForEach-Object { $_.Name } | Select-Object -Unique)
     $expected = @($expectedDistributables) + @("SHA256SUMS.txt")
     if (@($expected | Select-Object -Unique).Count -ne $expected.Count) {
         throw "Duplicate distributable filename."
@@ -81,6 +90,9 @@ function New-GarminReleasePlan {
         $entry = @($metadata.artifacts | Where-Object { $_.name -ceq $name })
         if ($entry.Count -ne 1 -or $entry[0].sha256 -cne $hash) { throw "Build checksum mismatch: $name" }
         $device = @($deviceArtifacts | Where-Object { $_.Name -ceq $name })
+        if ($device.Count -and @($device | Where-Object { $_.Hash -cne $hash }).Count) {
+            throw "Device checksum mismatch: $name"
+        }
         $files += [pscustomobject]@{
             Name = $name; Path = $file.FullName; Hash = $hash
             Product = if ($device.Count) { $device[0].Product } else { "IQ distribution bundle" }
@@ -126,6 +138,11 @@ function New-GarminReleasePlan {
         products = @($metadata.products)
         assets = @($stateAssets)
     }
+    if ($metadata.schema -eq 4) {
+        $state.hardware = @($deviceArtifacts | ForEach-Object {
+            [ordered]@{product = $_.Product; part_number = $_.PartNumber}
+        })
+    }
     return [pscustomobject]@{
         Context = $Context; Tag = $tag; Files = $files; State = $state
         BackupDirectory = (Join-Path $Directory "publication-backup")
@@ -136,7 +153,34 @@ function New-GarminReleasePlan {
 }
 
 function Get-GarminRollingBody {
-    param($State)
+    param($State, [switch]$LegacyPresentation)
+    if (($State -is [System.Collections.IDictionary] -and $State.Contains("hardware")) -or
+        $State.PSObject.Properties["hardware"]) {
+        $names = @{
+            fenix6pro = "Fenix 6 Pro"; fenix6spro = "Fenix 6S Pro"; fenix6xpro = "Fenix 6X Pro"
+            fenix7x = "Fenix 7X"; fenix847mm = "Fenix 8 / Tactix 8 AMOLED (47/51 mm)"
+            fenix8solar47mm = "Fenix 8 Solar (47 mm)"; fenix8solar51mm = "Fenix 8 / Tactix 8 Solar (51 mm)"
+        }
+        $lines = @(
+            "Automatically published stable Garmin main-channel build.", "",
+            "- IQ version: **$($State.version)**",
+            "- Build: GitLab pipeline **$($State.pipeline)** (project pipeline **$($State.iid)**)",
+            "- Pipeline: https://git.tak.gov/core/weartak-core/weartak-garmin/-/pipelines/$($State.pipeline)",
+            ('- Source commit: `{0}` on TAK.gov `main`' -f $State.sha), "",
+            "| Watch | SDK target | Download | SHA-256 |", "| --- | --- | --- | --- |"
+        )
+        foreach ($asset in $State.assets) {
+            $url = "https://github.com/aegorsuch/weartak-garmin/releases/download/TAK.gov-Forge-CI-CD-Pipeline-Release/$([uri]::EscapeDataString([string]$asset.filename))"
+            $label = if ($names.ContainsKey([string]$asset.product)) { $names[[string]$asset.product] } else { [string]$asset.product }
+            $lines += "| $label | $($asset.product) | [Download]($url) | $($asset.hash) |"
+            if ($asset.product -ceq "fenix7x") {
+                $lines += "| Tactix 7 (MIP/Solar; alias) | fenix7x | [Download]($url) | $($asset.hash) |"
+            }
+        }
+        $lines += @("", 'One signed `.prg` per SDK target; all supported hardware parts are retained in compatibility metadata. Same-target programs must be byte-identical. Tactix 7 (not 7X) aliases Fenix 7X; Tactix 7 AMOLED Edition is excluded. The `.iq` is a distribution bundle, not a direct-install watch file.')
+        $lines += "<!-- weartak-garmin-rolling:v3 $($State | ConvertTo-Json -Depth 10 -Compress) -->"
+        return ($lines -join "`n")
+    }
     $base = "https://git.tak.gov/core/weartak-core/weartak-garmin"
     $lines = @(
         "Automatically published stable Garmin main-channel build.",
@@ -156,6 +200,15 @@ function Get-GarminRollingBody {
         if (-not $asset.part_number) { $target = "IQ distribution" }
         $part = if ($asset.part_number) { [string]$asset.part_number } else { "N/A" }
         $lines += "| $target | $part | $($asset.model) | [Download]($url) | $($asset.hash) |"
+        if (-not $LegacyPresentation -and $asset.product -ceq "fenix7x" -and $asset.part_number) {
+            $lines += "| Tactix 7 (alias) | $part | Tactix 7 (MIP/Solar; fenix7x alias) | [Download]($url) | $($asset.hash) |"
+        }
+    }
+    if (-not $LegacyPresentation -and @($State.assets | Where-Object { $_.product -ceq "fenix7x" -and $_.part_number }).Count) {
+        $lines += @(
+            "",
+            'Tactix 7 alias entries link the same signed `fenix7x` programs, not separate builds. These are shared-target hardware parts, not Tactix-only assignments: match your watch''s hardware part number. Official model name is Tactix 7, not Tactix 7X. AMOLED Edition is excluded.'
+        )
     }
     $lines += @(
         "",
@@ -238,7 +291,7 @@ function Invoke-GarminPublication {
         if ($existing.draft -or $existing.prerelease -or $null -eq $tag -or $tag.object.type -cne "commit") {
             throw "Existing rolling release is not a published managed stable release."
         }
-        $marker = [regex]::Match($existing.body, '(?m)^<!-- weartak-garmin-rolling:v([12]) (\{[^\r\n]+\}) -->$')
+        $marker = [regex]::Match($existing.body, '(?m)^<!-- weartak-garmin-rolling:v([123]) (\{[^\r\n]+\}) -->$')
         if (-not $marker.Success) { throw "Unknown release notes; refusing to overwrite." }
         $markerVersion = $marker.Groups[1].Value
         $oldState = $marker.Groups[2].Value | ConvertFrom-Json
@@ -268,7 +321,8 @@ function Invoke-GarminPublication {
                 PartNumber = ""; Model = "All validated targets"
             })
         } else {
-            if ($existing.body -cne (Get-GarminRollingBody $oldState)) {
+            if ($existing.body -cne (Get-GarminRollingBody $oldState) -and
+                $existing.body -cne (Get-GarminRollingBody $oldState -LegacyPresentation)) {
                 throw "Unknown or edited managed release notes; refusing to overwrite."
             }
             $oldAssets = @($oldState.assets)
@@ -288,7 +342,8 @@ function Invoke-GarminPublication {
                     $oldAsset.hash -cnotmatch '^[0-9a-f]{64}$' -or
                     ($oldAsset.filename -cne $oldIqName -and
                      $oldAsset.filename -notmatch ("^WearTAK-Garmin-" + [regex]::Escape([string]$oldState.version) +
-                        "-p" + [regex]::Escape([string]$oldState.iid) + "-[a-z0-9]+-006-B[0-9]{4}-[0-9]{2}\.prg$"))) {
+                        "-p" + [regex]::Escape([string]$oldState.iid) +
+                        $(if ($markerVersion -eq "3") { "-[a-z0-9]+\.prg$" } else { "-[a-z0-9]+-006-B[0-9]{4}-[0-9]{2}\.prg$" })))) {
                     throw "Invalid managed release asset entry."
                 }
                 if ($oldAsset.filename -ceq $oldIqName) {
@@ -299,7 +354,7 @@ function Invoke-GarminPublication {
                 } elseif ($oldAsset.product -notin $oldProducts -or
                     $oldAsset.part_number -notmatch '^006-B[0-9]{4}-[0-9]{2}$' -or
                     $oldAsset.filename -cne ("WearTAK-Garmin-$($oldState.version)-p$($oldState.iid)-" +
-                        "$($oldAsset.product)-$($oldAsset.part_number).prg") -or
+                        $(if ($markerVersion -eq "3") { "$($oldAsset.product).prg" } else { "$($oldAsset.product)-$($oldAsset.part_number).prg" })) -or
                     $oldAsset.model -notmatch '^[A-Za-z0-9 ()/+.-]+$') {
                     throw "Invalid managed PRG target mapping."
                 }
@@ -314,6 +369,29 @@ function Invoke-GarminPublication {
                 ForEach-Object { "$($_.Product)|$($_.PartNumber)" } | Sort-Object)
             $previousHardware = @($oldPrgs |
                 ForEach-Object { "$($_.Product)|$($_.PartNumber)" } | Sort-Object)
+            if ($Plan.State.Contains("hardware")) {
+                $expectedHardware = @($Plan.State.hardware |
+                    ForEach-Object { "$($_.product)|$($_.part_number)" } | Sort-Object)
+            }
+            if ($markerVersion -eq "3") {
+                $previousHardware = @($oldState.hardware |
+                    ForEach-Object {
+                        if ($_.product -notin $oldProducts -or $_.part_number -notmatch '^006-B[0-9]{4}-[0-9]{2}$') {
+                            throw "Invalid managed compatibility metadata."
+                        }
+                        "$($_.product)|$($_.part_number)"
+                    } | Sort-Object)
+                if (@($previousHardware | Select-Object -Unique).Count -ne $previousHardware.Count -or
+                    $oldPrgs.Count -ne $oldProducts.Count -or
+                    @($oldPrgs | Select-Object -ExpandProperty Product -Unique).Count -ne $oldProducts.Count) {
+                    throw "Duplicate managed compatibility target or part."
+                }
+                foreach ($oldPrg in $oldPrgs) {
+                    if ("$($oldPrg.Product)|$($oldPrg.PartNumber)" -notin $previousHardware) {
+                        throw "Managed asset is missing its compatibility mapping."
+                    }
+                }
+            }
             if ($oldPrgs.Count -ne ($oldAssets.Count - 1) -or
                 (Compare-Object ($oldProducts | Sort-Object) (@($oldPrgs | ForEach-Object { $_.Product } | Sort-Object -Unique))) -or
                 @($oldPrgs | Select-Object -ExpandProperty PartNumber -Unique).Count -ne $oldPrgs.Count -or

@@ -5,6 +5,7 @@
             <iq:product id="fenix6pro"/>
             <iq:product id="fenix6spro"/>
             <iq:product id="fenix6xpro"/>
+            <!-- The SDK maps tactix 7 (MIP/Solar, not AMOLED) to the Fenix 7X target. -->
             <iq:product id="fenix7x"/>
             <!-- The SDK maps Tactix 8 AMOLED/Solar part numbers to these Fenix 8 targets. -->
             <iq:product id="fenix847mm"/>
