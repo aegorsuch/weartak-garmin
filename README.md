@@ -4,8 +4,9 @@
 
 WearTAK-Garmin is a standalone Garmin Connect IQ watch application for basic
 Team Awareness Kit (TAK) operational awareness. It is designed for Garmin
-watches with maps and GPS, currently supporting the fenix 6 Pro family (6 Pro, 6S Pro, 6X Pro), fenix 7X, tactix 7 (MIP/Solar),
-fenix 8 (47 mm and 51 mm variants), and tactix 8 (AMOLED 47/51 mm and Solar 51 mm).
+watches with maps and GPS, currently supporting the fenix 6 Pro family (6 Pro, 6S Pro,
+6X Pro, including the Tactix Delta Ballistic), fenix 7X, tactix 7 (MIP/Solar), fenix 8
+(47 mm and 51 mm variants), and tactix 8 (AMOLED 47/51 mm and Solar 51 mm).
 Tactix 8 compatibility uses Garmin SDK hardware mappings in the existing Fenix 8
 targets: `fenix847mm` includes part number `006-B4775-00` (AMOLED), and
 `fenix8solar51mm` includes `006-B4776-00` (Solar). Re-export with the current
@@ -1000,13 +1001,17 @@ deduplication, retention bounds, and capability-gated queue transmission.
 
 ### Device and hardware-part mapping
 
-The manifest targets Fenix 6 Pro, Fenix 6S Pro, Fenix 6X Pro, Fenix 7X (including Tactix 7 MIP/Solar), Fenix 8 AMOLED 47 mm, Fenix 8 Solar 47 mm, and Fenix 8 Solar 51 mm. Tactix 8 AMOLED (47/51 mm) and Solar (51 mm) map to the Fenix 8 targets shown below; Tactix 7 and 8 support remains experimental pending physical-watch validation.
+The manifest targets Fenix 6 Pro, Fenix 6S Pro, and Fenix 6X Pro (including Tactix
+Delta Ballistic); Fenix 7X (including Tactix 7 MIP/Solar); and Fenix 8 AMOLED 47 mm,
+Solar 47 mm, and Solar 51 mm. Tactix 8 AMOLED (47/51 mm) and Solar (51 mm) map to
+the Fenix 8 targets shown below; Tactix 7 and 8 support remains experimental pending
+physical-watch validation.
 
 | Connect IQ target | Device family | Hardware part numbers |
 | --- | --- | --- |
 | `fenix6pro` | Fenix 6 Pro | `006-B3290-00`, `006-B3515-00`, `006-B3782-00`, `006-B3767-00`, `006-B3771-00` |
 | `fenix6spro` | Fenix 6S Pro | `006-B3288-00`, `006-B3513-00`, `006-B3765-00`, `006-B3769-00` |
-| `fenix6xpro` | Fenix 6X Pro | `006-B3291-00`, `006-B3516-00`, `006-B3783-00` |
+| `fenix6xpro` | Fenix 6X Pro; Tactix Delta Ballistic alias | `006-B3291-00`, `006-B3516-00`, `006-B3783-00` |
 | `fenix7x` | Fenix 7X; Tactix 7 MIP/Solar alias | `006-B3907-00`, `006-B3910-00`, `006-B4135-00`, `006-B4341-00` |
 | `fenix847mm` | Fenix 8 AMOLED; Tactix 8 AMOLED alias | `006-B4536-00` (Fenix 8), `006-B4775-00` (Tactix 8 AMOLED, 47/51 mm) |
 | `fenix8solar47mm` | Fenix 8 Solar 47 mm | `006-B4532-00` |

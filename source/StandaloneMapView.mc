@@ -3385,18 +3385,18 @@ class PointTextPickerDelegate extends WatchUi.TextPickerDelegate {
 
 function teamColorValue(team as String) as Number {
     var color = team.toLower();
-    if (color.equals("white")) { return Graphics.createColor(255, 255, 255, 255); }
-    else if (color.equals("yellow")) { return Graphics.createColor(255, 255, 255, 0); }
-    else if (color.equals("orange")) { return Graphics.createColor(255, 255, 165, 0); }
-    else if (color.equals("magenta")) { return Graphics.createColor(255, 255, 0, 255); }
-    else if (color.equals("red")) { return Graphics.createColor(255, 255, 0, 0); }
-    else if (color.equals("maroon")) { return Graphics.createColor(255, 128, 0, 0); }
-    else if (color.equals("purple")) { return Graphics.createColor(255, 128, 0, 128); }
-    else if (color.equals("dark blue")) { return Graphics.createColor(255, 0, 0, 139); }
-    else if (color.equals("cyan")) { return Graphics.createColor(255, 0, 255, 255); }
-    else if (color.equals("teal")) { return Graphics.createColor(255, 0, 128, 128); }
-    else if (color.equals("green")) { return Graphics.createColor(255, 0, 128, 0); }
-    else if (color.equals("dark green")) { return Graphics.createColor(255, 0, 100, 0); }
-    else if (color.equals("brown")) { return Graphics.createColor(255, 165, 42, 42); }
-    return Graphics.createColor(255, 0, 0, 255);
+    if (color.equals("white")) { return 0xFFFFFF; }
+    else if (color.equals("yellow")) { return 0xFFFF00; }
+    else if (color.equals("orange")) { return 0xFFA500; }
+    else if (color.equals("magenta")) { return 0xFF00FF; }
+    else if (color.equals("red")) { return 0xFF0000; }
+    else if (color.equals("maroon")) { return 0x800000; }
+    else if (color.equals("purple")) { return 0x800080; }
+    else if (color.equals("dark blue")) { return 0x00008B; }
+    else if (color.equals("cyan")) { return 0x00FFFF; }
+    else if (color.equals("teal")) { return 0x008080; }
+    else if (color.equals("green")) { return 0x008000; }
+    else if (color.equals("dark green")) { return 0x006400; }
+    else if (color.equals("brown")) { return 0xA52A2A; }
+    return 0x0000FF;
 }

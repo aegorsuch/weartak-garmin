@@ -251,8 +251,8 @@ function coordinateFormatting(logger) as Boolean {
     Test.assertEqual(map.mgrsFromLatLon(60.0, 6.0), "32V LM 32705 55206");
     Test.assertEqual(map.mgrsFromLatLon(78.0, 15.0), "33X WG 00000 58370");
     Test.assertEqual(map.mgrsFromLatLon(85.0, 0.0), "MGRS unavailable");
-    Test.assertEqual(teamColorValue("Blue"), Graphics.createColor(255, 0, 0, 255));
-    Test.assertEqual(teamColorValue("dark blue"), Graphics.createColor(255, 0, 0, 139));
+    Test.assertEqual(teamColorValue("Blue"), Graphics.COLOR_BLUE);
+    Test.assertEqual(teamColorValue("dark blue"), 0x00008B);
     return true;
 }
 
